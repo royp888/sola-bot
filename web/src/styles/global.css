@@ -1,0 +1,93 @@
+:root {
+  --app-bg: #0b1117;
+  --app-surface: #111821;
+  --app-surface-2: #161f29;
+  --app-border: #263241;
+  --app-text: #eef4fb;
+  --app-muted: #8b97a8;
+  --app-accent: #5ecdc3;
+  --app-success: #58c57a;
+  --app-warning: #f0b35d;
+  --app-danger: #da6b6b;
+  color-scheme: dark;
+  font-family:
+    "SF Pro Display",
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--app-text);
+  background: var(--app-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 33, 0.96), rgba(11, 17, 23, 1)),
+    var(--app-bg);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.el-button {
+  border-radius: 8px;
+}
+
+.el-card {
+  border-radius: 8px;
+}
+
+.el-menu {
+  border-right: 0;
+}
+
+.el-menu-item,
+.el-sub-menu__title {
+  border-radius: 8px;
+}
+
+.el-menu-item.is-active {
+  background: rgba(94, 205, 195, 0.12) !important;
+}
+
+.el-table,
+.el-table th.el-table__cell,
+.el-table tr {
+  background: transparent;
+}
+
+.el-table {
+  --el-table-border-color: rgba(255, 255, 255, 0.08);
+  --el-table-header-bg-color: rgba(255, 255, 255, 0.03);
+  --el-table-row-hover-bg-color: rgba(255, 255, 255, 0.04);
+}
+
+.el-input__wrapper,
+.el-select__wrapper {
+  border-radius: 8px;
+}
+
+.el-message {
+  border-radius: 8px;
+}

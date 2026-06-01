@@ -1,0 +1,25 @@
+package model
+
+import "time"
+
+type ScheduledPost struct {
+	ID        uint64 `gorm:"primaryKey;autoIncrement" json:"id"`
+	ChatID    int64  `gorm:"not null;index" json:"chat_id"`
+	Title     string `gorm:"size:128" json:"title,omitempty"`
+	Content   string `gorm:"type:text" json:"content,omitempty"`
+	MediaURL  string `gorm:"type:text" json:"media_url,omitempty"`
+	MediaType string `gorm:"size:16" json:"media_type,omitempty"`
+	CronExpr  string `gorm:"size:64" json:"cron_expr,omitempty"`
+
+	RunOnceAt *time.Time `gorm:"index" json:"run_once_at,omitempty"`
+	Enabled   bool       `gorm:"not null;default:true;index" json:"enabled"`
+	LastRunAt *time.Time `json:"last_run_at,omitempty"`
+	CreatedAt time.Time  `gorm:"not null;default:now()" json:"created_at"`
+
+	PinAfterSend      bool `gorm:"not null;default:false" json:"pin_after_send"`
+	AutoDeleteSeconds int  `gorm:"not null;default:0" json:"auto_delete_seconds"`
+}
+
+func (ScheduledPost) TableName() string {
+	return "scheduled_posts"
+}

@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS points;
+DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS posts;
+DROP TABLE IF EXISTS scheduled_jobs;
+DROP TABLE IF EXISTS button_templates;
+DROP TABLE IF EXISTS chat_admins;
+DROP TABLE IF EXISTS point_logs;
+DROP TABLE IF EXISTS user_points;
+DROP TABLE IF EXISTS chat_point_configs;
+DROP TABLE IF EXISTS telegram_chats;
+DROP TABLE IF EXISTS bots;
+DROP TABLE IF EXISTS users;

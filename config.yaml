@@ -1,0 +1,29 @@
+app:
+  name: sola
+  env: development
+  http_addr: :8080
+  admin_username: admin
+  admin_password: change-me
+  admin_password_hash: ""
+  allowed_origins:
+    - http://127.0.0.1:5174
+    - http://localhost:5174
+
+bot:
+  token: ""
+  mode: polling
+  default_locale: zh-CN
+
+database:
+  dsn: postgres://sola:sola@postgres:5432/sola?sslmode=disable
+  auto_migrate: true
+
+redis:
+  addr: redis:6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: change-this-in-production
+  issuer: sola-admin
+  access_token_ttl: 24h

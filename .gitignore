@@ -1,0 +1,40 @@
+# Secrets and local env
+.env
+.env.*
+!.env.example
+
+# Go build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+cover.out
+
+# Project build output
+bin/
+dist/
+web/dist/
+web/node_modules/
+
+# Runtime and logs
+logs/
+*.log
+.runtime/
+.review-package/
+
+# Local tooling
+.ace-tool/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
