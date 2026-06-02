@@ -1,7 +1,7 @@
 <template>
   <section class="panel">
     <div v-if="title || description || $slots.actions" class="panel-head">
-      <div>
+      <div class="panel-copy">
         <h2 v-if="title">{{ title }}</h2>
         <p v-if="description">{{ description }}</p>
       </div>
@@ -34,30 +34,47 @@ defineProps<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px 18px 0;
+  gap: 12px;
+  padding: 14px 14px 0;
+}
+
+.panel-copy {
+  min-width: 0;
 }
 
 h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.3;
 }
 
 p {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--app-muted);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
 .panel-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .panel-body {
-  padding: 18px;
+  padding: 14px;
+}
+
+@media (max-width: 720px) {
+  .panel-head {
+    flex-direction: column;
+  }
+
+  .panel-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
 }
 </style>

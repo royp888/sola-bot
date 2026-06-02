@@ -58,12 +58,40 @@
 import { nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { Refresh } from "@element-plus/icons-vue";
-import * as echarts from "echarts";
+import { BarChart, LineChart, PieChart } from "echarts/charts";
+import {
+  GridComponent,
+  LegendComponent,
+  TooltipComponent,
+} from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
+import { use, init, type ECharts, type ComposeOption } from "echarts/core";
+import type {
+  BarSeriesOption,
+  LineSeriesOption,
+  PieSeriesOption,
+} from "echarts/charts";
+import type {
+  GridComponentOption,
+  LegendComponentOption,
+  TooltipComponentOption,
+} from "echarts/components";
 import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import StatTile from "@/components/StatTile.vue";
 import { fetchStats } from "@/api/stats";
 import type { StatsOverview } from "@/types/api";
+
+use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
+
+type ChartOption = ComposeOption<
+  | BarSeriesOption
+  | LineSeriesOption
+  | PieSeriesOption
+  | GridComponentOption
+  | LegendComponentOption
+  | TooltipComponentOption
+>;
 
 const range = ref("7d");
 const activityChartRef = ref<HTMLDivElement>();
@@ -75,9 +103,9 @@ const summary = reactive<StatsOverview>({
   topPointsUsers: [],
   sources: [],
 });
-let activityChart: echarts.ECharts | undefined;
-let sourceChart: echarts.ECharts | undefined;
-let pointsChart: echarts.ECharts | undefined;
+let activityChart: ECharts | undefined;
+let sourceChart: ECharts | undefined;
+let pointsChart: ECharts | undefined;
 
 async function loadStats(): Promise<void> {
   try {
@@ -98,7 +126,7 @@ function renderCharts(): void {
   sourceChart = ensureChart(sourceChartRef.value, sourceChart);
   pointsChart = ensureChart(pointsChartRef.value, pointsChart);
 
-  activityChart?.setOption({
+  const activityOption: ChartOption = {
     color: ["#5ecdc3"],
     grid: { left: 36, right: 18, top: 24, bottom: 28 },
     tooltip: { trigger: "axis" },
@@ -113,11 +141,12 @@ function renderCharts(): void {
         data: summary.series.map((item) => item.value),
       },
     ],
-  });
+  };
 
-  sourceChart?.setOption({
+  const sourceOption: ChartOption = {
     color: summary.sources.map((item) => item.color),
     tooltip: { trigger: "item" },
+    legend: { show: false },
     series: [
       {
         name: "来源",
@@ -127,9 +156,9 @@ function renderCharts(): void {
         data: summary.sources.map((item) => ({ name: item.label, value: item.value })),
       },
     ],
-  });
+  };
 
-  pointsChart?.setOption({
+  const pointsOption: ChartOption = {
     color: ["#f0b35d"],
     grid: { left: 42, right: 18, top: 24, bottom: 36 },
     tooltip: { trigger: "axis" },
@@ -141,12 +170,16 @@ function renderCharts(): void {
     },
     yAxis: { type: "value", splitLine: { lineStyle: { color: "rgba(255,255,255,0.07)" } } },
     series: [{ name: "积分", type: "bar", barMaxWidth: 28, data: summary.topPointsUsers.map((item) => item.points) }],
-  });
+  };
+
+  activityChart?.setOption(activityOption);
+  sourceChart?.setOption(sourceOption);
+  pointsChart?.setOption(pointsOption);
 }
 
-function ensureChart(el: HTMLDivElement | undefined, current: echarts.ECharts | undefined): echarts.ECharts | undefined {
+function ensureChart(el: HTMLDivElement | undefined, current: ECharts | undefined): ECharts | undefined {
   if (!el) return current;
-  return current ?? echarts.init(el, "dark");
+  return current ?? init(el, "dark");
 }
 
 function resizeCharts(): void {

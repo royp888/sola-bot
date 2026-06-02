@@ -1,6 +1,6 @@
 <template>
   <header class="page-header">
-    <div>
+    <div class="copy">
       <p v-if="eyebrow" class="eyebrow">{{ eyebrow }}</p>
       <h1>{{ title }}</h1>
       <p v-if="description" class="description">
@@ -26,42 +26,54 @@ defineProps<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.copy {
+  min-width: 0;
 }
 
 h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1.2;
   letter-spacing: 0;
 }
 
 .eyebrow {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: var(--app-accent);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .description {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   max-width: 720px;
   color: var(--app-muted);
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 @media (max-width: 720px) {
   .page-header {
     flex-direction: column;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: stretch;
   }
 }
 </style>

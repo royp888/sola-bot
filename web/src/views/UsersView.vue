@@ -1,25 +1,64 @@
 <template>
-  <div class="page">
-    <PageHeader eyebrow="Private Ops" title="私聊/用户运营" description="按群组查看用户积分排行，并处理手动加减分。">
+  <div class="page-stack">
+    <PageHeader eyebrow="Member Ops" title="成员管理" description="按群组查看成员状态、积分分布，并执行批量运营动作。">
       <template #actions>
-        <el-input v-model="keyword" class="search-input" clearable placeholder="搜索用户名 / 昵称" />
-        <ChatSelect v-model="selectedChatId" @loaded="onChatsLoaded" />
         <el-button :icon="Refresh" :loading="loading" @click="loadUsers">刷新</el-button>
       </template>
     </PageHeader>
 
-    <PanelSection title="用户列表" description="支持成员 CSV 导出、批量封禁和批量调分。">
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">当前结果</div>
+        <div class="summary-value">{{ filteredUsers.length }}</div>
+        <div class="summary-meta">群组 {{ currentChatName }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">已选成员</div>
+        <div class="summary-value">{{ selectedRows.length }}</div>
+        <div class="summary-meta">可批量调分或封禁</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">正常成员</div>
+        <div class="summary-value">{{ statusCounts.active }}</div>
+        <div class="summary-meta">当前列表内状态正常</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">风险成员</div>
+        <div class="summary-value">{{ statusCounts.muted + statusCounts.banned }}</div>
+        <div class="summary-meta">禁言 {{ statusCounts.muted }} / 封禁 {{ statusCounts.banned }}</div>
+      </div>
+    </div>
+
+    <PanelSection title="成员列表" description="支持成员导出、批量调分和人工封禁。">
       <template #actions>
-        <el-button :disabled="!selectedChatId" @click="downloadCsv">导出 CSV</el-button>
-        <el-button :disabled="selectedRows.length === 0" type="warning" @click="openBatchAdjust">批量调分</el-button>
-        <el-button :disabled="selectedRows.length === 0" type="danger" @click="submitBatchBan">批量封禁</el-button>
+        <div class="panel-toolbar">
+          <div class="control-cluster filters">
+            <el-input
+              v-model="keyword"
+              class="filter-control filter-control-wide"
+              clearable
+              placeholder="搜索用户名 / 昵称"
+              @keyup.enter="loadUsers"
+            />
+            <div class="filter-control filter-control-wide">
+              <ChatSelect v-model="selectedChatId" @loaded="onChatsLoaded" @update:model-value="loadUsers" />
+            </div>
+          </div>
+          <div class="control-cluster actions-row">
+            <span class="filter-summary">已选 {{ selectedRows.length }} 人</span>
+            <el-button :disabled="!selectedChatId" @click="downloadCsv">导出 CSV</el-button>
+            <el-button :disabled="selectedRows.length === 0" type="warning" @click="openBatchAdjust">批量调分</el-button>
+            <el-button :disabled="selectedRows.length === 0" type="danger" @click="submitBatchBan">批量封禁</el-button>
+          </div>
+        </div>
       </template>
-      <el-table :data="filteredUsers" stripe @selection-change="selectedRows = $event">
+
+      <el-table class="table-compact" :data="filteredUsers" size="small" stripe @selection-change="onSelectionChange">
         <el-table-column type="selection" width="48" />
-        <el-table-column prop="username" label="用户" min-width="150">
+        <el-table-column prop="username" label="成员" min-width="180">
           <template #default="{ row }">
             <strong>{{ row.display_name }}</strong>
-            <div class="muted">{{ row.username }}</div>
+            <div class="muted">{{ row.username || row.id }}</div>
           </template>
         </el-table-column>
         <el-table-column prop="chat_id" label="Chat" min-width="120" />
@@ -29,12 +68,22 @@
             <el-tag :type="statusTag(row.status)" effect="dark">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="last_seen_at" label="最后活跃" min-width="150" />
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column prop="last_seen_at" label="最后活跃" min-width="160" />
+        <el-table-column label="操作" width="176" fixed="right">
           <template #default="{ row }">
             <el-button size="small" :icon="Coin" @click="openAdjust(row)">调分</el-button>
-            <el-button size="small" type="danger" @click="openBan(row)">封禁</el-button>
-            <el-button size="small" type="warning" @click="openMute(row)">禁言</el-button>
+            <el-dropdown @command="handleUserCommand($event, row)">
+              <el-button size="small">
+                更多
+                <el-icon class="el-icon--right"><MoreFilled /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="ban">封禁</el-dropdown-item>
+                  <el-dropdown-item command="mute">禁言提示</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -43,7 +92,7 @@
     <el-dialog v-model="adjustVisible" title="手动加减分" width="420px">
       <el-form label-position="top">
         <el-form-item label="用户">
-          <el-input :model-value="currentUser?.username || ''" disabled />
+          <el-input :model-value="currentUser?.username || currentUser?.display_name || ''" disabled />
         </el-form-item>
         <el-form-item label="积分变化">
           <el-input-number v-model="adjustForm.delta" class="wide-control" :min="-999999" :max="999999" />
@@ -81,7 +130,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Coin, Refresh } from "@element-plus/icons-vue";
+import { Coin, MoreFilled, Refresh } from "@element-plus/icons-vue";
 import ChatSelect from "@/components/ChatSelect.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
@@ -106,13 +155,29 @@ const batchForm = reactive({ delta: 10, reason: "batch_adjust" });
 const filteredUsers = computed(() => {
   const term = keyword.value.trim().toLowerCase();
   return users.value.filter((user) => {
-    const matchesChat = selectedChatId.value ? String(user.chat_id) === String(selectedChatId.value) : true;
-    const matchesKeyword = term
-      ? `${user.username} ${user.display_name}`.toLowerCase().includes(term)
-      : true;
-    return matchesChat && matchesKeyword;
+    const matchesKeyword = term ? `${user.username} ${user.display_name}`.toLowerCase().includes(term) : true;
+    return matchesKeyword;
   });
 });
+
+const currentChatName = computed(() => {
+  const current = chats.value.find((item) => String(item.chat_id ?? item.id ?? "") === String(selectedChatId.value));
+  return current?.title || current?.username || selectedChatId.value || "未选择";
+});
+
+const statusCounts = computed(() => {
+  return filteredUsers.value.reduce(
+    (acc, user) => {
+      acc[user.status] += 1;
+      return acc;
+    },
+    { active: 0, muted: 0, banned: 0 } as Record<UserRecord["status"], number>,
+  );
+});
+
+function onSelectionChange(items: UserRecord[]): void {
+  selectedRows.value = items;
+}
 
 function onChatsLoaded(items: ChatRecord[]): void {
   chats.value = items;
@@ -125,7 +190,6 @@ function onChatsLoaded(items: ChatRecord[]): void {
 async function loadUsers(): Promise<void> {
   if (!selectedChatId.value) {
     users.value = [];
-    ElMessage.warning("请先选择或输入 Chat ID");
     return;
   }
   loading.value = true;
@@ -239,15 +303,11 @@ async function submitAdjust(): Promise<void> {
 
 async function openBan(user: UserRecord): Promise<void> {
   try {
-    await ElMessageBox.confirm(
-      `确认封禁用户 ${user.username || user.id}？此操作需手动解封。`,
-      "确认封禁",
-      {
-        type: "warning",
-        confirmButtonText: "确认封禁",
-        cancelButtonText: "取消",
-      },
-    );
+    await ElMessageBox.confirm(`确认封禁用户 ${user.username || user.id}？此操作需手动解封。`, "确认封禁", {
+      type: "warning",
+      confirmButtonText: "确认封禁",
+      cancelButtonText: "取消",
+    });
   } catch {
     return;
   }
@@ -278,6 +338,16 @@ function openMute(user: UserRecord): void {
   );
 }
 
+function handleUserCommand(command: string, user: UserRecord): void {
+  if (command === "ban") {
+    void openBan(user);
+    return;
+  }
+  if (command === "mute") {
+    openMute(user);
+  }
+}
+
 function statusLabel(value: UserRecord["status"]): string {
   return { active: "正常", muted: "禁言", banned: "封禁" }[value];
 }
@@ -296,14 +366,19 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page {
+.panel-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
+  width: min(100%, 980px);
 }
 
-.search-input {
-  width: 220px;
+.filters :deep(.chat-select) {
+  width: 100%;
+}
+
+.actions-row {
+  justify-content: flex-end;
 }
 
 .muted {
@@ -316,8 +391,8 @@ onMounted(async () => {
 }
 
 @media (max-width: 720px) {
-  .search-input {
-    width: 100%;
+  .actions-row {
+    justify-content: stretch;
   }
 }
 </style>

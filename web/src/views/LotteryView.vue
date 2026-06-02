@@ -1,42 +1,96 @@
 <template>
-  <div class="page">
-    <PageHeader eyebrow="Activity" title="活动抽奖" description="创建、查看和取消群内积分抽奖。">
+  <div class="page-stack">
+    <PageHeader eyebrow="Activity" title="活动抽奖" description="管理群内抽奖活动、参与方式和开奖结果。">
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadLotteries">刷新</el-button>
         <el-button type="primary" :icon="Plus" @click="openCreate">创建抽奖</el-button>
       </template>
     </PageHeader>
 
-    <PanelSection title="抽奖列表" description="对应 /api/lottery、/api/lottery/:id。">
-      <el-table :data="lotteries" stripe>
-        <el-table-column prop="title" label="标题" min-width="160" />
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">当前活动</div>
+        <div class="summary-value">{{ filteredLotteries.length }}</div>
+        <div class="summary-meta">匹配当前筛选条件</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">进行中</div>
+        <div class="summary-value">{{ statusCounts.active }}</div>
+        <div class="summary-meta">待开奖活动</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">已开奖</div>
+        <div class="summary-value">{{ statusCounts.ended }}</div>
+        <div class="summary-meta">已完成结果发放</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">参与次数</div>
+        <div class="summary-value">{{ totalEntries }}</div>
+        <div class="summary-meta">当前列表累计参与</div>
+      </div>
+    </div>
+
+    <PanelSection title="抽奖列表" description="支持按群组、状态和参与方式查看活动进度。">
+      <template #actions>
+        <div class="panel-toolbar">
+          <div class="control-cluster filters">
+            <div class="filter-control filter-control-wide">
+              <ChatSelect v-model="selectedChatId" />
+            </div>
+            <el-select v-model="statusFilter" class="filter-control" clearable placeholder="状态">
+              <el-option label="进行中" value="active" />
+              <el-option label="已开奖" value="ended" />
+              <el-option label="已取消" value="cancelled" />
+            </el-select>
+            <el-select v-model="joinTypeFilter" class="filter-control" clearable placeholder="参与方式">
+              <el-option label="按钮参与" value="button" />
+              <el-option label="口令参与" value="keyword" />
+              <el-option label="按钮 + 口令" value="both" />
+            </el-select>
+          </div>
+          <div class="filter-summary">
+            <span>群组 {{ selectedChatId || '全部' }}</span>
+            <span>状态 {{ statusFilter || '全部' }}</span>
+            <span>参与方式 {{ joinTypeFilter || '全部' }}</span>
+          </div>
+        </div>
+      </template>
+
+      <el-table class="table-compact" :data="filteredLotteries" size="small" stripe>
+        <el-table-column prop="title" label="标题" min-width="180" />
         <el-table-column prop="prize" label="奖品" min-width="140" />
-        <el-table-column prop="cost_points" label="积分成本" width="110" />
+        <el-table-column prop="chat_id" label="Chat" min-width="120" />
+        <el-table-column prop="cost_points" label="积分成本" width="100" />
         <el-table-column label="参与方式" width="130">
           <template #default="{ row }">
             <el-tag :type="joinTypeTag(row.join_type)" effect="plain">{{ joinTypeLabel(row.join_type) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="口令" min-width="120">
-          <template #default="{ row }">{{ row.join_keyword || "-" }}</template>
-        </el-table-column>
         <el-table-column label="参与人数" width="110">
           <template #default="{ row }">{{ row.entry_count ?? row.participants ?? 0 }}</template>
         </el-table-column>
-        <el-table-column prop="winner_count" label="中奖数" width="100" />
+        <el-table-column prop="winner_count" label="中奖数" width="90" />
         <el-table-column prop="end_at" label="开奖时间" min-width="150" />
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
             <el-tag :type="statusTag(row.status)" effect="dark">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="showEntries(row)">参与者</el-button>
-            <el-button size="small" @click="showWinners(row)">中奖</el-button>
-            <el-button size="small" type="danger" :loading="cancellingId === row.id" @click="cancel(row)">
-              取消
-            </el-button>
+            <el-dropdown @command="handleLotteryCommand($event, row)">
+              <el-button size="small">
+                更多
+                <el-icon class="el-icon--right"><MoreFilled /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="winners">中奖名单</el-dropdown-item>
+                  <el-dropdown-item command="cancel" :disabled="row.status !== 'active'">取消活动</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -106,17 +160,15 @@
     </el-dialog>
 
     <el-dialog v-model="entriesVisible" :title="entriesTitle" width="560px">
-      <el-table :data="entries" stripe>
+      <el-table class="table-compact" :data="entries" size="small" stripe>
         <el-table-column prop="user_id" label="用户 ID" min-width="150" />
         <el-table-column label="用户名" min-width="130">
-          <template #default="{ row }">{{ row.username ? `@${row.username}` : "-" }}</template>
+          <template #default="{ row }">{{ row.username ? `@${row.username}` : '-' }}</template>
         </el-table-column>
         <el-table-column prop="joined_at" label="参与时间" min-width="170" />
         <el-table-column label="中奖" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.is_winner ? 'success' : 'info'" effect="dark">
-              {{ row.is_winner ? "是" : "否" }}
-            </el-tag>
+            <el-tag :type="row.is_winner ? 'success' : 'info'" effect="dark">{{ row.is_winner ? '是' : '否' }}</el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -127,7 +179,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Refresh } from "@element-plus/icons-vue";
+import { MoreFilled, Plus, Refresh } from "@element-plus/icons-vue";
 import ChatSelect from "@/components/ChatSelect.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
@@ -142,6 +194,9 @@ const lotteries = ref<LotteryRecord[]>([]);
 const entries = ref<LotteryEntryRecord[]>([]);
 const entriesTitle = ref("参与者");
 const cancellingId = ref<ChatID>();
+const selectedChatId = ref<ChatID | "">("");
+const statusFilter = ref<LotteryRecord["status"] | "">("");
+const joinTypeFilter = ref<LotteryRecord["join_type"] | "">("");
 const form = reactive<LotteryPayload>({
   chat_id: "",
   title: "",
@@ -160,6 +215,27 @@ const joinTypeOptions = [
   { label: "按钮+口令", value: "both" },
 ];
 const requiresJoinKeyword = computed(() => form.join_type === "keyword" || form.join_type === "both");
+
+const filteredLotteries = computed(() => {
+  return lotteries.value.filter((item) => {
+    const matchesChat = selectedChatId.value ? String(item.chat_id) === String(selectedChatId.value) : true;
+    const matchesStatus = statusFilter.value ? item.status === statusFilter.value : true;
+    const matchesJoinType = joinTypeFilter.value ? item.join_type === joinTypeFilter.value : true;
+    return matchesChat && matchesStatus && matchesJoinType;
+  });
+});
+
+const statusCounts = computed(() => {
+  return filteredLotteries.value.reduce(
+    (acc, item) => {
+      acc[item.status] += 1;
+      return acc;
+    },
+    { active: 0, ended: 0, cancelled: 0 } as Record<LotteryRecord["status"], number>,
+  );
+});
+
+const totalEntries = computed(() => filteredLotteries.value.reduce((sum, item) => sum + Number(item.entry_count ?? item.participants ?? 0), 0));
 
 function parseNumericId(value?: ChatID): number | undefined {
   const parsed = Number(value);
@@ -290,6 +366,16 @@ async function showWinners(row: LotteryRecord): Promise<void> {
   }
 }
 
+function handleLotteryCommand(command: string, row: LotteryRecord): void {
+  if (command === "winners") {
+    void showWinners(row);
+    return;
+  }
+  if (command === "cancel") {
+    void cancel(row);
+  }
+}
+
 function statusLabel(status: LotteryRecord["status"]): string {
   return { active: "进行中", ended: "已开奖", cancelled: "已取消" }[status];
 }
@@ -322,10 +408,15 @@ onMounted(loadLotteries);
 </script>
 
 <style scoped>
-.page {
+.panel-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
+  width: min(100%, 980px);
+}
+
+.filters :deep(.chat-select) {
+  width: 100%;
 }
 
 .wide-control {

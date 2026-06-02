@@ -1,6 +1,6 @@
 # Sola
 
-[English](./README.md) | 中文（简体）
+[English](./README.en.md) | 中文（简体）
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
@@ -21,8 +21,16 @@ Sola 是一个基于 Go + Vue 构建的开源 Telegram 运营平台。
 - 定时发帖，支持 Worker 执行与可选自动删除
 - 抽奖系统，支持按钮参与和口令参与
 - 基于 Vue 3 + Element Plus 的管理后台
-- 多租户群归属隔离，防止跨群误操作
+- 面向多群运营的任务式后台导航与管理页面
 - 支持 Docker Compose 部署
+
+## 工程能力
+
+- 多租户群归属隔离，限制后台接口只能操作所属群资源
+- 大表后台列表支持 cursor 分页，适合持续滚动查询和审计列表
+- 数据库结构通过显式 SQL 迁移管理，不依赖生产环境 AutoMigrate
+- 补齐高频复合索引、部分索引与 N+1 查询优化，适配积分、违规、抽奖、定时任务等场景
+- 管理后台支持路由懒加载、依赖拆包和重资源页面按需加载
 
 ## 不包含的模块
 
@@ -95,14 +103,13 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-启动服务包括：
+默认 compose 编排只向宿主机暴露 `nginx`，`api` 容器仅在 compose 内部网络可达；如需临时直连调试，请显式开启直连 profile：
 
-- API
-- Bot
-- Worker
-- PostgreSQL
-- Redis
-- Nginx
+```bash
+docker compose --profile direct-api up -d api-direct
+```
+
+`config.yaml` 已将 Swagger 默认关闭。如需在开发或受控运维环境开启，请显式设置 `SOLA_APP_ENABLE_SWAGGER=true`。
 
 ### 3. 本地前端开发
 
@@ -120,6 +127,105 @@ go run ./cmd/api
 go run ./cmd/bot
 go run ./cmd/worker
 ```
+
+## 生产可用性
+
+公开版本已经覆盖后台登录、跨群资源访问、前端令牌存放、接口暴露面控制等基础安全边界，也补齐了后台大列表、数据库结构变更和前端加载成本的工程治理。
+
+重点约束包括：
+
+- 生产环境必须使用非默认的 `SOLA_JWT_SECRET` 与 `SOLA_APP_ADMIN_PASSWORD_HASH` / 强密码，否则启动会被拒绝
+- `database.auto_migrate` 默认关闭，建议只通过 `database/migrations/` 中的显式迁移变更表结构
+- 后台 API 默认通过 Nginx 暴露，避免绕过反向代理直接访问
+- Swagger 默认关闭，仅建议在本地联调或受控环境临时开启
+- 对于日志、模板、邀请链接、违规记录等后台列表，优先使用 cursor 分页而不是深层 `OFFSET`
+
+## 数据库迁移与表结构变更
+
+Sola 将数据库变更视为显式发布内容，而不是运行时副作用。
+
+建议实践：
+
+- 所有表结构和索引变更通过 `database/migrations/` 统一管理
+- 缺失表结构、复合索引和部分索引优先通过迁移脚本落库
+- 迁移与回滚脚本保持成对维护，避免线上结构漂移
+- 不把迁移文件号、索引名称列表当作 README 的核心内容，具体细节以 SQL 文件为准
+
+这种方式更适合持续部署、问题回滚和多人协作，也更适合生产环境进行审计。
+
+### 首次部署与升级执行
+
+由于 `database.auto_migrate` 默认关闭，首次部署和版本升级前都应先执行数据库迁移。
+
+- 仓库没有内置单独的迁移 CLI，建议使用现有发布系统中的数据库迁移步骤执行 `database/migrations/` 下的 SQL 文件
+- 首次部署时，按顺序执行全部 `*.up.sql`
+- 版本升级时，只执行尚未应用的新迁移文件
+- 在应用新版本 API、Bot、Worker 之前，先完成迁移并确认回滚脚本可用
+
+## 分页与列表性能
+
+后台的高频列表不再默认依赖深层 `OFFSET` 翻页，而是逐步切换为更适合大表的 cursor 分页语义。
+
+这类接口主要包括：
+
+- 违规记录列表
+- 模板列表
+- 邀请链接列表
+- 积分流水与部分审计类列表
+
+这样做的目标不是暴露底层分页编码细节，而是降低深分页带来的数据库扫描成本，并让管理后台在数据增长后仍保持稳定查询体验。
+
+## 前端加载优化
+
+管理后台已经做了面向真实使用场景的加载优化：
+
+- 路由页面按需懒加载
+- Vue 基础依赖、ECharts 和通用 vendor 进行拆包
+- 统计页图表改为按需能力注册，避免整包图表库进入首屏
+- 后台导航与管理页围绕运营任务流重新组织，减少功能散落感
+
+目标是降低后台首次加载和重资源页面的下载压力，而不是追求孤立的构建跑分。
+
+## 生产部署建议
+
+- 默认通过 Nginx 暴露服务，`docker-compose.yml` 中 API 仅绑定到本机 `127.0.0.1`，避免绕过反向代理直接访问
+- 保持 `app.enable_swagger=false`，只在本地联调时临时开启
+- PostgreSQL 建议启用 `pg_stat_statements`，并基于真实 SQL 执行 `EXPLAIN ANALYZE` 校准索引，避免盲目堆叠写入成本
+- API、Bot、Worker 同时连接数据库时，建议显式设置连接池上限，避免生产环境连接数失控
+
+### PostgreSQL 观测建议
+
+如果要把 PostgreSQL 查询观测真正落地到 `pg_stat_statements`，还需要在数据库启动层启用预加载参数：
+
+```yaml
+services:
+  postgres:
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.max=10000
+      - -c
+      - pg_stat_statements.track=all
+```
+
+随后对目标数据库执行一次：
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+```
+
+仓库没有自动启用该扩展，是因为它依赖数据库实例启动参数，最终仍需由部署环境控制。
+
+排查慢查询时，优先关注：
+
+- 积分流水列表与积分排行榜
+- 违规记录列表
+- 定时任务与帖子扫描
+- 抽奖列表与开奖相关查询
+
+确认 SQL 形态后，再执行 `EXPLAIN ANALYZE` 验证索引命中情况。
 
 ## 安全说明
 
@@ -172,6 +278,6 @@ go run ./cmd/worker
 - 编译产物
 - 私有测试素材
 
-## License
+## 许可证
 
-本项目基于 MIT License 开源，详见 [LICENSE](./LICENSE)。
+本项目基于 MIT 许可证开源，详见 [LICENSE](./LICENSE)。

@@ -1,5 +1,5 @@
 <template>
-  <div class="page">
+  <div class="page-stack">
     <PageHeader eyebrow="Publishing" title="发布任务" description="维护一次性和 cron 定时发布任务。">
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadPosts">刷新</el-button>
@@ -7,8 +7,52 @@
       </template>
     </PageHeader>
 
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">任务总数</div>
+        <div class="summary-value">{{ posts.length }}</div>
+        <div class="summary-meta">当前列表已加载的发布任务</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">启用中</div>
+        <div class="summary-value">{{ enabledCount }}</div>
+        <div class="summary-meta">仍在调度中的任务</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">一次性任务</div>
+        <div class="summary-value">{{ onceCount }}</div>
+        <div class="summary-meta">按指定时间触发后停用</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">循环任务</div>
+        <div class="summary-value">{{ recurringCount }}</div>
+        <div class="summary-meta">Cron 或间隔调度任务</div>
+      </div>
+    </div>
+
     <PanelSection title="任务列表" description="对应 /api/posts、/api/posts/:id/toggle。">
-      <el-table :data="posts" stripe>
+      <template #actions>
+        <div class="panel-toolbar">
+          <div class="control-cluster filters">
+            <ChatSelect v-model="selectedChatId" class="filter-control" />
+            <el-select v-model="statusFilter" class="filter-control">
+              <el-option label="全部状态" value="all" />
+              <el-option label="启用中" value="enabled" />
+              <el-option label="已停用" value="disabled" />
+            </el-select>
+            <el-select v-model="scheduleFilter" class="filter-control">
+              <el-option label="全部类型" value="all" />
+              <el-option label="一次性" value="once" />
+              <el-option label="循环任务" value="recurring" />
+            </el-select>
+          </div>
+          <div class="filter-summary">
+            <span>当前显示 {{ filteredPosts.length }} / {{ posts.length }} 条任务</span>
+          </div>
+        </div>
+      </template>
+
+      <el-table :data="filteredPosts" stripe class="table-compact">
         <el-table-column prop="title" label="标题" min-width="160" />
         <el-table-column prop="chat_id" label="Chat" min-width="120" />
         <el-table-column prop="media_type" label="类型" width="110" />
@@ -204,6 +248,9 @@ const loading = ref(false);
 const saving = ref(false);
 const dialogVisible = ref(false);
 const posts = ref<ScheduledPostRecord[]>([]);
+const selectedChatId = ref<ChatID | "">("");
+const statusFilter = ref<"all" | "enabled" | "disabled">("all");
+const scheduleFilter = ref<"all" | "once" | "recurring">("all");
 const templates = ref<MessageTemplateRecord[]>([]);
 const deletingId = ref<ChatID>();
 const editingPost = ref<ScheduledPostRecord>();
@@ -248,6 +295,29 @@ const schedulePreview = computed(() => {
 });
 
 const scheduleCheck = computed<ScheduleCheck>(() => validateSchedule(false));
+const filteredPosts = computed(() => {
+  return posts.value.filter((item) => {
+    if (selectedChatId.value && String(item.chat_id) !== String(selectedChatId.value)) {
+      return false;
+    }
+    if (statusFilter.value === "enabled" && !item.enabled) {
+      return false;
+    }
+    if (statusFilter.value === "disabled" && item.enabled) {
+      return false;
+    }
+    if (scheduleFilter.value === "once" && !item.run_once_at) {
+      return false;
+    }
+    if (scheduleFilter.value === "recurring" && item.run_once_at) {
+      return false;
+    }
+    return true;
+  });
+});
+const enabledCount = computed(() => posts.value.filter((item) => item.enabled).length);
+const onceCount = computed(() => posts.value.filter((item) => Boolean(item.run_once_at)).length);
+const recurringCount = computed(() => posts.value.filter((item) => !item.run_once_at).length);
 
 function parseNumericId(value: ChatID): number | undefined {
   const parsed = Number(value);
@@ -488,7 +558,7 @@ function openEdit(row: ScheduledPostRecord): void {
 
 async function loadTemplatesForPost(): Promise<void> {
   try {
-    templates.value = await fetchTemplates(form.chat_id || undefined);
+    templates.value = (await fetchTemplates(form.chat_id || undefined)).items;
   } catch {
     templates.value = [];
   }
@@ -676,10 +746,11 @@ onMounted(loadPosts);
 </script>
 
 <style scoped>
-.page {
+.panel-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
+  width: min(100%, 960px);
 }
 
 .wide-control {
@@ -689,4 +760,9 @@ onMounted(loadPosts);
 .preview {
   margin-top: 4px;
 }
+
+.filters :deep(.chat-select) {
+  width: 100%;
+}
 </style>
+

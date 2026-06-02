@@ -1,25 +1,26 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { getStoredToken } from "@/api/session";
-import AdminLayout from "@/layouts/AdminLayout.vue";
-import AdminConfigView from "@/views/AdminConfigView.vue";
-import AutoRepliesView from "@/views/AutoRepliesView.vue";
-import BackupView from "@/views/BackupView.vue";
-import BansView from "@/views/BansView.vue";
-import BotsView from "@/views/BotsView.vue";
-import ChatsView from "@/views/ChatsView.vue";
-import DashboardView from "@/views/DashboardView.vue";
-import InviteLinksView from "@/views/InviteLinksView.vue";
-import KeywordsView from "@/views/KeywordsView.vue";
-import LevelsView from "@/views/LevelsView.vue";
-import LoginView from "@/views/LoginView.vue";
-import LotteryView from "@/views/LotteryView.vue";
-import PointLogsView from "@/views/PointLogsView.vue";
-import PointsConfigView from "@/views/PointsConfigView.vue";
-import PostsView from "@/views/PostsView.vue";
-import StatsView from "@/views/StatsView.vue";
-import TemplatesView from "@/views/TemplatesView.vue";
-import UsersView from "@/views/UsersView.vue";
-import ViolationsView from "@/views/ViolationsView.vue";
+
+const AdminLayout = () => import("@/layouts/AdminLayout.vue");
+const AdminConfigView = () => import("@/views/AdminConfigView.vue");
+const AutoRepliesView = () => import("@/views/AutoRepliesView.vue");
+const BackupView = () => import("@/views/BackupView.vue");
+const BansView = () => import("@/views/BansView.vue");
+const BotsView = () => import("@/views/BotsView.vue");
+const ChatsView = () => import("@/views/ChatsView.vue");
+const DashboardView = () => import("@/views/DashboardView.vue");
+const InviteLinksView = () => import("@/views/InviteLinksView.vue");
+const KeywordsView = () => import("@/views/KeywordsView.vue");
+const LevelsView = () => import("@/views/LevelsView.vue");
+const LoginView = () => import("@/views/LoginView.vue");
+const LotteryView = () => import("@/views/LotteryView.vue");
+const PointLogsView = () => import("@/views/PointLogsView.vue");
+const PointsConfigView = () => import("@/views/PointsConfigView.vue");
+const PostsView = () => import("@/views/PostsView.vue");
+const StatsView = () => import("@/views/StatsView.vue");
+const TemplatesView = () => import("@/views/TemplatesView.vue");
+const UsersView = () => import("@/views/UsersView.vue");
+const ViolationsView = () => import("@/views/ViolationsView.vue");
 
 const appName = import.meta.env.VITE_APP_NAME?.trim() || "Sola Bot";
 
@@ -59,7 +60,7 @@ const router = createRouter({
           name: "bots",
           component: BotsView,
           meta: {
-            title: "Bot 接入",
+            title: "机器人管理",
           },
         },
         {
@@ -67,7 +68,7 @@ const router = createRouter({
           name: "chats",
           component: ChatsView,
           meta: {
-            title: "群组管理",
+            title: "群组 / 频道",
           },
         },
         {
@@ -79,7 +80,7 @@ const router = createRouter({
           name: "users",
           component: UsersView,
           meta: {
-            title: "私聊/用户运营",
+            title: "成员管理",
           },
         },
         {
@@ -87,7 +88,7 @@ const router = createRouter({
           name: "points-config",
           component: PointsConfigView,
           meta: {
-            title: "积分配置",
+            title: "积分规则",
           },
         },
         {
@@ -95,7 +96,7 @@ const router = createRouter({
           name: "points-logs",
           component: PointLogsView,
           meta: {
-            title: "积分流水",
+            title: "积分记录",
           },
         },
         {
@@ -103,7 +104,7 @@ const router = createRouter({
           name: "admin-config",
           component: AdminConfigView,
           meta: {
-            title: "群组配置",
+            title: "群组设置",
           },
         },
         {
@@ -159,7 +160,7 @@ const router = createRouter({
           name: "templates",
           component: TemplatesView,
           meta: {
-            title: "消息模板",
+            title: "内容模板",
           },
         },
         {
@@ -175,7 +176,7 @@ const router = createRouter({
           name: "invite-links",
           component: InviteLinksView,
           meta: {
-            title: "邀请链接",
+            title: "邀请链接追踪",
           },
         },
         {
@@ -191,7 +192,7 @@ const router = createRouter({
           name: "stats",
           component: StatsView,
           meta: {
-            title: "数据分析",
+            title: "运营分析",
           },
         },
       ],
@@ -222,3 +223,4 @@ router.beforeEach((to) => {
 });
 
 export default router;
+
