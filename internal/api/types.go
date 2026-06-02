@@ -75,7 +75,7 @@ type AdminLoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type TelegramLoginRequest map[string]string
+type TelegramLoginRequest map[string]any
 
 type AdminIdentity struct {
 	ID             string `json:"id"`

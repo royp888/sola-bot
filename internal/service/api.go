@@ -93,7 +93,7 @@ func verifyAdminPassword(password string, plain string, hash string) bool {
 }
 
 func (s *adminAuthService) AuthenticateTelegram(ctx context.Context, req api.TelegramLoginRequest) (api.AdminIdentity, error) {
-	loginData, err := VerifyTelegramLogin(map[string]string(req), s.cfg.Bot.Token)
+	loginData, err := VerifyTelegramLogin(normalizeTelegramLoginRequest(req), s.cfg.Bot.Token)
 	if err != nil {
 		return api.AdminIdentity{}, err
 	}
@@ -126,6 +126,49 @@ func (s *adminAuthService) AuthenticateTelegram(ctx context.Context, req api.Tel
 		PhotoURL:       loginData.PhotoURL,
 		Language:       user.LanguageCode,
 	}, nil
+}
+
+func normalizeTelegramLoginRequest(req api.TelegramLoginRequest) map[string]string {
+	normalized := make(map[string]string, len(req))
+	for key, value := range req {
+		switch typed := value.(type) {
+		case nil:
+			continue
+		case string:
+			normalized[key] = typed
+		case json.Number:
+			normalized[key] = typed.String()
+		case float64:
+			normalized[key] = strconv.FormatInt(int64(typed), 10)
+		case float32:
+			normalized[key] = strconv.FormatInt(int64(typed), 10)
+		case int:
+			normalized[key] = strconv.FormatInt(int64(typed), 10)
+		case int8:
+			normalized[key] = strconv.FormatInt(int64(typed), 10)
+		case int16:
+			normalized[key] = strconv.FormatInt(int64(typed), 10)
+		case int32:
+			normalized[key] = strconv.FormatInt(int64(typed), 10)
+		case int64:
+			normalized[key] = strconv.FormatInt(typed, 10)
+		case uint:
+			normalized[key] = strconv.FormatUint(uint64(typed), 10)
+		case uint8:
+			normalized[key] = strconv.FormatUint(uint64(typed), 10)
+		case uint16:
+			normalized[key] = strconv.FormatUint(uint64(typed), 10)
+		case uint32:
+			normalized[key] = strconv.FormatUint(uint64(typed), 10)
+		case uint64:
+			normalized[key] = strconv.FormatUint(typed, 10)
+		case bool:
+			normalized[key] = strconv.FormatBool(typed)
+		default:
+			normalized[key] = strings.TrimSpace(fmt.Sprint(typed))
+		}
+	}
+	return normalized
 }
 
 type botConfigService struct{ config api.BotConfig }

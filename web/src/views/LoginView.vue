@@ -62,6 +62,7 @@ import { nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { login, telegramLogin } from "@/api/auth";
+import { ApiError } from "@/api/http";
 import { setSession } from "@/api/session";
 import type { TelegramLoginPayload } from "@/types/api";
 
@@ -88,6 +89,16 @@ const rules: FormRules<typeof form> = {
   email: [{ required: true, message: "请输入账号", trigger: "blur" }],
   password: [{ required: true, message: "请输入密码", trigger: "blur" }],
 };
+
+function telegramLoginErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.payload && typeof error.payload === "object") {
+    const message = (error.payload as { error?: unknown }).error;
+    if (typeof message === "string" && message.trim()) {
+      return `Telegram 登录失败：${message}`;
+    }
+  }
+  return "Telegram 登录验证失败，请确认 BotFather 已设置后台域名";
+}
 
 function redirectPath(): string {
   return typeof route.query.redirect === "string" ? route.query.redirect : "/";
@@ -131,8 +142,8 @@ onMounted(async () => {
     loading.value = true;
     try {
       await finishLogin(await telegramLogin(user));
-    } catch {
-      ElMessage.error("Telegram 登录验证失败，请确认 BotFather 已设置后台域名");
+    } catch (error) {
+      ElMessage.error(telegramLoginErrorMessage(error));
     } finally {
       loading.value = false;
     }
