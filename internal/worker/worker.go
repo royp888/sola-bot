@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -241,24 +242,41 @@ func (r *Runner) sendScheduledPost(ctx context.Context, post model.ScheduledPost
 		content = strings.TrimSpace(post.Title)
 	}
 	mediaURL := strings.TrimSpace(post.MediaURL)
+	mediaName := strings.TrimSpace(post.MediaName)
+	if mediaName == "" {
+		mediaName = "media-upload"
+	}
+	hasInlineMedia := len(post.MediaData) > 0
 	var sent *gotgbot.Message
 	var err error
 	switch strings.ToLower(strings.TrimSpace(post.MediaType)) {
 	case "photo":
-		if mediaURL == "" {
-			return fmt.Errorf("photo scheduled post requires media_url")
+		if !hasInlineMedia && mediaURL == "" {
+			return fmt.Errorf("photo scheduled post requires media")
 		}
-		sent, err = r.tgBot.SendPhotoWithContext(ctx, post.ChatID, gotgbot.InputFileByURL(mediaURL), &gotgbot.SendPhotoOpts{Caption: content})
+		photoFile := gotgbot.InputFileByURL(mediaURL)
+		if hasInlineMedia {
+			photoFile = gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
+		}
+		sent, err = r.tgBot.SendPhotoWithContext(ctx, post.ChatID, photoFile, &gotgbot.SendPhotoOpts{Caption: content})
 	case "video":
-		if mediaURL == "" {
-			return fmt.Errorf("video scheduled post requires media_url")
+		if !hasInlineMedia && mediaURL == "" {
+			return fmt.Errorf("video scheduled post requires media")
 		}
-		sent, err = r.tgBot.SendVideoWithContext(ctx, post.ChatID, gotgbot.InputFileByURL(mediaURL), &gotgbot.SendVideoOpts{Caption: content})
+		videoFile := gotgbot.InputFileByURL(mediaURL)
+		if hasInlineMedia {
+			videoFile = gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
+		}
+		sent, err = r.tgBot.SendVideoWithContext(ctx, post.ChatID, videoFile, &gotgbot.SendVideoOpts{Caption: content})
 	case "document", "file":
-		if mediaURL == "" {
-			return fmt.Errorf("document scheduled post requires media_url")
+		if !hasInlineMedia && mediaURL == "" {
+			return fmt.Errorf("document scheduled post requires media")
 		}
-		sent, err = r.tgBot.SendDocumentWithContext(ctx, post.ChatID, gotgbot.InputFileByURL(mediaURL), &gotgbot.SendDocumentOpts{Caption: content})
+		documentFile := gotgbot.InputFileByURL(mediaURL)
+		if hasInlineMedia {
+			documentFile = gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
+		}
+		sent, err = r.tgBot.SendDocumentWithContext(ctx, post.ChatID, documentFile, &gotgbot.SendDocumentOpts{Caption: content})
 	default:
 		if content == "" {
 			return fmt.Errorf("text scheduled post requires content")
@@ -424,7 +442,7 @@ func (r *Runner) announceLotteryResult(ctx context.Context, lotteryID int64) err
 	}
 
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("抽奖 #%d 已开奖\n", lottery.ID))
+	builder.WriteString("抽奖已开奖\n")
 	if strings.TrimSpace(lottery.Title) != "" {
 		builder.WriteString(fmt.Sprintf("标题：%s\n", strings.TrimSpace(lottery.Title)))
 	}

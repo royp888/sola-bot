@@ -1271,11 +1271,18 @@ func (s *postAPIService) Create(ctx context.Context, req api.PostCreateRequest) 
 			UpdatedAt: now,
 		}, nil
 	}
+	mediaURL, mediaName, mediaMime, mediaData, err := normalizeInlineMedia(req.MediaURL, req.MediaName, req.MediaMime, req.MediaDataBase64)
+	if err != nil {
+		return nil, err
+	}
 	post := model.ScheduledPost{
 		ChatID:            req.ChatID,
 		Title:             req.Title,
 		Content:           req.Content,
-		MediaURL:          req.MediaURL,
+		MediaURL:          mediaURL,
+		MediaName:         mediaName,
+		MediaMime:         mediaMime,
+		MediaData:         mediaData,
 		MediaType:         req.MediaType,
 		CronExpr:          req.CronExpr,
 		RunOnceAt:         runOnceAt,
@@ -1374,10 +1381,40 @@ func (s *postAPIService) Update(ctx context.Context, id string, req api.PostUpda
 		updates["content"] = *req.Content
 	}
 	if req.MediaURL != nil {
-		updates["media_url"] = *req.MediaURL
+		post.MediaURL = strings.TrimSpace(*req.MediaURL)
+		updates["media_url"] = post.MediaURL
+	}
+	if req.MediaName != nil {
+		post.MediaName = strings.TrimSpace(*req.MediaName)
+		updates["media_name"] = post.MediaName
+	}
+	if req.MediaMime != nil {
+		post.MediaMime = strings.TrimSpace(*req.MediaMime)
+		updates["media_mime"] = post.MediaMime
+	}
+	if req.MediaDataBase64 != nil {
+		decoded, err := decodeInlineMediaData(*req.MediaDataBase64)
+		if err != nil {
+			return nil, err
+		}
+		post.MediaData = decoded
+		updates["media_data"] = post.MediaData
+		if len(decoded) > 0 {
+			post.MediaURL = ""
+			updates["media_url"] = ""
+		}
+	}
+	if req.ClearInlineMedia != nil && *req.ClearInlineMedia {
+		post.MediaName = ""
+		post.MediaMime = ""
+		post.MediaData = nil
+		updates["media_name"] = ""
+		updates["media_mime"] = ""
+		updates["media_data"] = []byte(nil)
 	}
 	if req.MediaType != nil {
-		updates["media_type"] = normalizeScheduledPostMediaType(*req.MediaType)
+		post.MediaType = normalizeScheduledPostMediaType(*req.MediaType)
+		updates["media_type"] = post.MediaType
 	}
 	if req.CronExpr != nil {
 		updates["cron_expr"] = strings.TrimSpace(*req.CronExpr)
@@ -2262,6 +2299,9 @@ func modelScheduledPostToAPI(post model.ScheduledPost) api.Post {
 		Title:             post.Title,
 		Content:           post.Content,
 		MediaURL:          post.MediaURL,
+		MediaName:         post.MediaName,
+		MediaMime:         post.MediaMime,
+		HasInlineMedia:    len(post.MediaData) > 0,
 		MediaType:         post.MediaType,
 		CronExpr:          post.CronExpr,
 		RunOnceAt:         post.RunOnceAt,
@@ -2335,12 +2375,15 @@ func validateScheduledPostCreate(req api.PostCreateRequest, runOnceAt *time.Time
 	mediaType := normalizeScheduledPostMediaType(req.MediaType)
 	content := strings.TrimSpace(req.Content)
 	title := strings.TrimSpace(req.Title)
-	mediaURL := strings.TrimSpace(req.MediaURL)
+	mediaURL, _, _, mediaData, err := normalizeInlineMedia(req.MediaURL, req.MediaName, req.MediaMime, req.MediaDataBase64)
+	if err != nil {
+		return err
+	}
 	if mediaType == "text" && content == "" && title == "" {
 		return errors.New("content is required for text scheduled posts")
 	}
-	if mediaType != "text" && mediaURL == "" {
-		return fmt.Errorf("media_url is required for %s scheduled posts", mediaType)
+	if mediaType != "text" && mediaURL == "" && len(mediaData) == 0 {
+		return fmt.Errorf("media_url or uploaded media is required for %s scheduled posts", mediaType)
 	}
 	if runOnceAt == nil && strings.TrimSpace(req.CronExpr) == "" {
 		return errors.New("run_once_at or cron_expr is required")
@@ -2573,4 +2616,36 @@ func modelScheduleToAPI(job model.ScheduledJob) api.Schedule {
 		runAt = *job.RunAt
 	}
 	return api.Schedule{ID: job.ID.String(), ChatID: scheduleJobChatID(job), RunAt: runAt, Enabled: job.Status == "pending", Status: job.Status, CreatedAt: job.CreatedAt, UpdatedAt: job.UpdatedAt}
+}
+
+func normalizeInlineMedia(mediaURL string, mediaName string, mediaMime string, dataBase64 string) (string, string, string, []byte, error) {
+	url := strings.TrimSpace(mediaURL)
+	name := strings.TrimSpace(mediaName)
+	mime := strings.TrimSpace(mediaMime)
+	decoded, err := decodeInlineMediaData(dataBase64)
+	if err != nil {
+		return "", "", "", nil, err
+	}
+	if len(decoded) == 0 {
+		return url, "", "", nil, nil
+	}
+	if name == "" {
+		name = "media-upload"
+	}
+	return "", name, mime, decoded, nil
+}
+
+func decodeInlineMediaData(dataBase64 string) ([]byte, error) {
+	text := strings.TrimSpace(dataBase64)
+	if text == "" {
+		return nil, nil
+	}
+	decoded, err := base64.StdEncoding.DecodeString(text)
+	if err != nil {
+		return nil, errors.New("invalid media_data_base64")
+	}
+	if len(decoded) == 0 {
+		return nil, nil
+	}
+	return decoded, nil
 }

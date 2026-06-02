@@ -26,18 +26,18 @@ defineProps<{
 .panel {
   overflow: hidden;
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
-  background: var(--app-surface);
-  box-shadow: var(--app-shadow);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(28, 34, 45, 0.96) 0%, rgba(21, 26, 35, 0.96) 100%);
+  box-shadow: var(--app-shadow-soft);
 }
 
 .panel-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px 12px;
-  border-bottom: 1px solid var(--app-border);
+  gap: 14px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .panel-copy {
@@ -46,37 +46,48 @@ defineProps<{
 
 h2 {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.35;
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 700;
 }
 
 p {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   color: var(--app-muted);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .panel-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .panel-body {
-  padding: 16px;
+  padding: 20px 22px 22px;
+  overflow-x: auto;
 }
 
 @media (max-width: 720px) {
   .panel-head {
     flex-direction: column;
+    padding: 18px 18px 14px;
+  }
+
+  .panel-body {
+    padding: 18px;
   }
 
   .panel-actions {
     width: 100%;
     justify-content: stretch;
+  }
+
+  .panel-actions > * {
+    width: 100%;
   }
 }
 </style>

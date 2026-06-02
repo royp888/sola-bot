@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="Violations" title="违规处理" description="查看命中记录、处理状态和跨群风控动作。">
+    <PageHeader eyebrow="Violations" title="违规处理" description="查看命中记录、处理状态和跨群风控动作，时间按北京时间显示。">
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadViolations">刷新</el-button>
       </template>
@@ -61,6 +61,7 @@
       </template>
 
       <el-alert v-if="error" class="alert" type="error" :closable="false" show-icon title="接口不可用" />
+      <div class="table-wrap">
       <el-table class="table-compact" :data="violations" size="small" stripe v-loading="loading">
         <el-table-column label="用户" min-width="170">
           <template #default="{ row }">
@@ -78,7 +79,9 @@
             <el-tag :type="statusTag(row.status)" effect="dark">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="时间" min-width="170" />
+        <el-table-column label="时间" min-width="180">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button size="small" :loading="updatingId === row.id" @click="openResolve(row)">处理</el-button>
@@ -86,6 +89,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
       <div v-if="nextCursor" class="load-more">
         <el-button :loading="loadingMore" @click="loadMoreViolations">加载更多</el-button>
       </div>
@@ -124,6 +128,7 @@ import PanelSection from "@/components/PanelSection.vue";
 import UserSelect from "@/components/UserSelect.vue";
 import { fetchAdminViolations, updateAdminViolation } from "@/api/violations";
 import type { AdminViolationRecord, ChatID } from "@/types/api";
+import { formatChinaDateTime } from "@/utils/datetime";
 
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -135,6 +140,10 @@ const currentViolation = ref<AdminViolationRecord>();
 const nextCursor = ref("");
 const filters = reactive({ chatId: "", userId: "", type: "", status: "" });
 const resolveForm = reactive({ status: "resolved", resolution: "" });
+
+function formatDateTime(value?: string | null): string {
+  return formatChinaDateTime(value, "-");
+}
 
 const statusCounts = computed(() => {
   return violations.value.reduce(

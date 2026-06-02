@@ -29,46 +29,54 @@ withDefaults(
 .stat-tile {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 92px;
-  padding: 14px 16px;
+  gap: 18px;
+  min-height: 122px;
+  padding: 18px 20px;
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
-  background: var(--app-surface);
-  box-shadow: var(--app-shadow);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(30, 37, 49, 0.95) 0%, rgba(22, 28, 38, 0.95) 100%);
+  box-shadow: var(--app-shadow-soft);
 }
 
 .meta {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
 .label-row {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 
 .tone-dot {
   width: 8px;
   height: 8px;
+  margin-top: 4px;
   border-radius: 999px;
   background: var(--app-accent);
+  box-shadow: 0 0 0 5px rgba(105, 168, 255, 0.12);
 }
 
-.label,
+.label {
+  color: var(--app-muted-strong);
+  font-size: 13px;
+}
+
 .delta {
   color: var(--app-muted);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .value {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 40px;
+  font-weight: 760;
   line-height: 1;
+  letter-spacing: 0;
 }
 
 .stat-tile[data-tone="success"] .tone-dot,
@@ -87,5 +95,16 @@ withDefaults(
 .stat-tile[data-tone="danger"] .delta {
   background: var(--app-danger);
   color: var(--app-danger);
+}
+
+@media (max-width: 720px) {
+  .stat-tile {
+    min-height: 108px;
+    padding: 16px 18px;
+  }
+
+  .value {
+    font-size: 34px;
+  }
 }
 </style>

@@ -906,7 +906,7 @@ func (a *App) showInvitesPanel(b *gotgbot.Bot, ctx *ext.Context) error {
 }
 func formatAdminConfig(cfg ChatAdminConfig) string {
 	return fmt.Sprintf(
-		"群组配置\nChat ID：%d\n欢迎语：%s\n入群验证：%s\n验证超时：%d 秒\n警告上限：%d",
+		"群组管理配置\n适用群组：%d\n欢迎语：%s\n入群验证：%s\n验证超时：%d 秒\n警告上限：%d 次",
 		cfg.ChatID,
 		cfg.WelcomeText,
 		boolLabel(cfg.VerifyEnabled, "开启", "关闭"),

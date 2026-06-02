@@ -121,7 +121,7 @@ func (a *App) updatePointField(ctx context.Context, chatID int64, field string, 
 
 func formatPointConfig(cfg ChatPointConfig) string {
 	return fmt.Sprintf(
-		"积分配置\nChat ID：%d\n状态：%s\n文字：%d\n图片：%d\n表情贴纸：%d\n视频：%d\n文件：%d\n语音：%d\n冷却：%d 秒",
+		"积分配置\n适用群组：%d\n当前状态：%s\n文字消息：%d 分\n图片消息：%d 分\n表情贴纸：%d 分\n视频消息：%d 分\n文件消息：%d 分\n语音消息：%d 分\n冷却时间：%d 秒",
 		cfg.ChatID,
 		boolLabel(cfg.Enabled, "开启", "关闭"),
 		cfg.PointText,

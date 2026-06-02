@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <PageHeader eyebrow="Private Ops" title="积分流水" description="按 Chat 和用户查看加分、扣分记录，便于追溯运营调整。">
+    <PageHeader eyebrow="Private Ops" title="积分流水" description="按 Chat 和用户查看加分、扣分记录，便于追溯运营调整，时间按北京时间显示。">
       <template #actions>
         <ChatSelect v-model="selectedChatId" @update:model-value="loadRank" />
         <UserSelect v-model="userId" :chat-id="selectedChatId" />
@@ -11,8 +11,11 @@
     <el-row :gutter="16">
       <el-col :xs="24" :lg="16">
         <PanelSection title="流水明细" description="后端约定接口：GET /api/points/logs/:chatID/:userID。">
+          <div class="table-wrap">
           <el-table :data="logs" stripe>
-            <el-table-column prop="created_at" label="时间" min-width="150" />
+            <el-table-column label="时间" min-width="180">
+              <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+            </el-table-column>
             <el-table-column label="用户" min-width="140">
               <template #default="{ row }">{{ row.username || row.user_id }}</template>
             </el-table-column>
@@ -26,6 +29,7 @@
             </el-table-column>
             <el-table-column prop="chat_id" label="Chat" min-width="120" />
           </el-table>
+          </div>
           <el-pagination
             class="pager"
             layout="sizes, prev, pager, next"
@@ -68,6 +72,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { fetchPointLogs, fetchPointRank } from "@/api/points";
 import type { PointLogRecord, PointRankRecord } from "@/types/api";
+import { formatChinaDateTime } from "@/utils/datetime";
 
 const route = useRoute();
 const selectedChatId = ref("");
@@ -89,6 +94,10 @@ const pagerTotal = computed(() => {
   const loadedBefore = (currentPage.value - 1) * pageSize.value;
   return loadedBefore + logs.value.length + (logs.value.length === pageSize.value ? 1 : 0);
 });
+
+function formatDateTime(value?: string | null): string {
+  return formatChinaDateTime(value, "-");
+}
 
 function rankPoints(item: PointRankRecord): number {
   return item.total_points ?? item.points ?? 0;

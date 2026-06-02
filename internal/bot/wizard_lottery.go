@@ -78,7 +78,7 @@ func (a *App) handleLotteryWizardStep(b *gotgbot.Bot, ctx *ext.Context, state *C
 			state.Step = lotteryWizardStepPrize
 			return a.saveWizardAndSend(b, ctx, state, lotteryWizardTitle(state)+"\n\n请输入奖品名称：", cancelMarkup())
 		}
-		endAt, err := time.ParseInLocation("2006-01-02 15:04", input, time.Local)
+		endAt, err := time.ParseInLocation("2006-01-02 15:04", input, chinaLocation())
 		if err != nil || !endAt.After(time.Now()) {
 			return sendText(b, ctx, "请点击快捷时间，或输入未来时间（格式：2026-06-01 20:00）：", endAtMarkup())
 		}
@@ -296,9 +296,9 @@ func (a *App) confirmCreateLottery(b *gotgbot.Bot, ctx *ext.Context, state *Conv
 		lottery.JoinKeyword = req.JoinKeyword
 	}
 	if err := sendLotteryAnnouncement(b, ctx, *lottery); err != nil {
-		return respondText(b, ctx, fmt.Sprintf("抽奖已创建（#%d），但发送公告失败：%s", lottery.ID, err.Error()), nil)
+		return respondText(b, ctx, fmt.Sprintf("抽奖已创建，但发送公告失败：%s", err.Error()), nil)
 	}
-	return respondText(b, ctx, fmt.Sprintf("%s #%d 已创建，公告已发送到目标群组。", lotteryJoinTypeLabel(lottery.JoinType), lottery.ID), nil)
+	return respondText(b, ctx, fmt.Sprintf("%s已创建，公告已发送到目标群组。", lotteryJoinTypeLabel(lottery.JoinType)), nil)
 }
 
 func (a *App) saveWizardAndSend(b *gotgbot.Bot, ctx *ext.Context, state *ConversationState, text string, opts *gotgbot.SendMessageOpts) error {

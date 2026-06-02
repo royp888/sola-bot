@@ -226,12 +226,21 @@ export interface BanPayload {
   reason: string;
 }
 
+export interface InlineMediaPayload {
+  name: string;
+  mime_type: string;
+  data_base64: string;
+}
+
 export interface ScheduledPostRecord {
   id: ChatID;
   chat_id: ChatID;
   title: string;
   content: string;
   media_url?: string;
+  media_name?: string;
+  media_mime?: string;
+  has_inline_media?: boolean;
   media_type: "text" | "photo" | "video" | "document";
   cron_expr?: string;
   run_once_at?: string | null;
@@ -244,11 +253,13 @@ export interface ScheduledPostRecord {
   external_ref?: string;
   pin_after_send?: boolean;
   auto_delete_seconds?: number;
+  clear_inline_media?: boolean;
+  media_data_base64?: string;
   created_at: string;
   updated_at?: string;
 }
 
-export type ScheduledPostPayload = Omit<ScheduledPostRecord, "id" | "last_run_at" | "created_at">;
+export type ScheduledPostPayload = Omit<ScheduledPostRecord, "id" | "last_run_at" | "created_at" | "has_inline_media">;
 
 export interface BackupData {
   version: string;

@@ -31,7 +31,8 @@ defineProps<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
+  padding-bottom: 6px;
 }
 
 .copy {
@@ -47,34 +48,38 @@ defineProps<{
 
 h1 {
   margin: 0;
-  font-size: 22px;
-  line-height: 1.25;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-size: 32px;
+  line-height: 1.08;
+  font-weight: 780;
 }
 
 .eyebrow {
-  margin: 0 0 6px;
+  margin: 0 0 10px;
   color: var(--app-muted);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .description {
-  margin: 8px 0 0;
-  max-width: 760px;
-  color: var(--app-muted);
-  font-size: 13px;
-  line-height: 1.6;
+  margin: 12px 0 0;
+  max-width: 860px;
+  color: var(--app-muted-strong);
+  font-size: 14px;
+  line-height: 1.65;
 }
 
 .meta {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--app-muted);
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--app-text);
   font-size: 12px;
 }
 
@@ -82,8 +87,14 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
+}
+
+@media (max-width: 960px) {
+  h1 {
+    font-size: 28px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -91,9 +102,19 @@ h1 {
     flex-direction: column;
   }
 
+  h1 {
+    font-size: 24px;
+  }
+
   .actions {
     width: 100%;
     justify-content: stretch;
+  }
+
+  .actions :deep(.el-button),
+  .actions :deep(.el-select),
+  .actions :deep(.el-input) {
+    width: 100%;
   }
 }
 </style>

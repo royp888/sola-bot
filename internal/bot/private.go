@@ -300,43 +300,27 @@ func (a *App) showPrivateLotteryCenter(b *gotgbot.Bot, ctx *ext.Context, chat ap
 	if err != nil {
 		return err
 	}
-	recentItems, err := a.services.Lottery.ListItems(requestScope(ctx).Context, chat.ChatID, 6)
-	if err != nil {
-		return err
-	}
 	lines := []string{
 		"🎁 抽奖中心",
 		"━━━━━━━━━━",
 		fmt.Sprintf("当前目标：%s", chatTitle(chat)),
 		fmt.Sprintf("目标类型：%s", chatTypeLabel(chat.ChatType)),
-		fmt.Sprintf("进行中：%d", len(activeItems)),
+		fmt.Sprintf("当前进行中：%d 场", len(activeItems)),
 		"",
 	}
 	if len(activeItems) > 0 {
-		lines = append(lines, "进行中活动")
-		for _, item := range activeItems {
-			lines = append(lines, fmt.Sprintf("#%d %s · %s", item.ID, lotteryTextFallback(item.Title, "未命名抽奖"), lotteryJoinTypeLabel(item.JoinType)))
+		lines = append(lines, "当前进行中的抽奖活动")
+		for idx, item := range activeItems {
+			lines = append(lines, fmt.Sprintf("%d. %s · %s", idx+1, lotteryTextFallback(item.Title, "未命名抽奖"), lotteryJoinTypeLabel(item.JoinType)))
 			lines = append(lines, fmt.Sprintf("奖品：%s", lotteryTextFallback(item.Prize, "未填写")))
 			lines = append(lines, fmt.Sprintf("参与：%d / 中奖：%d", item.EntryCount, maxInt(item.WinnerCount, 1)))
 			if item.EndAt != nil {
-				lines = append(lines, fmt.Sprintf("开奖：%s", item.EndAt.Format("2006-01-02 15:04")))
+				lines = append(lines, fmt.Sprintf("开奖时间：%s", formatChinaTime(*item.EndAt)))
 			}
 			lines = append(lines, "")
 		}
 	} else {
-		lines = append(lines, "当前没有进行中的抽奖。", "")
-	}
-	if len(recentItems) > 0 {
-		lines = append(lines, "最近记录")
-		limit := len(recentItems)
-		if limit > 4 {
-			limit = 4
-		}
-		for i := 0; i < limit; i++ {
-			item := recentItems[i]
-			lines = append(lines, fmt.Sprintf("#%d %s · %s", item.ID, lotteryTextFallback(item.Title, "未命名抽奖"), lotteryStatusLabel(item.Status)))
-		}
-		lines = append(lines, "")
+		lines = append(lines, "暂无抽奖", "")
 	}
 	lines = append(lines,
 		"私聊负责创建、查看和取消活动；群里负责成员参与、口令触发和结果传播。",

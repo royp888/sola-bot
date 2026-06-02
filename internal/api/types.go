@@ -312,6 +312,9 @@ type PostCreateRequest struct {
 	Title             string     `json:"title,omitempty"`
 	Content           string     `json:"content,omitempty"`
 	MediaURL          string     `json:"media_url,omitempty"`
+	MediaName         string     `json:"media_name,omitempty"`
+	MediaMime         string     `json:"media_mime,omitempty"`
+	MediaDataBase64   string     `json:"media_data_base64,omitempty"`
 	MediaType         string     `json:"media_type,omitempty"`
 	CronExpr          string     `json:"cron_expr,omitempty"`
 	RunOnceAt         *time.Time `json:"run_once_at,omitempty"`
@@ -329,6 +332,10 @@ type PostUpdateRequest struct {
 	Title             *string    `json:"title,omitempty"`
 	Content           *string    `json:"content,omitempty"`
 	MediaURL          *string    `json:"media_url,omitempty"`
+	MediaName         *string    `json:"media_name,omitempty"`
+	MediaMime         *string    `json:"media_mime,omitempty"`
+	MediaDataBase64   *string    `json:"media_data_base64,omitempty"`
+	ClearInlineMedia  *bool      `json:"clear_inline_media,omitempty"`
 	MediaType         *string    `json:"media_type,omitempty"`
 	CronExpr          *string    `json:"cron_expr,omitempty"`
 	RunOnceAt         *time.Time `json:"run_once_at,omitempty"`
@@ -348,6 +355,9 @@ type Post struct {
 	Title             string     `json:"title"`
 	Content           string     `json:"content"`
 	MediaURL          string     `json:"media_url,omitempty"`
+	MediaName         string     `json:"media_name,omitempty"`
+	MediaMime         string     `json:"media_mime,omitempty"`
+	HasInlineMedia    bool       `json:"has_inline_media,omitempty"`
 	MediaType         string     `json:"media_type,omitempty"`
 	CronExpr          string     `json:"cron_expr,omitempty"`
 	RunOnceAt         *time.Time `json:"run_once_at,omitempty"`

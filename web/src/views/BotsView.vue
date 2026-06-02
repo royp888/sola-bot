@@ -3,7 +3,7 @@
     <PageHeader
       eyebrow="Bots"
       title="机器人管理"
-      description="管理多个 TG Bot 的在线状态、绑定关系和语言配置。"
+      description="管理多个 TG Bot 的在线状态、绑定关系和语言配置，心跳时间按北京时间显示。"
     >
       <template #actions>
         <el-input v-model="keyword" class="search" placeholder="搜索 Bot">
@@ -17,6 +17,7 @@
     </PageHeader>
 
     <PanelSection title="Bot 列表" description="来自后端 /bots 的实时清单。">
+      <div class="table-wrap">
       <el-table :data="filteredBots" stripe>
         <el-table-column prop="name" label="名称" min-width="160" />
         <el-table-column prop="username" label="Username" min-width="180" />
@@ -26,7 +27,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="boundChats" label="绑定聊天" width="110" />
-        <el-table-column prop="lastHeartbeat" label="心跳" min-width="120" />
+        <el-table-column label="心跳" min-width="180">
+          <template #default="{ row }">{{ formatDateTime(row.lastHeartbeat) }}</template>
+        </el-table-column>
         <el-table-column prop="language" label="语言" width="120" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
@@ -35,6 +38,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
     </PanelSection>
 
     <el-dialog v-model="detailVisible" title="Bot 详情" width="520px">
@@ -44,7 +48,7 @@
         <el-descriptions-item label="状态">{{ botStatus(currentBot.status) }}</el-descriptions-item>
         <el-descriptions-item label="绑定聊天">{{ currentBot.boundChats }}</el-descriptions-item>
         <el-descriptions-item label="语言">{{ currentBot.language }}</el-descriptions-item>
-        <el-descriptions-item label="心跳">{{ currentBot.lastHeartbeat }}</el-descriptions-item>
+        <el-descriptions-item label="心跳">{{ formatDateTime(currentBot.lastHeartbeat) }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>
@@ -58,6 +62,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { fetchBots } from "@/api/bots";
 import type { BotRecord } from "@/types/api";
+import { formatChinaDateTime } from "@/utils/datetime";
 
 const keyword = ref("");
 const bots = ref<BotRecord[]>([]);
@@ -84,6 +89,10 @@ async function loadBots(): Promise<void> {
     bots.value = [];
     ElMessage.error("Bot 列表接口不可用");
   }
+}
+
+function formatDateTime(value?: string | null): string {
+  return formatChinaDateTime(value, "-");
 }
 
 function botTag(status: BotRecord["status"]): "success" | "warning" | "danger" {

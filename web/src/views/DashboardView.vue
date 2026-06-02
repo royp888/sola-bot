@@ -1,10 +1,6 @@
 <template>
   <div class="page-stack dashboard-page">
-    <PageHeader
-      eyebrow="Control Room"
-      title="运营总览"
-      description="先处理异常，再推进今天的发布、风控和群组运营。"
-    >
+    <PageHeader eyebrow="Control Room" title="运营总览" description="先处理异常，再安排今天的发布、群组运营和系统巡检。">
       <template #meta>
         <span class="header-meta">{{ focusSummary }}</span>
       </template>
@@ -32,11 +28,11 @@
           </div>
         </PanelSection>
 
-        <PanelSection title="任务执行" description="定时发布与调度队列的当前状态。">
+        <PanelSection title="任务执行" description="重点看最近要跑的任务和异常状态。">
           <el-table :data="summary.jobs" size="small" stripe empty-text="暂无任务">
             <el-table-column prop="title" label="任务" min-width="180" />
-            <el-table-column prop="schedule" label="计划" min-width="120" />
-            <el-table-column prop="nextRun" label="下次执行" min-width="140" />
+            <el-table-column prop="schedule" label="执行计划" min-width="140" />
+            <el-table-column prop="nextRun" label="下次执行" min-width="160" />
             <el-table-column label="状态" width="120">
               <template #default="{ row }">
                 <el-tag :type="jobTag(row.status)" effect="plain">{{ jobLabel(row.status) }}</el-tag>
@@ -47,7 +43,7 @@
       </div>
 
       <div class="dashboard-side">
-        <PanelSection title="快捷动作" description="高频入口按成员、内容、风控和增长组织。">
+        <PanelSection title="工作入口" description="只保留高频入口，按真实运营动作来组织。">
           <div class="action-grid">
             <button v-for="entry in quickEntries" :key="entry.path" class="action-card" @click="router.push(entry.path)">
               <span class="action-group">{{ entry.group }}</span>
@@ -75,7 +71,7 @@
           </div>
         </PanelSection>
 
-        <PanelSection title="最近事件" description="只保留值得扫一眼的事件流。">
+        <PanelSection title="最近事件" description="只保留值得扫一眼的系统变化。">
           <div v-if="summary.activity.length" class="activity-list">
             <div v-for="item in summary.activity" :key="item.title + item.time" class="activity-item" :data-tone="item.status">
               <div class="activity-head">
@@ -123,16 +119,16 @@ const summary = reactive<DashboardSummary>({
 
 const quickEntries = [
   { group: "成员", title: "成员管理", note: "筛选成员并执行批量动作", path: "/users", icon: UserFilled },
-  { group: "积分", title: "积分规则", note: "调整积分策略和冷却配置", path: "/points/config", icon: Coin },
-  { group: "风控", title: "违规处理", note: "处理违规和封禁动作", path: "/violations", icon: CircleClose },
-  { group: "内容", title: "发布任务", note: "安排定时发布和调度", path: "/posts", icon: Calendar },
-  { group: "日志", title: "积分记录", note: "回放积分流水和原因", path: "/points/logs", icon: Tickets },
-  { group: "增长", title: "活动抽奖", note: "推进促活和奖励发放", path: "/lottery", icon: Trophy },
-  { group: "规则", title: "关键词规则", note: "查看命中词与触发策略", path: "/keywords", icon: MessageBox },
+  { group: "积分", title: "积分规则", note: "调整规则与排行榜节奏", path: "/points", icon: Coin },
+  { group: "风控", title: "违规处理", note: "查看待处理违规和封禁情况", path: "/violations", icon: CircleClose },
+  { group: "内容", title: "发布任务", note: "新建提醒、公告和自动发布", path: "/posts", icon: Calendar },
+  { group: "运营", title: "消息记录", note: "追踪机器人投递与互动表现", path: "/messages", icon: MessageBox },
+  { group: "活动", title: "抽奖活动", note: "管理进行中与历史抽奖", path: "/lotteries", icon: Trophy },
+  { group: "调度", title: "任务调度", note: "查看任务配置与执行状态", path: "/schedules", icon: Tickets },
 ];
 
 const focusQueue = computed(() => {
-  const items: Array<{ title: string; detail: string; tone: "success" | "warning" | "danger" | "info"; action: string; path: string }> = [];
+  const items: Array<{ title: string; detail: string; tone: string; action: string; path: string }> = [];
 
   summary.jobs
     .filter((job) => job.status !== "live")
@@ -227,57 +223,58 @@ onMounted(loadDashboard);
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 8px;
-  border: 1px solid var(--app-border);
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 999px;
-  background: var(--app-surface);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.9fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.28fr) minmax(320px, 0.92fr);
+  gap: 18px;
 }
 
 .dashboard-main,
 .dashboard-side {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .queue-list,
 .action-grid,
 .activity-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .queue-item,
 .action-card {
   width: 100%;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
-  background: var(--app-surface-2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(21, 31, 45, 0.94), rgba(17, 25, 37, 0.94));
   color: var(--app-text);
   text-align: left;
   cursor: pointer;
+  box-shadow: var(--app-shadow-soft);
 }
 
 .queue-item {
-  padding: 14px;
+  padding: 16px;
 }
 
 .queue-item[data-tone="success"] {
-  border-color: rgba(118, 181, 138, 0.32);
+  border-color: rgba(114, 192, 145, 0.28);
 }
 
 .queue-item[data-tone="warning"] {
-  border-color: rgba(207, 160, 98, 0.32);
+  border-color: rgba(216, 162, 95, 0.28);
 }
 
 .queue-item[data-tone="danger"] {
-  border-color: rgba(199, 116, 116, 0.32);
+  border-color: rgba(210, 120, 120, 0.3);
 }
 
 .queue-head,
@@ -287,6 +284,11 @@ onMounted(loadDashboard);
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.queue-head strong,
+.activity-head strong {
+  font-size: 14px;
 }
 
 .queue-head span,
@@ -300,10 +302,10 @@ onMounted(loadDashboard);
 .queue-item p,
 .action-card p,
 .activity-item p {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--app-muted);
   font-size: 12px;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .action-grid {
@@ -313,15 +315,15 @@ onMounted(loadDashboard);
 .action-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-height: 118px;
-  padding: 14px;
+  gap: 10px;
+  min-height: 126px;
+  padding: 16px;
 }
 
 .action-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   font-size: 14px;
 }
 
@@ -334,12 +336,12 @@ onMounted(loadDashboard);
 .health-row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .health-copy strong {
   display: block;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   font-size: 13px;
 }
 
@@ -349,18 +351,18 @@ onMounted(loadDashboard);
 }
 
 .activity-item {
-  padding: 12px 14px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
-  background: var(--app-surface-2);
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(21, 31, 45, 0.94), rgba(17, 25, 37, 0.94));
 }
 
 .activity-item[data-tone="warning"] {
-  border-color: rgba(207, 160, 98, 0.28);
+  border-color: rgba(216, 162, 95, 0.26);
 }
 
 .activity-item[data-tone="danger"] {
-  border-color: rgba(199, 116, 116, 0.28);
+  border-color: rgba(210, 120, 120, 0.28);
 }
 
 .empty-copy {

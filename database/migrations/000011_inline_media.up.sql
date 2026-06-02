@@ -1,0 +1,8 @@
+ALTER TABLE scheduled_posts
+ADD COLUMN IF NOT EXISTS media_name TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE scheduled_posts
+ADD COLUMN IF NOT EXISTS media_mime TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE scheduled_posts
+ADD COLUMN IF NOT EXISTS media_data BYTEA;

@@ -84,6 +84,7 @@
         </div>
       </div>
 
+      <div class="table-wrap">
       <el-table class="table-compact" :data="filteredUsers" size="small" stripe empty-text="请选择群组后查看成员" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="48" />
         <el-table-column prop="username" label="成员" min-width="220">
@@ -100,7 +101,9 @@
             <el-tag :type="statusTag(row.status)" effect="plain">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="last_seen_at" label="最后活跃" min-width="160" />
+        <el-table-column label="最后活跃" min-width="180">
+          <template #default="{ row }">{{ formatDateTime(row.last_seen_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="openDetails(row)">详情</el-button>
@@ -120,6 +123,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
     </PanelSection>
 
     <el-drawer v-model="detailVisible" title="成员详情" size="380px">
@@ -140,7 +144,7 @@
             </div>
             <div class="detail-card">
               <span>最后活跃</span>
-              <strong>{{ currentUser.last_seen_at || "暂无" }}</strong>
+              <strong>{{ formatDateTime(currentUser.last_seen_at, "暂无") }}</strong>
             </div>
             <div class="detail-card">
               <span>所属群组</span>
@@ -209,6 +213,7 @@ import { createBan } from "@/api/admin";
 import { updateUserPoints } from "@/api/points";
 import { batchUsers, exportUsersCsv, fetchUsers } from "@/api/users";
 import type { ChatRecord, UserRecord } from "@/types/api";
+import { formatChinaDateTime } from "@/utils/datetime";
 
 const route = useRoute();
 const router = useRouter();
@@ -234,6 +239,10 @@ const selectedRows = ref<UserRecord[]>([]);
 const currentUser = ref<UserRecord>();
 const adjustForm = reactive({ delta: 10, reason: "manual_adjust" });
 const batchForm = reactive({ delta: 10, reason: "batch_adjust" });
+
+function formatDateTime(value?: string | null, fallback = "-"): string {
+  return formatChinaDateTime(value, fallback);
+}
 
 const filteredUsers = computed(() => {
   const term = keyword.value.trim().toLowerCase();

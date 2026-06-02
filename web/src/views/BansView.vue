@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <PageHeader eyebrow="Group Admin" title="封禁与警告" description="围绕群组执行封禁、解封和警告追踪。">
+    <PageHeader eyebrow="Group Admin" title="封禁与警告" description="围绕群组执行封禁、解封和警告追踪，时间按北京时间显示。">
       <template #actions>
         <ChatSelect v-model="selectedChatId" @update:model-value="loadBans" />
         <el-button :icon="Refresh" :loading="loading" @click="loadBans">刷新</el-button>
@@ -10,13 +10,18 @@
     <el-row :gutter="16">
       <el-col :xs="24" :lg="16">
         <PanelSection title="封禁记录" description="对应 /api/admin/bans/:chatID 与 /api/admin/ban。">
+          <div class="table-wrap">
           <el-table :data="bans" stripe>
             <el-table-column label="用户" min-width="140">
               <template #default="{ row }">{{ row.username || row.user_id }}</template>
             </el-table-column>
             <el-table-column prop="reason" label="原因" min-width="200" />
-            <el-table-column prop="banned_at" label="封禁时间" min-width="150" />
-            <el-table-column prop="unbanned_at" label="解封时间" min-width="150" />
+            <el-table-column label="封禁时间" min-width="180">
+              <template #default="{ row }">{{ formatDateTime(row.banned_at) }}</template>
+            </el-table-column>
+            <el-table-column label="解封时间" min-width="180">
+              <template #default="{ row }">{{ formatDateTime(row.unbanned_at) }}</template>
+            </el-table-column>
             <el-table-column label="操作" width="110" fixed="right">
               <template #default="{ row }">
                 <el-button size="small" :loading="deletingId === row.user_id" @click="submitUnban(row)">
@@ -25,6 +30,7 @@
               </template>
             </el-table-column>
           </el-table>
+          </div>
         </PanelSection>
       </el-col>
 
@@ -48,9 +54,12 @@
             </el-form-item>
             <el-button :loading="warnLoading" @click="loadWarns">查看警告</el-button>
           </el-form>
-          <el-table class="warn-table" :data="warns" stripe>
+          <div class="table-wrap warn-table">
+          <el-table :data="warns" stripe>
             <el-table-column prop="reason" label="原因" min-width="140" />
-            <el-table-column prop="created_at" label="时间" min-width="150" />
+            <el-table-column label="时间" min-width="180">
+              <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+            </el-table-column>
             <el-table-column label="状态" width="90">
               <template #default="{ row }">
                 <el-tag :type="row.cleared ? 'info' : 'warning'" effect="dark">
@@ -59,6 +68,7 @@
               </template>
             </el-table-column>
           </el-table>
+          </div>
         </PanelSection>
       </el-col>
     </el-row>
@@ -75,6 +85,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { createBan, deleteBan, fetchBans, fetchWarns } from "@/api/admin";
 import type { BanRecord, ChatID, WarnRecord } from "@/types/api";
+import { formatChinaDateTime } from "@/utils/datetime";
 
 const selectedChatId = ref("");
 const loading = ref(false);
@@ -85,6 +96,10 @@ const warns = ref<WarnRecord[]>([]);
 const deletingId = ref<ChatID>();
 const warnUserId = ref("");
 const banForm = reactive({ user_id: "", reason: "" });
+
+function formatDateTime(value?: string | null): string {
+  return formatChinaDateTime(value, "-");
+}
 
 async function loadBans(): Promise<void> {
   if (!selectedChatId.value) return;

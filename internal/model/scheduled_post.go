@@ -8,6 +8,9 @@ type ScheduledPost struct {
 	Title     string `gorm:"size:128" json:"title,omitempty"`
 	Content   string `gorm:"type:text" json:"content,omitempty"`
 	MediaURL  string `gorm:"type:text" json:"media_url,omitempty"`
+	MediaName string `gorm:"type:text;not null;default:''" json:"media_name,omitempty"`
+	MediaMime string `gorm:"type:text;not null;default:''" json:"media_mime,omitempty"`
+	MediaData []byte `gorm:"type:bytea" json:"-"`
 	MediaType string `gorm:"size:16" json:"media_type,omitempty"`
 	CronExpr  string `gorm:"size:64" json:"cron_expr,omitempty"`
 

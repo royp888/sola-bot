@@ -1,6 +1,9 @@
 <template>
   <div class="page-stack">
     <PageHeader eyebrow="Activity" title="活动抽奖" description="管理群内抽奖活动、参与方式和开奖结果。">
+      <template #meta>
+        <span class="header-meta">页面时间按北京时间（UTC+8）显示</span>
+      </template>
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadLotteries">刷新</el-button>
         <el-button type="primary" :icon="Plus" @click="openCreate">创建抽奖</el-button>
@@ -56,10 +59,11 @@
         </div>
       </template>
 
-      <el-table class="table-compact" :data="filteredLotteries" size="small" stripe>
+      <div class="table-wrap">
+        <el-table class="table-compact" :data="filteredLotteries" size="small" stripe>
         <el-table-column prop="title" label="标题" min-width="180" />
         <el-table-column prop="prize" label="奖品" min-width="140" />
-        <el-table-column prop="chat_id" label="Chat" min-width="120" />
+        <el-table-column prop="chat_id" label="目标群组" min-width="140" />
         <el-table-column prop="cost_points" label="积分成本" width="100" />
         <el-table-column label="参与方式" width="130">
           <template #default="{ row }">
@@ -70,7 +74,9 @@
           <template #default="{ row }">{{ row.entry_count ?? row.participants ?? 0 }}</template>
         </el-table-column>
         <el-table-column prop="winner_count" label="中奖数" width="90" />
-        <el-table-column prop="end_at" label="开奖时间" min-width="150" />
+        <el-table-column label="开奖时间（北京时间）" min-width="180">
+          <template #default="{ row }">{{ formatDateTime(row.end_at) }}</template>
+        </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
             <el-tag :type="statusTag(row.status)" effect="dark">{{ statusLabel(row.status) }}</el-tag>
@@ -94,25 +100,26 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
     </PanelSection>
 
     <el-dialog v-model="dialogVisible" title="创建抽奖" width="560px">
       <el-form label-position="top">
         <el-row :gutter="12">
           <el-col :xs="24" :md="12">
-            <el-form-item label="Chat ID">
+            <el-form-item label="目标群组">
               <ChatSelect v-model="form.chat_id" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :md="12">
-            <el-form-item label="结束时间">
+            <el-form-item label="开奖时间（北京时间）">
               <el-date-picker
                 v-model="form.end_at"
                 class="wide-control"
                 type="datetime"
                 format="YYYY-MM-DD HH:mm"
                 value-format="YYYY-MM-DD HH:mm:ss"
-                placeholder="选择开奖时间"
+                placeholder="选择开奖时间（北京时间）"
               />
             </el-form-item>
           </el-col>
@@ -185,6 +192,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { cancelLottery, createLottery, fetchLotteries, fetchLotteryEntries, fetchLotteryWinners } from "@/api/lottery";
 import type { ChatID, LotteryEntryRecord, LotteryPayload, LotteryRecord } from "@/types/api";
+import { formatChinaDateTime, parseChinaLocalDateTimeToISO } from "@/utils/datetime";
 
 const loading = ref(false);
 const saving = ref(false);
@@ -237,6 +245,10 @@ const statusCounts = computed(() => {
 
 const totalEntries = computed(() => filteredLotteries.value.reduce((sum, item) => sum + Number(item.entry_count ?? item.participants ?? 0), 0));
 
+function formatDateTime(value?: string | null): string {
+  return formatChinaDateTime(value, "-");
+}
+
 function parseNumericId(value?: ChatID): number | undefined {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
@@ -248,11 +260,7 @@ function optionalText(value?: string | null): string | undefined {
 }
 
 function toRFC3339(value?: string | null): string | undefined {
-  const text = optionalText(value);
-  if (!text) return undefined;
-  const normalized = text.includes("T") ? text : text.replace(" ", "T");
-  const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  return parseChinaLocalDateTimeToISO(value);
 }
 
 function buildPayload(): LotteryPayload | undefined {
@@ -408,6 +416,15 @@ onMounted(loadLotteries);
 </script>
 
 <style scoped>
+.header-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
 .panel-toolbar {
   display: flex;
   flex-direction: column;

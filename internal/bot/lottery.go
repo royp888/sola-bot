@@ -81,11 +81,7 @@ func (a *App) showActiveLotteryForChat(b *gotgbot.Bot, ctx *ext.Context, chatID 
 	}
 	active := formatActiveLotteryItems(items)
 	if len(items) == 0 {
-		recent, err := a.services.Lottery.ListItems(requestScope(ctx).Context, chatID, 5)
-		if err != nil {
-			return err
-		}
-		active = formatRecentLotteryItems(recent)
+		active = formatRecentLotteryItems(nil)
 	}
 	if requestScope(ctx).Chat.Type == "private" {
 		return respondText(b, ctx, active, fallbackMarkup)
@@ -339,7 +335,7 @@ func parseLotteryCreateRequest(ctx *ext.Context, chatID int64, createdBy int64) 
 	if err != nil || winners <= 0 {
 		return api.LotteryCreateRequest{}, fmt.Errorf("中奖人数必须是正整数")
 	}
-	endAt, err := time.ParseInLocation("2006-01-02 15:04", parts[5], time.Local)
+	endAt, err := time.ParseInLocation("2006-01-02 15:04", parts[5], chinaLocation())
 	if err != nil {
 		return api.LotteryCreateRequest{}, fmt.Errorf("结束时间格式必须是 YYYY-MM-DD HH:mm")
 	}
@@ -405,7 +401,7 @@ func sendLotteryAnnouncement(b *gotgbot.Bot, ctx *ext.Context, lottery api.Lotte
 
 func lotteryAnnouncementText(lottery api.Lottery) string {
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("🎁 %s #%d\n", lotteryJoinTypeLabel(lottery.JoinType), lottery.ID))
+	builder.WriteString(fmt.Sprintf("🎁 %s\n", lotteryJoinTypeLabel(lottery.JoinType)))
 	builder.WriteString("━━━━━━━━━━\n")
 	builder.WriteString(fmt.Sprintf("活动：%s\n", lotteryTextFallback(lottery.Title, "未命名抽奖")))
 	builder.WriteString(fmt.Sprintf("奖品：%s\n", lotteryTextFallback(lottery.Prize, "未填写")))
@@ -418,7 +414,7 @@ func lotteryAnnouncementText(lottery api.Lottery) string {
 		builder.WriteString("开奖条件：按设定时间开奖\n")
 	}
 	if lottery.EndAt != nil {
-		builder.WriteString(fmt.Sprintf("开奖时间：%s\n", lottery.EndAt.Format("2006-01-02 15:04")))
+		builder.WriteString(fmt.Sprintf("开奖时间：%s\n", formatChinaTime(*lottery.EndAt)))
 	}
 	builder.WriteString("━━━━━━━━━━\n")
 	switch strings.ToLower(strings.TrimSpace(lottery.JoinType)) {
@@ -434,6 +430,18 @@ func lotteryAnnouncementText(lottery api.Lottery) string {
 		builder.WriteString("点击下方按钮参与抽奖。")
 	}
 	return builder.String()
+}
+
+func formatChinaTime(value time.Time) string {
+	return value.In(chinaLocation()).Format("2006-01-02 15:04")
+}
+
+func chinaLocation() *time.Location {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		return time.FixedZone("CST", 8*60*60)
+	}
+	return loc
 }
 
 func lotteryJoinModeHint(joinType string, keyword string) string {
@@ -501,7 +509,7 @@ func formatActiveLotteryItems(items []api.Lottery) string {
 	builder.WriteString("━━━━━━━━━━\n")
 	builder.WriteString(fmt.Sprintf("进行中：%d 场\n\n", len(items)))
 	for _, item := range items {
-		builder.WriteString(fmt.Sprintf("#%d %s\n", item.ID, lotteryTextFallback(item.Title, "未命名抽奖")))
+		builder.WriteString(fmt.Sprintf("%s\n", lotteryTextFallback(item.Title, "未命名抽奖")))
 		builder.WriteString(fmt.Sprintf("奖品：%s\n", lotteryTextFallback(item.Prize, "未填写")))
 		builder.WriteString(fmt.Sprintf("参与方式：%s\n", lotteryJoinModeHint(item.JoinType, item.JoinKeyword)))
 		builder.WriteString(fmt.Sprintf("已参与：%d", item.EntryCount))
@@ -512,7 +520,7 @@ func formatActiveLotteryItems(items []api.Lottery) string {
 			builder.WriteString(fmt.Sprintf(" · %d 积分", item.CostPoints))
 		}
 		if item.EndAt != nil {
-			builder.WriteString(fmt.Sprintf("\n开奖时间：%s", item.EndAt.Format("2006-01-02 15:04")))
+			builder.WriteString(fmt.Sprintf("\n开奖时间：%s", formatChinaTime(*item.EndAt)))
 		} else if item.MaxParticipants > 0 {
 			builder.WriteString(fmt.Sprintf("\n开奖条件：满 %d 人", item.MaxParticipants))
 		}
@@ -524,25 +532,26 @@ func formatActiveLotteryItems(items []api.Lottery) string {
 
 func formatRecentLotteryItems(items []api.Lottery) string {
 	if len(items) == 0 {
-		return "🎁 抽奖大厅\n\n当前没有进行中的抽奖，也没有历史抽奖记录。\n管理员可以直接点下方“创建抽奖”开始第一场活动。"
+		return "🎁 抽奖大厅\n\n暂无抽奖。"
 	}
 	var builder strings.Builder
-	builder.WriteString("🎁 抽奖大厅\n")
+	builder.WriteString("🎁 当前进行中的抽奖活动\n")
 	builder.WriteString("━━━━━━━━━━\n")
-	builder.WriteString("当前没有进行中的抽奖\n\n最近记录\n")
-	for _, item := range items {
-		builder.WriteString(fmt.Sprintf("#%d %s · %s\n", item.ID, lotteryTextFallback(item.Title, "未命名抽奖"), lotteryStatusLabel(item.Status)))
+	for idx, item := range items {
+		builder.WriteString(fmt.Sprintf("%d. %s\n", idx+1, lotteryTextFallback(item.Title, "未命名抽奖")))
 		builder.WriteString(fmt.Sprintf("奖品：%s\n", lotteryTextFallback(item.Prize, "未填写")))
-		builder.WriteString(fmt.Sprintf("参与：%d", item.EntryCount))
-		if item.WinnerCountDone > 0 {
-			builder.WriteString(fmt.Sprintf(" · 已中奖：%d", item.WinnerCountDone))
+		builder.WriteString(fmt.Sprintf("参与方式：%s\n", lotteryJoinModeHint(item.JoinType, item.JoinKeyword)))
+		builder.WriteString(fmt.Sprintf("所需积分：%d\n", maxInt(item.CostPoints, 0)))
+		builder.WriteString(fmt.Sprintf("已参与：%d", item.EntryCount))
+		if item.MaxParticipants > 0 {
+			builder.WriteString(fmt.Sprintf("/%d", item.MaxParticipants))
 		}
 		if item.EndAt != nil {
-			builder.WriteString(fmt.Sprintf("\n开奖时间：%s", item.EndAt.Format("2006-01-02 15:04")))
+			builder.WriteString(fmt.Sprintf("\n开奖时间：%s", formatChinaTime(*item.EndAt)))
 		}
 		builder.WriteString("\n\n")
 	}
-	builder.WriteString("可从下方重新创建新活动。")
+	builder.WriteString("发送“抽奖”可再次查看列表。")
 	return strings.TrimSpace(builder.String())
 }
 
@@ -563,7 +572,7 @@ func lotteryMenuMarkup(items []api.Lottery, canCreate bool) *gotgbot.SendMessage
 	rows := make([][]gotgbot.InlineKeyboardButton, 0, len(items)+4)
 	for _, item := range items {
 		id := strconv.FormatInt(item.ID, 10)
-		title := lotteryTextFallback(item.Title, fmt.Sprintf("#%d", item.ID))
+		title := lotteryTextFallback(item.Title, "抽奖详情")
 		if len([]rune(title)) > 10 {
 			title = string([]rune(title)[:10]) + "..."
 		}
