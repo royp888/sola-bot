@@ -113,7 +113,33 @@ docker compose --profile direct-api up -d api-direct
 
 `config.yaml` 已将 Swagger 默认关闭。如需在开发或受控运维环境开启，请显式设置 `SOLA_APP_ENABLE_SWAGGER=true`。
 
-### 3. 本地前端开发
+### 3. 前端环境变量与 Telegram 登录
+
+前端构建会读取 `web/.env.production`（生产）或 `web/.env.local`（本地），不要只修改 `web/.env.example`。
+
+至少建议配置：
+
+- `VITE_API_BASE_URL=/api`
+- `VITE_APP_NAME=你的后台名称`
+- `VITE_BOT_USERNAME=你的机器人用户名`（不要带 `@`）
+
+如果要启用 Telegram Login Widget，还需要同时满足：
+
+- 前端重新执行 `npm run build`
+- 生产环境中的 `nginx.conf` 允许 `https://telegram.org` 脚本、Telegram Login Widget 所需的 `unsafe-eval`，以及 `https://oauth.telegram.org` iframe / form 来源
+- 在 `@BotFather` 中为机器人执行 `/setdomain`，并设置为正式域名，例如 `www.example.com`
+- 如果使用 Cloudflare，建议先验证直连或灰云可用，再切换到橙云；SSL 模式使用 `Full (strict)`
+
+常见更新步骤：
+
+```bash
+cd web
+npm run build
+cd ..
+docker compose up -d --force-recreate nginx
+```
+
+### 4. 本地前端开发
 
 ```bash
 cd web
@@ -121,7 +147,7 @@ npm install
 npm run dev
 ```
 
-### 4. 本地 Go 开发
+### 5. 本地 Go 开发
 
 ```bash
 go mod tidy

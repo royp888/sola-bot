@@ -113,7 +113,33 @@ docker compose --profile direct-api up -d api-direct
 
 Swagger is disabled by default in `config.yaml`. Enable it explicitly for development or controlled admin environments with `SOLA_APP_ENABLE_SWAGGER=true`.
 
-### 3. Local frontend development
+### 3. Frontend env and Telegram login
+
+Frontend builds read `web/.env.production` in production and `web/.env.local` for local overrides. Do not rely on editing `web/.env.example` alone.
+
+Recommended values:
+
+- `VITE_API_BASE_URL=/api`
+- `VITE_APP_NAME=Your admin title`
+- `VITE_BOT_USERNAME=your_bot_username` (without `@`)
+
+To enable the Telegram Login Widget, make sure all of the following are true:
+
+- rerun `npm run build` after changing frontend env vars
+- production `nginx.conf` allows `https://telegram.org` scripts, the Telegram Login Widget requirement for `unsafe-eval`, and `https://oauth.telegram.org` iframe / form sources
+- run `/setdomain` in `@BotFather` for the bot and set the final hostname, for example `www.example.com`
+- if Cloudflare is enabled, verify direct or DNS-only access first, then switch to proxy mode with SSL set to `Full (strict)`
+
+Typical refresh flow:
+
+```bash
+cd web
+npm run build
+cd ..
+docker compose up -d --force-recreate nginx
+```
+
+### 4. Local frontend development
 
 ```bash
 cd web
@@ -121,7 +147,7 @@ npm install
 npm run dev
 ```
 
-### 4. Local Go development
+### 5. Local Go development
 
 ```bash
 go mod tidy
