@@ -44,7 +44,13 @@ func (s *Server) ListBots(c *gin.Context) {
 func (s *Server) DashboardSummary(c *gin.Context) {
 	var overview *StatsOverview
 	if s.deps.Stats != nil {
-		item, err := s.deps.Stats.Overview(c.Request.Context(), StatsQuery{})
+		var query StatsQuery
+		if err := c.ShouldBindQuery(&query); err != nil {
+			writeError(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		query.OwnerUserID = s.ownerUserID(c)
+		item, err := s.deps.Stats.Overview(c.Request.Context(), query)
 		if err != nil {
 			writeError(c, http.StatusInternalServerError, err.Error())
 			return

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -17,6 +18,34 @@ import (
 )
 
 const pointConfigCacheTTL = 5 * time.Minute
+
+type pointLogCursor struct {
+	CreatedAt time.Time `json:"created_at"`
+	ID        uint64    `json:"id"`
+}
+
+func encodePointLogCursor(log model.PointLog) (string, error) {
+	payload, err := json.Marshal(pointLogCursor{CreatedAt: log.CreatedAt.UTC(), ID: log.ID})
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(payload), nil
+}
+
+func decodePointLogCursor(raw string) (pointLogCursor, error) {
+	var cursor pointLogCursor
+	decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(raw))
+	if err != nil {
+		return cursor, fmt.Errorf("decode point log cursor: %w", err)
+	}
+	if err := json.Unmarshal(decoded, &cursor); err != nil {
+		return cursor, fmt.Errorf("parse point log cursor: %w", err)
+	}
+	if cursor.ID == 0 || cursor.CreatedAt.IsZero() {
+		return cursor, gorm.ErrInvalidData
+	}
+	return cursor, nil
+}
 
 func defaultPointConfig(chatID int64) bot.ChatPointConfig {
 	return bot.ChatPointConfig{
@@ -472,9 +501,9 @@ func (s *PointsService) getRankEntriesFromDB(ctx context.Context, chatID int64, 
 	return out, nil
 }
 
-func (s *PointsService) ListPointLogs(ctx context.Context, chatID int64, userID int64, limit int, offset int) ([]model.PointLog, error) {
+func (s *PointsService) ListPointLogs(ctx context.Context, chatID int64, userID int64, limit int, offset int, cursor string) ([]model.PointLog, string, error) {
 	if s == nil || s.store == nil || s.store.DB == nil {
-		return []model.PointLog{}, nil
+		return []model.PointLog{}, "", nil
 	}
 	if limit <= 0 {
 		limit = 20
@@ -482,14 +511,36 @@ func (s *PointsService) ListPointLogs(ctx context.Context, chatID int64, userID 
 	if limit > 100 {
 		limit = 100
 	}
-	var logs []model.PointLog
-	err := s.store.DB.WithContext(ctx).
+	if offset < 0 {
+		offset = 0
+	}
+	q := s.store.DB.WithContext(ctx).
 		Where("chat_id = ? AND user_id = ?", chatID, userID).
-		Order("created_at desc").
-		Limit(limit).
-		Offset(offset).
-		Find(&logs).Error
-	return logs, err
+		Order("created_at desc, id desc")
+	if strings.TrimSpace(cursor) != "" {
+		parsed, err := decodePointLogCursor(cursor)
+		if err != nil {
+			return nil, "", err
+		}
+		q = q.Where("(created_at < ?) OR (created_at = ? AND id < ?)", parsed.CreatedAt, parsed.CreatedAt, parsed.ID)
+	} else if offset > 0 {
+		q = q.Offset(offset)
+	}
+	var logs []model.PointLog
+	err := q.Limit(limit + 1).Find(&logs).Error
+	if err != nil {
+		return nil, "", err
+	}
+	nextCursor := ""
+	if len(logs) > limit {
+		last := logs[limit-1]
+		nextCursor, err = encodePointLogCursor(last)
+		if err != nil {
+			return nil, "", err
+		}
+		logs = logs[:limit]
+	}
+	return logs, nextCursor, nil
 }
 
 func (s *PointsService) GetUserPoint(ctx context.Context, chatID int64, userID int64) (model.UserPoint, error) {

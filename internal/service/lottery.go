@@ -56,12 +56,12 @@ func (s *LotteryService) List(ctx context.Context, query api.LotteryListQuery) (
 	}
 
 	items := make([]api.Lottery, 0, len(records))
+	counts, err := s.lotteryEntryCounts(ctx, lotteryIDs(records))
+	if err != nil {
+		return nil, err
+	}
 	for _, record := range records {
-		item, err := s.lotteryToAPI(ctx, record)
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
+		items = append(items, lotteryToAPIWithCounts(record, counts[record.ID]))
 	}
 	return items, nil
 }
@@ -537,7 +537,24 @@ func (s *LotteryService) listEntries(ctx context.Context, id int64, winnersOnly 
 }
 
 func (s *LotteryService) lotteryToAPI(ctx context.Context, record model.Lottery) (api.Lottery, error) {
-	item := api.Lottery{
+	item := lotteryToAPIWithCounts(record, lotteryEntryCount{})
+	if s == nil || s.store == nil || s.store.DB == nil {
+		return item, nil
+	}
+	counts, err := s.lotteryEntryCounts(ctx, []int64{record.ID})
+	if err != nil {
+		return item, err
+	}
+	return lotteryToAPIWithCounts(record, counts[record.ID]), nil
+}
+
+type lotteryEntryCount struct {
+	EntryCount      int64
+	WinnerCountDone int64
+}
+
+func lotteryToAPIWithCounts(record model.Lottery, count lotteryEntryCount) api.Lottery {
+	return api.Lottery{
 		ID:              record.ID,
 		ChatID:          record.ChatID,
 		Title:           record.Title,
@@ -551,17 +568,47 @@ func (s *LotteryService) lotteryToAPI(ctx context.Context, record model.Lottery)
 		CreatedAt:       record.CreatedAt,
 		JoinType:        emptyFallback(record.JoinType, "button"),
 		JoinKeyword:     record.JoinKeyword,
+		EntryCount:      count.EntryCount,
+		WinnerCountDone: count.WinnerCountDone,
 	}
-	if s == nil || s.store == nil || s.store.DB == nil {
-		return item, nil
+}
+
+func lotteryIDs(records []model.Lottery) []int64 {
+	ids := make([]int64, 0, len(records))
+	for _, record := range records {
+		if record.ID != 0 {
+			ids = append(ids, record.ID)
+		}
 	}
-	if err := s.store.DB.WithContext(ctx).Model(&model.LotteryEntry{}).Where("lottery_id = ?", record.ID).Count(&item.EntryCount).Error; err != nil {
-		return item, err
+	return ids
+}
+
+func (s *LotteryService) lotteryEntryCounts(ctx context.Context, ids []int64) (map[int64]lotteryEntryCount, error) {
+	counts := make(map[int64]lotteryEntryCount, len(ids))
+	if len(ids) == 0 || s == nil || s.store == nil || s.store.DB == nil {
+		return counts, nil
 	}
-	if err := s.store.DB.WithContext(ctx).Model(&model.LotteryEntry{}).Where("lottery_id = ? AND is_winner = ?", record.ID, true).Count(&item.WinnerCountDone).Error; err != nil {
-		return item, err
+	type row struct {
+		LotteryID       int64
+		EntryCount      int64
+		WinnerCountDone int64
 	}
-	return item, nil
+	var rows []row
+	if err := s.store.DB.WithContext(ctx).
+		Model(&model.LotteryEntry{}).
+		Select("lottery_id, COUNT(*) AS entry_count, COALESCE(SUM(CASE WHEN is_winner THEN 1 ELSE 0 END), 0) AS winner_count_done").
+		Where("lottery_id IN ?", ids).
+		Group("lottery_id").
+		Scan(&rows).Error; err != nil {
+		return counts, err
+	}
+	for _, item := range rows {
+		counts[item.LotteryID] = lotteryEntryCount{
+			EntryCount:      item.EntryCount,
+			WinnerCountDone: item.WinnerCountDone,
+		}
+	}
+	return counts, nil
 }
 
 func lotteryEntryToAPI(record model.LotteryEntry) api.LotteryEntry {
@@ -650,19 +697,19 @@ func (s *LotteryService) keywordLotteries(ctx context.Context, chatID int64) ([]
 		Find(&records).Error; err != nil {
 		return nil, err
 	}
+	counts, err := s.lotteryEntryCounts(ctx, lotteryIDs(records))
+	if err != nil {
+		return nil, err
+	}
 	items := make([]lotteryKeywordCacheItem, 0, len(records))
 	var ttl time.Duration
 	for _, record := range records {
-		var count int64
-		if err := s.store.DB.WithContext(ctx).Model(&model.LotteryEntry{}).Where("lottery_id = ?", record.ID).Count(&count).Error; err != nil {
-			return nil, err
-		}
 		items = append(items, lotteryKeywordCacheItem{
 			ID:              record.ID,
 			JoinKeyword:     record.JoinKeyword,
 			CostPoints:      record.CostPoints,
 			MaxParticipants: record.MaxParticipants,
-			EntryCount:      count,
+			EntryCount:      counts[record.ID].EntryCount,
 			EndAt:           record.EndAt,
 			JoinType:        record.JoinType,
 		})

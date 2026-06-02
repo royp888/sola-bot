@@ -25,6 +25,7 @@ type MessageTemplateListFilter struct {
 	ChatID int64
 	Limit  int
 	Offset int
+	Cursor string
 }
 
 type MessageTemplateCreate struct {
@@ -54,11 +55,20 @@ func (s *MessageTemplateService) List(ctx context.Context, filter MessageTemplat
 	if filter.ChatID != 0 {
 		db = db.Where("chat_id IS NULL OR chat_id = ?", filter.ChatID)
 	}
+	limit := normalLimit(filter.Limit)
+	if strings.TrimSpace(filter.Cursor) != "" {
+		cursorTime, cursorID, err := decodeUUIDCursor(filter.Cursor)
+		if err != nil {
+			return nil, err
+		}
+		db = db.Where("(created_at < ?) OR (created_at = ? AND id < ?)", cursorTime, cursorTime, cursorID)
+	}
+	query := db.Order("chat_id NULLS FIRST, created_at desc, id desc").Limit(limit)
+	if strings.TrimSpace(filter.Cursor) == "" {
+		query = query.Offset(filter.Offset)
+	}
 	var records []model.MessageTemplate
-	err := db.Order("chat_id NULLS FIRST, created_at desc").
-		Limit(normalLimit(filter.Limit)).
-		Offset(filter.Offset).
-		Find(&records).Error
+	err := query.Find(&records).Error
 	if err != nil {
 		if isMissingTableError(err) {
 			return []model.MessageTemplate{}, nil

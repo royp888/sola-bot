@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS idx_level_configs_chat_id_active;
+DROP INDEX IF EXISTS idx_button_templates_owner_name_active;
+DROP INDEX IF EXISTS idx_chat_admins_chat_id_active;
+DROP INDEX IF EXISTS idx_audit_logs_action_occurred_at_active;
+DROP INDEX IF EXISTS idx_invite_links_chat_id_active;
+DROP INDEX IF EXISTS idx_message_templates_chat_id_active;
+DROP INDEX IF EXISTS idx_auto_replies_chat_id_active;
+DROP INDEX IF EXISTS idx_violation_records_user_chat_active;
+DROP INDEX IF EXISTS idx_violation_records_chat_id_active;
+DROP INDEX IF EXISTS idx_keyword_filters_chat_id_active;

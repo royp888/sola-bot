@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,6 +47,7 @@ func NewAPIDependencies(cfg config.Config, st *store.Store) api.Dependencies {
 		Users:            &userAPIService{store: st},
 		Redis:            st.Redis,
 		AllowedOriginSet: cfg.App.AllowedOrigins,
+		EnableSwagger:    cfg.App.EnableSwagger,
 		JWT: api.JWTConfig{
 			SigningKey: cfg.JWT.Secret,
 			Issuer:     cfg.JWT.Issuer,
@@ -423,11 +425,11 @@ func (s *pointsAPIService) AdjustUser(ctx context.Context, chatID int64, userID 
 	return userPointToAPI(point), nil
 }
 
-func (s *pointsAPIService) ListLogs(ctx context.Context, chatID int64, userID int64, limit int, offset int) ([]api.PointLogItem, error) {
+func (s *pointsAPIService) ListLogs(ctx context.Context, chatID int64, userID int64, query api.PointLogListQuery) (*api.PointLogListResponse, error) {
 	if s == nil || s.points == nil {
-		return []api.PointLogItem{}, nil
+		return &api.PointLogListResponse{Items: []api.PointLogItem{}}, nil
 	}
-	logs, err := s.points.ListPointLogs(ctx, chatID, userID, limit, offset)
+	logs, nextCursor, err := s.points.ListPointLogs(ctx, chatID, userID, query.Limit, query.Offset, query.Cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +437,7 @@ func (s *pointsAPIService) ListLogs(ctx context.Context, chatID int64, userID in
 	for _, log := range logs {
 		out = append(out, pointLogToAPI(log))
 	}
-	return out, nil
+	return &api.PointLogListResponse{Items: out, NextCursor: nextCursor}, nil
 }
 
 type lotteryAPIService struct {
@@ -660,31 +662,60 @@ type adminViolationAPIService struct {
 	moderation *ModerationService
 }
 
-func (s *adminViolationAPIService) List(ctx context.Context, query api.AdminViolationListQuery) ([]api.AdminViolation, error) {
+func (s *adminViolationAPIService) List(ctx context.Context, query api.AdminViolationListQuery) (*api.CursorListResponse[api.AdminViolation], error) {
 	if s == nil || s.moderation == nil {
-		return []api.AdminViolation{}, nil
+		return &api.CursorListResponse[api.AdminViolation]{Items: []api.AdminViolation{}}, nil
+	}
+	chatIDs, scoped, err := queryTelegramChatIDs(ctx, s.moderation.store, query.OwnerUserID, query.ChatID)
+	if err != nil {
+		return nil, err
+	}
+	if scoped && len(chatIDs) == 0 {
+		return &api.CursorListResponse[api.AdminViolation]{Items: []api.AdminViolation{}}, nil
 	}
 	records, err := s.moderation.ListViolationsFiltered(ctx, ViolationListFilter{
-		ChatID: query.ChatID,
-		UserID: query.UserID,
-		Type:   query.Type,
-		Status: query.Status,
-		Limit:  query.Limit,
-		Offset: query.Offset,
+		ChatID:  query.ChatID,
+		ChatIDs: chatIDs,
+		UserID:  query.UserID,
+		Type:    query.Type,
+		Status:  query.Status,
+		Limit:   query.Limit + 1,
+		Offset:  query.Offset,
+		Cursor:  query.Cursor,
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]api.AdminViolation, 0, len(records))
-	for _, record := range records {
+	items := records
+	nextCursor := ""
+	if len(records) > query.Limit && query.Limit > 0 {
+		items = records[:query.Limit]
+		last := items[len(items)-1]
+		nextCursor = encodeUUIDCursor(last.CreatedAt, last.ID)
+	}
+	out := make([]api.AdminViolation, 0, len(items))
+	for _, record := range items {
 		out = append(out, violationRecordToAPI(record))
 	}
-	return out, nil
+	return &api.CursorListResponse[api.AdminViolation]{Items: out, NextCursor: nextCursor}, nil
 }
-
-func (s *adminViolationAPIService) Update(ctx context.Context, id string, req api.AdminViolationUpdateRequest) (*api.AdminViolation, error) {
+func (s *adminViolationAPIService) Update(ctx context.Context, id string, req api.AdminViolationUpdateRequest, ownerUserID string) (*api.AdminViolation, error) {
 	if s == nil || s.moderation == nil {
 		return nil, gorm.ErrInvalidDB
+	}
+	if s.moderation.store == nil || s.moderation.store.DB == nil {
+		return nil, gorm.ErrInvalidDB
+	}
+	parsed, err := uuid.Parse(strings.TrimSpace(id))
+	if err != nil {
+		return nil, err
+	}
+	var current model.ViolationRecord
+	if err := s.moderation.store.DB.WithContext(ctx).Select("chat_id").First(&current, "id = ?", parsed).Error; err != nil {
+		return nil, err
+	}
+	if err := ensureOwnedTelegramChatID(ctx, s.moderation.store, ownerUserID, current.ChatID); err != nil {
+		return nil, err
 	}
 	record, err := s.moderation.UpdateViolation(ctx, id, req.Status, req.Resolution)
 	if err != nil {
@@ -949,20 +980,23 @@ type templateAPIService struct {
 	templates *MessageTemplateService
 }
 
-func (s *templateAPIService) List(ctx context.Context, query api.TemplateListQuery) ([]api.Template, error) {
+func (s *templateAPIService) List(ctx context.Context, query api.TemplateListQuery) (*api.CursorListResponse[api.Template], error) {
 	if s == nil || s.templates == nil {
-		return []api.Template{}, nil
+		return &api.CursorListResponse[api.Template]{Items: []api.Template{}}, nil
 	}
-	if chatIDs, scoped, err := queryTelegramChatIDs(ctx, s.templates.store, query.OwnerUserID, query.ChatID); scoped {
+	if chatIDs, scoped, err := queryTelegramChatIDs(ctx, s.templates.store, query.OwnerUserID, query.ChatID); scoped && query.ChatID == 0 {
 		if err != nil {
 			return nil, err
 		}
 		if len(chatIDs) == 0 {
-			return []api.Template{}, nil
+			return &api.CursorListResponse[api.Template]{Items: []api.Template{}}, nil
+		}
+		if len(chatIDs) > 1 && strings.TrimSpace(query.Cursor) != "" {
+			return nil, fmt.Errorf("cursor pagination requires chatID filter")
 		}
 		var out []api.Template
 		for _, chatID := range chatIDs {
-			records, err := s.templates.List(ctx, MessageTemplateListFilter{ChatID: chatID, Limit: query.Limit, Offset: query.Offset})
+			records, err := s.templates.List(ctx, MessageTemplateListFilter{ChatID: chatID, Limit: query.Limit + 1, Offset: query.Offset})
 			if err != nil {
 				return nil, err
 			}
@@ -970,22 +1004,43 @@ func (s *templateAPIService) List(ctx context.Context, query api.TemplateListQue
 				out = append(out, messageTemplateToAPI(record))
 			}
 		}
-		return out, nil
+		nextCursor := ""
+		if len(out) > query.Limit && query.Limit > 0 {
+			trimmed := out[:query.Limit]
+			last := trimmed[len(trimmed)-1]
+			parsedID, err := uuid.Parse(last.ID)
+			if err != nil {
+				return nil, err
+			}
+			nextCursor = encodeUUIDCursor(last.CreatedAt, parsedID)
+			out = trimmed
+		}
+		return &api.CursorListResponse[api.Template]{Items: out, NextCursor: nextCursor}, nil
 	}
-	records, err := s.templates.List(ctx, MessageTemplateListFilter{ChatID: query.ChatID, Limit: query.Limit, Offset: query.Offset})
+	records, err := s.templates.List(ctx, MessageTemplateListFilter{ChatID: query.ChatID, Limit: query.Limit + 1, Offset: query.Offset, Cursor: query.Cursor})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]api.Template, 0, len(records))
-	for _, record := range records {
+	items := records
+	nextCursor := ""
+	if len(records) > query.Limit && query.Limit > 0 {
+		items = records[:query.Limit]
+		last := items[len(items)-1]
+		nextCursor = encodeUUIDCursor(last.CreatedAt, last.ID)
+	}
+	out := make([]api.Template, 0, len(items))
+	for _, record := range items {
 		out = append(out, messageTemplateToAPI(record))
 	}
-	return out, nil
+	return &api.CursorListResponse[api.Template]{Items: out, NextCursor: nextCursor}, nil
 }
 
-func (s *templateAPIService) Create(ctx context.Context, req api.TemplateCreateRequest) (*api.Template, error) {
+func (s *templateAPIService) Create(ctx context.Context, req api.TemplateCreateRequest, ownerUserID string) (*api.Template, error) {
 	if s == nil || s.templates == nil {
 		return nil, gorm.ErrInvalidDB
+	}
+	if err := ensureOwnedOptionalTelegramChatID(ctx, s.templates.store, ownerUserID, req.ChatID); err != nil {
+		return nil, err
 	}
 	record, err := s.templates.Create(ctx, MessageTemplateCreate{
 		ChatID:    req.ChatID,
@@ -1052,20 +1107,23 @@ type inviteLinkAPIService struct {
 	inviteLinks *InviteLinkService
 }
 
-func (s *inviteLinkAPIService) List(ctx context.Context, query api.InviteLinkListQuery) ([]api.InviteLink, error) {
+func (s *inviteLinkAPIService) List(ctx context.Context, query api.InviteLinkListQuery) (*api.CursorListResponse[api.InviteLink], error) {
 	if s == nil || s.inviteLinks == nil {
-		return []api.InviteLink{}, nil
+		return &api.CursorListResponse[api.InviteLink]{Items: []api.InviteLink{}}, nil
 	}
-	if chatIDs, scoped, err := queryTelegramChatIDs(ctx, s.inviteLinks.store, query.OwnerUserID, query.ChatID); scoped {
+	if chatIDs, scoped, err := queryTelegramChatIDs(ctx, s.inviteLinks.store, query.OwnerUserID, query.ChatID); scoped && query.ChatID == 0 {
 		if err != nil {
 			return nil, err
 		}
 		if len(chatIDs) == 0 {
-			return []api.InviteLink{}, nil
+			return &api.CursorListResponse[api.InviteLink]{Items: []api.InviteLink{}}, nil
+		}
+		if len(chatIDs) > 1 && strings.TrimSpace(query.Cursor) != "" {
+			return nil, fmt.Errorf("cursor pagination requires chatID filter")
 		}
 		var out []api.InviteLink
 		for _, chatID := range chatIDs {
-			records, err := s.inviteLinks.List(ctx, InviteLinkListFilter{ChatID: chatID, Limit: query.Limit, Offset: query.Offset})
+			records, err := s.inviteLinks.List(ctx, InviteLinkListFilter{ChatID: chatID, Limit: query.Limit + 1, Offset: query.Offset})
 			if err != nil {
 				return nil, err
 			}
@@ -1073,17 +1131,35 @@ func (s *inviteLinkAPIService) List(ctx context.Context, query api.InviteLinkLis
 				out = append(out, inviteLinkToAPI(record))
 			}
 		}
-		return out, nil
+		nextCursor := ""
+		if len(out) > query.Limit && query.Limit > 0 {
+			trimmed := out[:query.Limit]
+			last := trimmed[len(trimmed)-1]
+			parsedID, err := uuid.Parse(last.ID)
+			if err != nil {
+				return nil, err
+			}
+			nextCursor = encodeUUIDCursor(last.CreatedAt, parsedID)
+			out = trimmed
+		}
+		return &api.CursorListResponse[api.InviteLink]{Items: out, NextCursor: nextCursor}, nil
 	}
-	records, err := s.inviteLinks.List(ctx, InviteLinkListFilter{ChatID: query.ChatID, Limit: query.Limit, Offset: query.Offset})
+	records, err := s.inviteLinks.List(ctx, InviteLinkListFilter{ChatID: query.ChatID, Limit: query.Limit + 1, Offset: query.Offset, Cursor: query.Cursor})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]api.InviteLink, 0, len(records))
-	for _, record := range records {
+	items := records
+	nextCursor := ""
+	if len(records) > query.Limit && query.Limit > 0 {
+		items = records[:query.Limit]
+		last := items[len(items)-1]
+		nextCursor = encodeUUIDCursor(last.CreatedAt, last.ID)
+	}
+	out := make([]api.InviteLink, 0, len(items))
+	for _, record := range items {
 		out = append(out, inviteLinkToAPI(record))
 	}
-	return out, nil
+	return &api.CursorListResponse[api.InviteLink]{Items: out, NextCursor: nextCursor}, nil
 }
 
 func (s *inviteLinkAPIService) Create(ctx context.Context, req api.InviteLinkCreateRequest) (*api.InviteLink, error) {
@@ -1191,7 +1267,19 @@ func (s *postAPIService) List(ctx context.Context, query api.CommonListQuery) ([
 		return nil, err
 	}
 	db = scopeTelegramChatID(db, "chat_id", 0, ownedIDs)
-	if err := db.Order("created_at desc").Limit(normalLimit(query.Limit)).Offset(query.Offset).Find(&posts).Error; err != nil {
+	limit := normalLimit(query.Limit)
+	if strings.TrimSpace(query.Cursor) != "" {
+		cursorTime, cursorID, err := decodePostCursor(query.Cursor)
+		if err != nil {
+			return nil, err
+		}
+		db = db.Where("(created_at < ?) OR (created_at = ? AND id < ?)", cursorTime, cursorTime, cursorID)
+	}
+	queryExec := db.Order("created_at desc, id desc").Limit(limit)
+	if strings.TrimSpace(query.Cursor) == "" {
+		queryExec = queryExec.Offset(query.Offset)
+	}
+	if err := queryExec.Find(&posts).Error; err != nil {
 		return nil, err
 	}
 	out := make([]api.Post, 0, len(posts))
@@ -1448,8 +1536,12 @@ func (s *statsAPIService) Overview(ctx context.Context, query api.StatsQuery) (*
 	scheduledPosts = scopeTelegramChatID(scheduledPosts, "chat_id", query.ChatID, ownedIDs)
 	_ = scheduledPosts.Count(&overview.TotalPosts).Error
 
-	_ = db.Model(&model.ScheduledJob{}).Where("status IN ?", []string{"pending", "running"}).Count(&overview.OpenTasks).Error
-	_ = db.Model(&model.ScheduledJob{}).Count(&overview.TotalSchedules).Error
+	jobCounts, err := scopedScheduledJobCounts(ctx, db, query.ChatID, ownedIDs)
+	if err != nil {
+		return nil, err
+	}
+	overview.OpenTasks = jobCounts.OpenTasks
+	overview.TotalSchedules = jobCounts.TotalSchedules
 
 	points := db.Model(&model.UserPoint{})
 	points = scopeTelegramChatID(points, "chat_id", query.ChatID, ownedIDs)
@@ -1580,6 +1672,10 @@ func (s *userAPIService) List(ctx context.Context, query api.UserListQuery) ([]a
 		}
 		return nil, err
 	}
+	users, err := usersByTelegramID(ctx, s.store.DB, userPointIDs(points))
+	if err != nil {
+		return nil, err
+	}
 	out := make([]api.UserRecord, 0, len(points))
 	for _, point := range points {
 		item := api.UserRecord{
@@ -1591,27 +1687,8 @@ func (s *userAPIService) List(ctx context.Context, query api.UserListQuery) ([]a
 			Status:      "active",
 			LastSeenAt:  point.UpdatedAt,
 		}
-		var user model.User
-		err := s.store.DB.WithContext(ctx).
-			Where("telegram_user_id = ?", point.UserID).
-			First(&user).Error
-		if err == nil {
-			if user.Username != nil && strings.TrimSpace(*user.Username) != "" {
-				item.Username = *user.Username
-			}
-			if strings.TrimSpace(user.DisplayName) != "" {
-				item.DisplayName = user.DisplayName
-			}
-			if strings.TrimSpace(user.Status) != "" {
-				item.Status = normalizeUserStatus(user.Status)
-			}
-			if user.LastLoginAt != nil {
-				item.LastSeenAt = *user.LastLoginAt
-			} else {
-				item.LastSeenAt = user.UpdatedAt
-			}
-		} else if !errors.Is(err, gorm.ErrRecordNotFound) && !isMissingTableError(err) {
-			return nil, err
+		if user, ok := users[point.UserID]; ok {
+			applyUserRecord(&item, user)
 		}
 		if matchesUserKeyword(item, query.Keyword) {
 			out = append(out, item)
@@ -1620,6 +1697,109 @@ func (s *userAPIService) List(ctx context.Context, query api.UserListQuery) ([]a
 	return out, nil
 }
 
+func userPointIDs(points []model.UserPoint) []int64 {
+	ids := make([]int64, 0, len(points))
+	seen := make(map[int64]struct{}, len(points))
+	for _, point := range points {
+		if _, ok := seen[point.UserID]; ok {
+			continue
+		}
+		seen[point.UserID] = struct{}{}
+		ids = append(ids, point.UserID)
+	}
+	return ids
+}
+
+func usersByTelegramID(ctx context.Context, db *gorm.DB, ids []int64) (map[int64]model.User, error) {
+	out := map[int64]model.User{}
+	if db == nil || len(ids) == 0 {
+		return out, nil
+	}
+	var users []model.User
+	err := db.WithContext(ctx).Where("telegram_user_id IN ?", ids).Find(&users).Error
+	if err != nil {
+		if isMissingTableError(err) {
+			return out, nil
+		}
+		return nil, err
+	}
+	for _, user := range users {
+		if user.TelegramUserID == nil {
+			continue
+		}
+		out[*user.TelegramUserID] = user
+	}
+	return out, nil
+}
+
+func applyUserRecord(item *api.UserRecord, user model.User) {
+	if item == nil {
+		return
+	}
+	if user.Username != nil && strings.TrimSpace(*user.Username) != "" {
+		item.Username = *user.Username
+	}
+	if strings.TrimSpace(user.DisplayName) != "" {
+		item.DisplayName = user.DisplayName
+	}
+	if strings.TrimSpace(user.Status) != "" {
+		item.Status = normalizeUserStatus(user.Status)
+	}
+	if user.LastLoginAt != nil {
+		item.LastSeenAt = *user.LastLoginAt
+	} else {
+		item.LastSeenAt = user.UpdatedAt
+	}
+}
+
+type uuidCursor struct {
+	CreatedAt time.Time `json:"created_at"`
+	ID        string    `json:"id"`
+}
+
+func encodeUUIDCursor(createdAt time.Time, id uuid.UUID) string {
+	payload, err := json.Marshal(uuidCursor{CreatedAt: createdAt.UTC(), ID: id.String()})
+	if err != nil {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(payload)
+}
+
+func decodeUUIDCursor(cursor string) (time.Time, uuid.UUID, error) {
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(cursor))
+	if err != nil {
+		return time.Time{}, uuid.UUID{}, fmt.Errorf("invalid cursor")
+	}
+	var payload uuidCursor
+	if err := json.Unmarshal(decoded, &payload); err != nil {
+		return time.Time{}, uuid.UUID{}, fmt.Errorf("invalid cursor")
+	}
+	parsedID, err := uuid.Parse(strings.TrimSpace(payload.ID))
+	if err != nil || payload.CreatedAt.IsZero() {
+		return time.Time{}, uuid.UUID{}, fmt.Errorf("invalid cursor")
+	}
+	return payload.CreatedAt, parsedID, nil
+}
+
+func decodePostCursor(cursor string) (time.Time, int64, error) {
+	parts := strings.Split(strings.TrimSpace(cursor), "|")
+	if len(parts) != 2 {
+		return time.Time{}, 0, fmt.Errorf("invalid cursor")
+	}
+	cursorTime, err := time.Parse(time.RFC3339Nano, parts[0])
+	if err != nil {
+		return time.Time{}, 0, fmt.Errorf("invalid cursor")
+	}
+	cursorID, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return time.Time{}, 0, fmt.Errorf("invalid cursor")
+	}
+	return cursorTime, cursorID, nil
+}
+
+func EncodePostCursor(createdAt time.Time, id int64) string {
+	return createdAt.UTC().Format(time.RFC3339Nano) + "|" + strconv.FormatInt(id, 10)
+}
 func normalLimit(limit int) int {
 	if limit <= 0 {
 		return 20
@@ -1961,6 +2141,39 @@ func scheduleJobChatID(job model.ScheduledJob) int64 {
 	return metadata.ChatID
 }
 
+type scheduledJobCounts struct {
+	OpenTasks      int64
+	TotalSchedules int64
+}
+
+func scopedScheduledJobCounts(ctx context.Context, db *gorm.DB, requestedChatID int64, ownedIDs []int64) (scheduledJobCounts, error) {
+	counts := scheduledJobCounts{}
+	if db == nil {
+		return counts, nil
+	}
+	var jobs []model.ScheduledJob
+	if err := db.WithContext(ctx).
+		Model(&model.ScheduledJob{}).
+		Select("status", "metadata_json").
+		Find(&jobs).Error; err != nil {
+		if isMissingTableError(err) {
+			return counts, nil
+		}
+		return counts, err
+	}
+	for _, job := range jobs {
+		if !telegramChatIDInScope(scheduleJobChatID(job), requestedChatID, ownedIDs) {
+			continue
+		}
+		counts.TotalSchedules++
+		switch strings.ToLower(strings.TrimSpace(job.Status)) {
+		case "pending", "running":
+			counts.OpenTasks++
+		}
+	}
+	return counts, nil
+}
+
 func scopeTelegramChatID(db *gorm.DB, column string, chatID int64, ids []int64) *gorm.DB {
 	if chatID != 0 {
 		if ids != nil && !containsTelegramChatID(ids, chatID) {
@@ -2252,6 +2465,33 @@ func messageTemplateToAPI(record model.MessageTemplate) api.Template {
 	}
 }
 
+type stringIDCursor struct {
+	CreatedAt time.Time `json:"created_at"`
+	ID        string    `json:"id"`
+}
+
+func encodeStringIDCursor(createdAt time.Time, id string) string {
+	payload, err := json.Marshal(stringIDCursor{CreatedAt: createdAt.UTC(), ID: id})
+	if err != nil {
+		return ""
+	}
+	return base64.RawURLEncoding.EncodeToString(payload)
+}
+
+func decodeStringIDCursor(cursor string) (time.Time, string, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(cursor))
+	if err != nil {
+		return time.Time{}, "", fmt.Errorf("invalid cursor")
+	}
+	var payload stringIDCursor
+	if err := json.Unmarshal(decoded, &payload); err != nil {
+		return time.Time{}, "", fmt.Errorf("invalid cursor")
+	}
+	if payload.ID == "" || payload.CreatedAt.IsZero() {
+		return time.Time{}, "", fmt.Errorf("invalid cursor")
+	}
+	return payload.CreatedAt, payload.ID, nil
+}
 func inviteLinkToAPI(record model.InviteLink) api.InviteLink {
 	return api.InviteLink{
 		ID:                 record.ID.String(),
@@ -2289,5 +2529,5 @@ func modelScheduleToAPI(job model.ScheduledJob) api.Schedule {
 	if job.RunAt != nil {
 		runAt = *job.RunAt
 	}
-	return api.Schedule{ID: job.ID.String(), RunAt: runAt, Enabled: job.Status == "pending", Status: job.Status, CreatedAt: job.CreatedAt, UpdatedAt: job.UpdatedAt}
+	return api.Schedule{ID: job.ID.String(), ChatID: scheduleJobChatID(job), RunAt: runAt, Enabled: job.Status == "pending", Status: job.Status, CreatedAt: job.CreatedAt, UpdatedAt: job.UpdatedAt}
 }

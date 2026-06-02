@@ -103,6 +103,8 @@ For production, prefer `SOLA_APP_ADMIN_PASSWORD_HASH`.
 docker compose up -d --build
 ```
 
+The default compose stack now runs a one-shot `migrate` service first. It applies `database/migrations/*.up.sql` in filename order before starting `api`, `bot`, or `worker`.
+
 The default compose stack only publishes `nginx` to the host. The API container is reachable only on the internal compose network unless you explicitly opt into direct host exposure:
 
 ```bash
@@ -157,7 +159,8 @@ This makes upgrades, rollback planning, and production review easier than relyin
 
 Because `database.auto_migrate` is disabled by default, run database migrations before a first deployment and before rolling out upgraded services.
 
-- the repository does not bundle a dedicated migration CLI, so apply the SQL files under `database/migrations/` through your existing deployment or database migration workflow
+- `docker compose up -d --build` now runs unapplied `*.up.sql` files automatically through the one-shot `migrate` service
+- outside compose, keep applying the SQL files under `database/migrations/` through your existing deployment or database migration workflow
 - on first deploy, run all `*.up.sql` files in order
 - on upgrades, run only the new migrations that have not been applied yet
 - complete migration and rollback verification before starting the upgraded API, bot, or worker processes

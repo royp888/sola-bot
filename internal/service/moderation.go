@@ -68,12 +68,14 @@ type KeywordFilterPatch struct {
 }
 
 type ViolationListFilter struct {
-	ChatID int64
-	UserID int64
-	Type   string
-	Status string
-	Limit  int
-	Offset int
+	ChatID  int64
+	ChatIDs []int64
+	UserID  int64
+	Type    string
+	Status  string
+	Limit   int
+	Offset  int
+	Cursor  string
 }
 
 func (s *ModerationService) GetConfig(ctx context.Context, chatID int64) (model.ChatModerationConfig, error) {
@@ -487,6 +489,11 @@ func (s *ModerationService) ListViolationsFiltered(ctx context.Context, filter V
 	db := s.store.DB.WithContext(ctx).Model(&model.ViolationRecord{})
 	if filter.ChatID != 0 {
 		db = db.Where("chat_id = ?", filter.ChatID)
+	} else if filter.ChatIDs != nil {
+		if len(filter.ChatIDs) == 0 {
+			return []model.ViolationRecord{}, nil
+		}
+		db = db.Where("chat_id IN ?", filter.ChatIDs)
 	}
 	if filter.UserID != 0 {
 		db = db.Where("user_id = ?", filter.UserID)
@@ -500,8 +507,20 @@ func (s *ModerationService) ListViolationsFiltered(ctx context.Context, filter V
 	case "resolved":
 		db = db.Where("cleared = ?", true)
 	}
+	limit := normalLimit(filter.Limit)
+	if strings.TrimSpace(filter.Cursor) != "" {
+		cursorTime, cursorID, err := decodeUUIDCursor(filter.Cursor)
+		if err != nil {
+			return nil, err
+		}
+		db = db.Where("(created_at < ?) OR (created_at = ? AND id < ?)", cursorTime, cursorTime, cursorID)
+	}
+	query := db.Order("created_at desc, id desc").Limit(limit)
+	if strings.TrimSpace(filter.Cursor) == "" {
+		query = query.Offset(filter.Offset)
+	}
 	var records []model.ViolationRecord
-	err := db.Order("created_at desc").Limit(normalLimit(filter.Limit)).Offset(filter.Offset).Find(&records).Error
+	err := query.Find(&records).Error
 	if err != nil {
 		if isMissingTableError(err) {
 			return []model.ViolationRecord{}, nil

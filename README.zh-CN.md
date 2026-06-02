@@ -103,6 +103,8 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+默认 compose 编排会先运行一次性 `migrate` 服务，按文件名顺序执行 `database/migrations/*.up.sql`，成功后再启动 `api`、`bot`、`worker`。
+
 默认 compose 编排只向宿主机暴露 `nginx`，`api` 容器仅在 compose 内部网络可达；如需临时直连调试，请显式开启直连 profile：
 
 ```bash
@@ -157,7 +159,8 @@ Sola 将数据库变更视为显式发布内容，而不是运行时副作用。
 
 由于 `database.auto_migrate` 默认关闭，首次部署和版本升级前都应先执行数据库迁移。
 
-- 仓库没有内置单独的迁移 CLI，建议使用现有发布系统中的数据库迁移步骤执行 `database/migrations/` 下的 SQL 文件
+- `docker compose up -d --build` 会通过一次性 `migrate` 服务自动执行尚未应用的 `*.up.sql`
+- 不使用 compose 时，仍应通过现有发布系统或数据库变更流程执行 `database/migrations/` 下的 SQL 文件
 - 首次部署时，按顺序执行全部 `*.up.sql`
 - 版本升级时，只执行尚未应用的新迁移文件
 - 在应用新版本 API、Bot、Worker 之前，先完成迁移并确认回滚脚本可用

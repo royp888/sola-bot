@@ -28,6 +28,34 @@ services:
       retries: 10
       start_period: 5s
 
+  migrate:
+    image: postgres:16-alpine
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ${SOLA_ENV_FILE:-.env}
+    environment:
+      DATABASE_URL: "${SOLA_DATABASE_DSN:-postgres://sola:sola@postgres:5432/sola?sslmode=disable}"
+    volumes:
+      - ./database/migrations:/migrations:ro
+    command:
+      - sh
+      - -ec
+      - |
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());"
+        for file in /migrations/*.up.sql; do
+          version="$(basename "$file" | cut -d_ -f1)"
+          if psql "$DATABASE_URL" -tAc "SELECT 1 FROM schema_migrations WHERE version = '$version'" | grep -q 1; then
+            echo "Skipping migration $version"
+            continue
+          fi
+          echo "Applying migration $version from $file"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO schema_migrations (version) VALUES ('$version')"
+        done
+
   api:
     build:
       context: .
@@ -35,6 +63,35 @@ services:
       target: api
     restart: unless-stopped
     depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ${SOLA_ENV_FILE:-.env}
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  api-direct:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    restart: unless-stopped
+    profiles:
+      - debug
+      - direct-api
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -42,7 +99,7 @@ services:
     env_file:
       - ${SOLA_ENV_FILE:-.env}
     ports:
-      - "8080:8080"
+      - "${SOLA_API_HOST:-127.0.0.1}:${SOLA_API_PORT:-8080}:8080"
     volumes:
       - ./logs:/app/logs
     healthcheck:
@@ -59,6 +116,8 @@ services:
       target: bot
     restart: unless-stopped
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -81,6 +140,8 @@ services:
       target: worker
     restart: unless-stopped
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:

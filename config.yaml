@@ -5,6 +5,7 @@ app:
   admin_username: admin
   admin_password: change-me
   admin_password_hash: ""
+  enable_swagger: false
   allowed_origins:
     - http://127.0.0.1:5174
     - http://localhost:5174
@@ -16,7 +17,10 @@ bot:
 
 database:
   dsn: postgres://sola:sola@postgres:5432/sola?sslmode=disable
-  auto_migrate: true
+  auto_migrate: false
+  max_open_conns: 20
+  max_idle_conns: 5
+  conn_max_lifetime: 30m
 
 redis:
   addr: redis:6379

@@ -81,8 +81,12 @@ func (s *Server) AdminBan(c *gin.Context) {
 		writeError(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	if !s.ensureChatAllowed(c, req.ChatID) {
+		return
+	}
+	req.OwnerUserID = s.ownerUserID(c)
 	if err := s.deps.Admin.Ban(c.Request.Context(), req); err != nil {
-		writeError(c, http.StatusInternalServerError, err.Error())
+		writeServiceError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

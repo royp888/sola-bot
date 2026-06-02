@@ -53,6 +53,7 @@ type Dependencies struct {
 	JWT              JWTConfig
 	Redis            LoginRateLimiter
 	AllowedOriginSet []string
+	EnableSwagger    bool
 }
 
 func (d Dependencies) AllowedOrigins() []string {
@@ -205,6 +206,23 @@ type PointLogItem struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type PointLogListQuery struct {
+	Limit       int    `form:"limit,default=20" binding:"gte=1,lte=100"`
+	Offset      int    `form:"offset,default=0" binding:"gte=0"`
+	Cursor      string `form:"cursor"`
+	OwnerUserID string `form:"-"`
+}
+
+type PointLogListResponse struct {
+	Items      []PointLogItem `json:"items"`
+	NextCursor string         `json:"next_cursor,omitempty"`
+}
+
+type CursorListResponse[T any] struct {
+	Items      []T    `json:"items"`
+	NextCursor string `json:"next_cursor,omitempty"`
+}
+
 type ChatAdminConfig struct {
 	ChatID        int64  `json:"chat_id"`
 	WelcomeText   string `json:"welcome_text"`
@@ -241,18 +259,20 @@ type WarnRecord struct {
 }
 
 type AdminBanRequest struct {
-	ChatID   int64  `json:"chat_id" binding:"required"`
-	UserID   int64  `json:"user_id" binding:"required"`
-	Reason   string `json:"reason,omitempty"`
-	BannedBy int64  `json:"banned_by,omitempty"`
+	ChatID      int64  `json:"chat_id" binding:"required"`
+	UserID      int64  `json:"user_id" binding:"required"`
+	Reason      string `json:"reason,omitempty"`
+	BannedBy    int64  `json:"banned_by,omitempty"`
+	OwnerUserID string `json:"-"`
 }
 
 type BatchUserRequest struct {
-	ChatID  int64   `json:"chat_id" binding:"required"`
-	UserIDs []int64 `json:"user_ids" binding:"required"`
-	Action  string  `json:"action" binding:"required"`
-	Delta   int     `json:"delta,omitempty"`
-	Reason  string  `json:"reason,omitempty"`
+	ChatID      int64   `json:"chat_id" binding:"required"`
+	UserIDs     []int64 `json:"user_ids" binding:"required"`
+	Action      string  `json:"action" binding:"required"`
+	Delta       int     `json:"delta,omitempty"`
+	Reason      string  `json:"reason,omitempty"`
+	OwnerUserID string  `json:"-"`
 }
 
 type BatchUserResult struct {
@@ -261,9 +281,10 @@ type BatchUserResult struct {
 }
 
 type ExportUserQuery struct {
-	ChatID  int64  `form:"chatID"`
-	Keyword string `form:"keyword"`
-	Status  string `form:"status"`
+	ChatID      int64  `form:"chatID"`
+	Keyword     string `form:"keyword"`
+	Status      string `form:"status"`
+	OwnerUserID string `form:"-"`
 }
 
 type ExportUserRow struct {
@@ -282,6 +303,7 @@ type ExportUserRow struct {
 type CommonListQuery struct {
 	Limit       int    `form:"limit,default=20" binding:"gte=1,lte=100"`
 	Offset      int    `form:"offset,default=0" binding:"gte=0"`
+	Cursor      string `form:"cursor"`
 	OwnerUserID string `form:"-"`
 }
 
@@ -416,6 +438,7 @@ type LotteryListQuery struct {
 	Status      string `form:"status"`
 	Limit       int    `form:"limit,default=20" binding:"omitempty,gte=1,lte=100"`
 	Offset      int    `form:"offset,default=0" binding:"omitempty,gte=0"`
+	Cursor      string `form:"cursor"`
 	OwnerUserID string `form:"-"`
 }
 
@@ -463,6 +486,7 @@ type LevelListQuery struct {
 	ChatID      int64  `form:"chat_id"`
 	Limit       int    `form:"limit,default=20" binding:"omitempty,gte=1,lte=100"`
 	Offset      int    `form:"offset,default=0" binding:"omitempty,gte=0"`
+	Cursor      string `form:"cursor"`
 	OwnerUserID string `form:"-"`
 }
 
@@ -497,12 +521,14 @@ type Level struct {
 }
 
 type AdminViolationListQuery struct {
-	ChatID int64  `form:"chat_id"`
-	UserID int64  `form:"user_id"`
-	Type   string `form:"type"`
-	Status string `form:"status"`
-	Limit  int    `form:"limit,default=20" binding:"omitempty,gte=1,lte=100"`
-	Offset int    `form:"offset,default=0" binding:"omitempty,gte=0"`
+	ChatID      int64  `form:"chat_id"`
+	UserID      int64  `form:"user_id"`
+	Type        string `form:"type"`
+	Status      string `form:"status"`
+	Limit       int    `form:"limit,default=20" binding:"omitempty,gte=1,lte=100"`
+	Offset      int    `form:"offset,default=0" binding:"omitempty,gte=0"`
+	Cursor      string `form:"cursor"`
+	OwnerUserID string `form:"-"`
 }
 
 type AdminViolationUpdateRequest struct {
@@ -621,6 +647,7 @@ type TemplateListQuery struct {
 	ChatID      int64  `form:"chatID"`
 	Limit       int    `form:"limit,default=20" binding:"omitempty,gte=1,lte=100"`
 	Offset      int    `form:"offset,default=0" binding:"omitempty,gte=0"`
+	Cursor      string `form:"cursor"`
 	OwnerUserID string `form:"-"`
 }
 
@@ -660,6 +687,7 @@ type InviteLinkListQuery struct {
 	ChatID      int64  `form:"chatID"`
 	Limit       int    `form:"limit,default=20" binding:"omitempty,gte=1,lte=100"`
 	Offset      int    `form:"offset,default=0" binding:"omitempty,gte=0"`
+	Cursor      string `form:"cursor"`
 	OwnerUserID string `form:"-"`
 }
 
@@ -730,7 +758,7 @@ type PointsAdminService interface {
 	GetRank(ctx context.Context, chatID int64, period string, limit int) ([]PointRankItem, error)
 	GetUser(ctx context.Context, chatID int64, userID int64) (*PointUserResponse, error)
 	AdjustUser(ctx context.Context, chatID int64, userID int64, delta int, reason string) (*PointUserResponse, error)
-	ListLogs(ctx context.Context, chatID int64, userID int64, limit int, offset int) ([]PointLogItem, error)
+	ListLogs(ctx context.Context, chatID int64, userID int64, query PointLogListQuery) (*PointLogListResponse, error)
 }
 
 type ChatAdminService interface {
@@ -760,8 +788,8 @@ type LevelService interface {
 }
 
 type AdminViolationService interface {
-	List(ctx context.Context, query AdminViolationListQuery) ([]AdminViolation, error)
-	Update(ctx context.Context, id string, req AdminViolationUpdateRequest) (*AdminViolation, error)
+	List(ctx context.Context, query AdminViolationListQuery) (*CursorListResponse[AdminViolation], error)
+	Update(ctx context.Context, id string, req AdminViolationUpdateRequest, ownerUserID string) (*AdminViolation, error)
 }
 
 type KeywordService interface {
@@ -784,14 +812,14 @@ type BackupService interface {
 }
 
 type TemplateService interface {
-	List(ctx context.Context, query TemplateListQuery) ([]Template, error)
-	Create(ctx context.Context, req TemplateCreateRequest) (*Template, error)
+	List(ctx context.Context, query TemplateListQuery) (*CursorListResponse[Template], error)
+	Create(ctx context.Context, req TemplateCreateRequest, ownerUserID string) (*Template, error)
 	Update(ctx context.Context, id string, req TemplateUpdateRequest, ownerUserID string) (*Template, error)
 	Delete(ctx context.Context, id string, ownerUserID string) error
 }
 
 type InviteLinkService interface {
-	List(ctx context.Context, query InviteLinkListQuery) ([]InviteLink, error)
+	List(ctx context.Context, query InviteLinkListQuery) (*CursorListResponse[InviteLink], error)
 	Create(ctx context.Context, req InviteLinkCreateRequest) (*InviteLink, error)
 	Delete(ctx context.Context, id string, ownerUserID string) error
 }

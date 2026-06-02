@@ -34,7 +34,11 @@ func New(ctx context.Context, path string) (*Resources, error) {
 		return nil, err
 	}
 
-	db, err := platform.OpenPostgres(cfg.Database.DSN)
+	db, err := platform.OpenPostgres(cfg.Database.DSN, platform.PostgresPoolConfig{
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+	})
 	if err != nil {
 		return nil, err
 	}

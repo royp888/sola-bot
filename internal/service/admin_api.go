@@ -65,6 +65,9 @@ func (s *adminAPIService) Ban(ctx context.Context, req api.AdminBanRequest) erro
 	if s == nil || s.admin == nil {
 		return nil
 	}
+	if err := ensureOwnedTelegramChatID(ctx, s.admin.store, req.OwnerUserID, req.ChatID); err != nil {
+		return err
+	}
 	return s.admin.RecordBan(ctx, req.ChatID, req.UserID, req.BannedBy, req.Reason)
 }
 
@@ -95,14 +98,24 @@ func (s *adminAPIService) ExportUserRows(ctx context.Context, query api.ExportUs
 		return []api.ExportUserRow{}, nil
 	}
 	db := s.admin.store.DB.WithContext(ctx).Model(&model.UserPoint{})
-	if query.ChatID != 0 {
-		db = db.Where("chat_id = ?", query.ChatID)
+	ownedIDs, err := ownedTelegramChatIDs(ctx, s.admin.store, query.OwnerUserID)
+	if err != nil {
+		return nil, err
 	}
+	db = scopeTelegramChatID(db, "chat_id", query.ChatID, ownedIDs)
 	var points []model.UserPoint
 	if err := db.Order("total_points desc").Limit(10000).Find(&points).Error; err != nil {
 		if isMissingTableError(err) {
 			return []api.ExportUserRow{}, nil
 		}
+		return nil, err
+	}
+	users, err := usersByTelegramID(ctx, s.admin.store.DB, userPointIDs(points))
+	if err != nil {
+		return nil, err
+	}
+	warnCounts, err := activeWarnCounts(ctx, s.admin.store.DB, points)
+	if err != nil {
 		return nil, err
 	}
 
@@ -119,29 +132,10 @@ func (s *adminAPIService) ExportUserRows(ctx context.Context, query api.ExportUs
 			JoinedAt:    point.UpdatedAt,
 			LastSeenAt:  point.UpdatedAt,
 		}
-		var user model.User
-		err := s.admin.store.DB.WithContext(ctx).Where("telegram_user_id = ?", point.UserID).First(&user).Error
-		if err == nil {
-			if user.Username != nil && strings.TrimSpace(*user.Username) != "" {
-				row.Username = *user.Username
-			}
-			if strings.TrimSpace(user.DisplayName) != "" {
-				row.DisplayName = user.DisplayName
-			}
-			if strings.TrimSpace(user.Status) != "" {
-				row.Status = normalizeUserStatus(user.Status)
-			}
-			row.JoinedAt = user.CreatedAt
-			if user.LastLoginAt != nil {
-				row.LastSeenAt = *user.LastLoginAt
-			} else if !user.UpdatedAt.IsZero() {
-				row.LastSeenAt = user.UpdatedAt
-			}
+		if user, ok := users[point.UserID]; ok {
+			applyExportUserRow(&row, user)
 		}
-		warns, err := s.admin.CountWarns(ctx, point.ChatID, point.UserID)
-		if err == nil {
-			row.WarnCount = int(warns)
-		}
+		row.WarnCount = int(warnCounts[chatUserKey{chatID: point.ChatID, userID: point.UserID}])
 		if query.Status != "" && !strings.EqualFold(row.Status, strings.TrimSpace(query.Status)) {
 			continue
 		}
@@ -163,6 +157,9 @@ func (s *adminAPIService) BatchUserAction(ctx context.Context, req api.BatchUser
 	}
 	if len(req.UserIDs) > 200 {
 		return result, fmt.Errorf("单次批量操作上限 200 人")
+	}
+	if err := ensureOwnedTelegramChatID(ctx, s.admin.store, req.OwnerUserID, req.ChatID); err != nil {
+		return result, err
 	}
 	action := strings.ToLower(strings.TrimSpace(req.Action))
 	reason := strings.TrimSpace(req.Reason)
@@ -191,6 +188,74 @@ func (s *adminAPIService) BatchUserAction(ctx context.Context, req api.BatchUser
 		return result, fmt.Errorf("unsupported action %s", req.Action)
 	}
 	return result, nil
+}
+
+type chatUserKey struct {
+	chatID int64
+	userID int64
+}
+
+func applyExportUserRow(row *api.ExportUserRow, user model.User) {
+	if row == nil {
+		return
+	}
+	if user.Username != nil && strings.TrimSpace(*user.Username) != "" {
+		row.Username = *user.Username
+	}
+	if strings.TrimSpace(user.DisplayName) != "" {
+		row.DisplayName = user.DisplayName
+	}
+	if strings.TrimSpace(user.Status) != "" {
+		row.Status = normalizeUserStatus(user.Status)
+	}
+	row.JoinedAt = user.CreatedAt
+	if user.LastLoginAt != nil {
+		row.LastSeenAt = *user.LastLoginAt
+	} else if !user.UpdatedAt.IsZero() {
+		row.LastSeenAt = user.UpdatedAt
+	}
+}
+
+func activeWarnCounts(ctx context.Context, db *gorm.DB, points []model.UserPoint) (map[chatUserKey]int64, error) {
+	out := map[chatUserKey]int64{}
+	if db == nil || len(points) == 0 {
+		return out, nil
+	}
+	chatIDs := make([]int64, 0, len(points))
+	userIDs := make([]int64, 0, len(points))
+	seenChats := map[int64]struct{}{}
+	seenUsers := map[int64]struct{}{}
+	for _, point := range points {
+		if _, ok := seenChats[point.ChatID]; !ok {
+			seenChats[point.ChatID] = struct{}{}
+			chatIDs = append(chatIDs, point.ChatID)
+		}
+		if _, ok := seenUsers[point.UserID]; !ok {
+			seenUsers[point.UserID] = struct{}{}
+			userIDs = append(userIDs, point.UserID)
+		}
+	}
+	var counts []struct {
+		ChatID int64
+		UserID int64
+		Count  int64
+	}
+	err := db.WithContext(ctx).
+		Model(&model.WarnRecord{}).
+		Select("chat_id, user_id, COUNT(*) AS count").
+		Where("cleared = ? AND chat_id IN ? AND user_id IN ?", false, chatIDs, userIDs).
+		Group("chat_id, user_id").
+		Scan(&counts).Error
+	if err != nil {
+		if isMissingTableError(err) {
+			return out, nil
+		}
+		return nil, err
+	}
+	for _, item := range counts {
+		out[chatUserKey{chatID: item.ChatID, userID: item.UserID}] = item.Count
+	}
+	return out, nil
 }
 
 func adminConfigToAPI(cfg bot.ChatAdminConfig) *api.ChatAdminConfig {

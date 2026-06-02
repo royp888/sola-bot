@@ -61,7 +61,7 @@ func (s *Server) RequireChatOwnership() gin.HandlerFunc {
 		}
 		owned, err := s.deps.Chats.UserOwnsChat(c.Request.Context(), claims.UserID, chatID)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
 			return
 		}
 		if !owned {

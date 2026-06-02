@@ -493,12 +493,13 @@ func (s *Server) ListPointLogs(c *gin.Context) {
 	if !s.ensureChatAllowed(c, chatID) {
 		return
 	}
-	var query CommonListQuery
+	var query PointLogListQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		writeError(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	items, err := s.deps.Points.ListLogs(c.Request.Context(), chatID, userID, query.Limit, query.Offset)
+	query.OwnerUserID = s.ownerUserID(c)
+	items, err := s.deps.Points.ListLogs(c.Request.Context(), chatID, userID, query)
 	if err != nil {
 		writeError(c, http.StatusInternalServerError, err.Error())
 		return
@@ -775,7 +776,8 @@ func (s *Server) DeleteLevel(c *gin.Context) {
 // @Param status query string false "status"
 // @Param limit query int false "page size"
 // @Param offset query int false "page offset"
-// @Success 200 {array} AdminViolation
+// @Param cursor query string false "page cursor"
+// @Success 200 {object} CursorListResponse[AdminViolation]
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /admin/violations [get]
@@ -790,6 +792,10 @@ func (s *Server) ListAdminViolations(c *gin.Context) {
 		writeError(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	if query.ChatID != 0 && !s.ensureChatAllowed(c, query.ChatID) {
+		return
+	}
+	query.OwnerUserID = s.ownerUserID(c)
 
 	items, err := s.deps.AdminViolations.List(c.Request.Context(), query)
 	if err != nil {
@@ -830,9 +836,9 @@ func (s *Server) UpdateAdminViolation(c *gin.Context) {
 		return
 	}
 
-	item, err := s.deps.AdminViolations.Update(c.Request.Context(), violationID, req)
+	item, err := s.deps.AdminViolations.Update(c.Request.Context(), violationID, req, s.ownerUserID(c))
 	if err != nil {
-		writeError(c, http.StatusInternalServerError, err.Error())
+		writeServiceError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, item)
@@ -1342,6 +1348,7 @@ func (s *Server) ListSchedules(c *gin.Context) {
 		writeError(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	query.OwnerUserID = s.ownerUserID(c)
 
 	items, err := s.deps.Schedules.List(c.Request.Context(), query)
 	if err != nil {
@@ -1580,6 +1587,10 @@ func (s *Server) ExportUsers(c *gin.Context) {
 			query.ChatID = chatID
 		}
 	}
+	if query.ChatID != 0 && !s.ensureChatAllowed(c, query.ChatID) {
+		return
+	}
+	query.OwnerUserID = s.ownerUserID(c)
 
 	rows, err := s.deps.Admin.ExportUserRows(c.Request.Context(), query)
 	if err != nil {
@@ -1625,9 +1636,17 @@ func (s *Server) BatchUsers(c *gin.Context) {
 		writeError(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	if !s.ensureChatAllowed(c, req.ChatID) {
+		return
+	}
+	req.OwnerUserID = s.ownerUserID(c)
 
 	result, err := s.deps.Admin.BatchUserAction(c.Request.Context(), req)
 	if err != nil {
+		if errors.Is(err, ErrForbidden) || errors.Is(err, gorm.ErrRecordNotFound) {
+			writeServiceError(c, err)
+			return
+		}
 		writeError(c, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -1725,9 +1744,9 @@ func (s *Server) CreateTemplate(c *gin.Context) {
 	if !s.ensureOptionalChatAllowed(c, req.ChatID) {
 		return
 	}
-	item, err := s.deps.Templates.Create(c.Request.Context(), req)
+	item, err := s.deps.Templates.Create(c.Request.Context(), req, s.ownerUserID(c))
 	if err != nil {
-		writeError(c, http.StatusBadRequest, err.Error())
+		writeServiceError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, item)
@@ -1902,6 +1921,9 @@ func firstNonEmpty(values ...string) string {
 }
 
 func writeError(c *gin.Context, status int, msg string) {
+	if status >= http.StatusInternalServerError {
+		msg = "internal server error"
+	}
 	c.JSON(status, ErrorResponse{Error: msg})
 }
 

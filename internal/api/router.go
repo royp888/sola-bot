@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -19,12 +20,20 @@ import (
 // @name Authorization
 func NewRouter(deps Dependencies) *gin.Engine {
 	r := gin.New()
-	r.Use(gin.Recovery(), CORSMiddleware(deps.AllowedOrigins()))
+	r.Use(RecoveryJSON(), CORSMiddleware(deps.AllowedOrigins()))
 
 	server := NewServer(deps)
 
 	r.GET("/healthz", server.Health)
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	if deps.EnableSwagger {
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
+	r.NoRoute(func(c *gin.Context) {
+		writeError(c, http.StatusNotFound, "resource not found")
+	})
+	r.NoMethod(func(c *gin.Context) {
+		writeError(c, http.StatusMethodNotAllowed, "method not allowed")
+	})
 
 	compat := r.Group("/api")
 	{
@@ -277,5 +286,23 @@ func CORSMiddleware(allowedOrigins []string) gin.HandlerFunc {
 		}
 
 		c.Next()
+	}
+}
+
+func RecoveryJSON() gin.HandlerFunc {
+	return gin.CustomRecovery(func(c *gin.Context, recovered any) {
+		_ = normalizeRecoveredError(recovered)
+		writeError(c, http.StatusInternalServerError, "internal server error")
+	})
+}
+
+func normalizeRecoveredError(recovered any) error {
+	switch v := recovered.(type) {
+	case error:
+		return v
+	case string:
+		return errors.New(v)
+	default:
+		return errors.New("panic")
 	}
 }

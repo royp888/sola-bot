@@ -12,7 +12,11 @@ func TestLoadReadsLocalDotEnvWithSOLAPrefix(t *testing.T) {
 	restoreWorkingDir := chdir(t, tmp)
 	defer restoreWorkingDir()
 	restoreEnv := clearEnv(t,
+		"SOLA_APP_ENV",
 		"SOLA_APP_HTTP_ADDR",
+		"SOLA_APP_ADMIN_PASSWORD",
+		"SOLA_APP_ADMIN_PASSWORD_HASH",
+		"SOLA_APP_ENABLE_SWAGGER",
 		"SOLA_BOT_TOKEN",
 		"SOLA_BOT_MODE",
 		"SOLA_DATABASE_DSN",
@@ -26,6 +30,7 @@ func TestLoadReadsLocalDotEnvWithSOLAPrefix(t *testing.T) {
 
 	writeFile(t, ".env", `
 SOLA_APP_HTTP_ADDR=:9090
+SOLA_APP_ENABLE_SWAGGER=true
 SOLA_BOT_TOKEN=placeholder-token-from-env
 SOLA_BOT_MODE=webhook
 SOLA_DATABASE_DSN=postgres://env-user:env-pass@localhost:5432/envdb?sslmode=disable
@@ -60,6 +65,9 @@ jwt:
 	if cfg.App.HTTPAddr != ":9090" {
 		t.Fatalf("App.HTTPAddr = %q, want :9090", cfg.App.HTTPAddr)
 	}
+	if !cfg.App.EnableSwagger {
+		t.Fatalf("App.EnableSwagger = false, want true")
+	}
 	if cfg.Bot.Token != "placeholder-token-from-env" {
 		t.Fatalf("Bot.Token = %q, want env token", cfg.Bot.Token)
 	}
@@ -83,6 +91,111 @@ jwt:
 	}
 	if cfg.JWT.AccessTokenTTL != 2*time.Hour {
 		t.Fatalf("JWT.AccessTokenTTL = %s, want 2h", cfg.JWT.AccessTokenTTL)
+	}
+}
+
+func TestLoadRejectsProductionDefaultSecrets(t *testing.T) {
+	tmp := t.TempDir()
+	restoreWorkingDir := chdir(t, tmp)
+	defer restoreWorkingDir()
+	restoreEnv := clearEnv(t,
+		"SOLA_APP_ENV",
+		"SOLA_APP_ADMIN_PASSWORD",
+		"SOLA_APP_ADMIN_PASSWORD_HASH",
+		"SOLA_JWT_SECRET",
+	)
+	defer restoreEnv()
+
+	writeFile(t, "config.yaml", `
+app:
+  env: production
+  admin_password: change-me
+jwt:
+  secret: change-this-in-production
+`)
+
+	if _, err := Load(filepath.Join(tmp, "config.yaml")); err == nil {
+		t.Fatal("Load returned nil error, want production default secret rejection")
+	}
+}
+
+func TestLoadAllowsProductionStrongSecrets(t *testing.T) {
+	tmp := t.TempDir()
+	restoreWorkingDir := chdir(t, tmp)
+	defer restoreWorkingDir()
+	restoreEnv := clearEnv(t,
+		"SOLA_APP_ENV",
+		"SOLA_APP_ADMIN_PASSWORD",
+		"SOLA_APP_ADMIN_PASSWORD_HASH",
+		"SOLA_JWT_SECRET",
+	)
+	defer restoreEnv()
+
+	writeFile(t, "config.yaml", `
+app:
+  env: production
+  admin_password_hash: "$2y$12$JYBAhS0Hj4pQcjT6qcI/R.RzcT1vzP/MQkI.MJCKnJxYeUHiN4B/i"
+jwt:
+  secret: production-secret-with-enough-randomness
+`)
+
+	if _, err := Load(filepath.Join(tmp, "config.yaml")); err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+}
+
+func TestLoadParsesAllowedOriginsCSVFromEnv(t *testing.T) {
+	tmp := t.TempDir()
+	restoreWorkingDir := chdir(t, tmp)
+	defer restoreWorkingDir()
+	restoreEnv := clearEnv(t,
+		"SOLA_APP_ALLOWED_ORIGINS",
+	)
+	defer restoreEnv()
+
+	writeFile(t, "config.yaml", `
+app:
+  allowed_origins:
+    - http://localhost:3000
+`)
+	if err := os.Setenv("SOLA_APP_ALLOWED_ORIGINS", " http://127.0.0.1:5174,  , http://localhost:5174 "); err != nil {
+		t.Fatalf("Setenv returned error: %v", err)
+	}
+
+	cfg, err := Load(filepath.Join(tmp, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if len(cfg.App.AllowedOrigins) != 2 {
+		t.Fatalf("len(App.AllowedOrigins) = %d, want 2: %+v", len(cfg.App.AllowedOrigins), cfg.App.AllowedOrigins)
+	}
+	if cfg.App.AllowedOrigins[0] != "http://127.0.0.1:5174" || cfg.App.AllowedOrigins[1] != "http://localhost:5174" {
+		t.Fatalf("App.AllowedOrigins = %+v, want parsed CSV origins", cfg.App.AllowedOrigins)
+	}
+}
+
+func TestLoadRejectsProductionEmptyAdminPasswordWithoutHash(t *testing.T) {
+	tmp := t.TempDir()
+	restoreWorkingDir := chdir(t, tmp)
+	defer restoreWorkingDir()
+	restoreEnv := clearEnv(t,
+		"SOLA_APP_ENV",
+		"SOLA_APP_ADMIN_PASSWORD",
+		"SOLA_APP_ADMIN_PASSWORD_HASH",
+		"SOLA_JWT_SECRET",
+	)
+	defer restoreEnv()
+
+	writeFile(t, "config.yaml", `
+app:
+  env: production
+  admin_password: ""
+jwt:
+  secret: production-secret-with-enough-randomness
+`)
+
+	if _, err := Load(filepath.Join(tmp, "config.yaml")); err == nil {
+		t.Fatal("Load returned nil error, want production empty admin password rejection")
 	}
 }
 
