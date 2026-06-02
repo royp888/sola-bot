@@ -44,16 +44,16 @@ services:
       - sh
       - -ec
       - |
-        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());"
+        psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());"
         for file in /migrations/*.up.sql; do
-          version="$(basename "$file" | cut -d_ -f1)"
-          if psql "$DATABASE_URL" -tAc "SELECT 1 FROM schema_migrations WHERE version = '$version'" | grep -q 1; then
-            echo "Skipping migration $version"
+          version="$(basename "$$file" | cut -d_ -f1)"
+          if psql "$$DATABASE_URL" -tAc "SELECT 1 FROM schema_migrations WHERE version = '$$version'" | grep -q 1; then
+            echo "Skipping migration $$version"
             continue
           fi
-          echo "Applying migration $version from $file"
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO schema_migrations (version) VALUES ('$version')"
+          echo "Applying migration $$version from $file"
+          psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$file"
+          psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO schema_migrations (version) VALUES ('$$version')"
         done
 
   api:
