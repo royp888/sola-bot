@@ -24,10 +24,11 @@ defineProps<{
 
 <style scoped>
 .panel {
+  overflow: hidden;
   border: 1px solid var(--app-border);
-  border-radius: 8px;
-  background: rgba(13, 18, 25, 0.86);
-  box-shadow: 0 18px 60px rgba(3, 8, 14, 0.22);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
 }
 
 .panel-head {
@@ -35,7 +36,8 @@ defineProps<{
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 14px 0;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--app-border);
 }
 
 .panel-copy {
@@ -45,7 +47,7 @@ defineProps<{
 h2 {
   margin: 0;
   font-size: 15px;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 p {
@@ -64,7 +66,7 @@ p {
 }
 
 .panel-body {
-  padding: 14px;
+  padding: 16px;
 }
 
 @media (max-width: 720px) {

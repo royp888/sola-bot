@@ -16,6 +16,12 @@
         <el-button v-if="isMobile" text :icon="Close" aria-label="关闭菜单" @click="closeMobileNav" />
       </div>
 
+      <div v-if="!collapsed || isMobile" class="workspace-brief">
+        <span class="workspace-kicker">当前工作域</span>
+        <strong>{{ currentSectionName }}</strong>
+        <span>{{ currentItemDescription }}</span>
+      </div>
+
       <div class="nav-scroll">
         <el-menu
           class="nav"
@@ -24,7 +30,7 @@
           :router="true"
           background-color="transparent"
           text-color="var(--app-text)"
-          active-text-color="var(--app-accent)"
+          active-text-color="var(--app-text)"
         >
           <template v-for="section in navSections" :key="section.key">
             <li v-if="!collapsed || isMobile" class="nav-section-label">{{ section.label }}</li>
@@ -49,9 +55,16 @@
       </div>
 
       <div v-if="!collapsed || isMobile" class="sidebar-footer">
-        <span class="foot-label">当前环境</span>
-        <strong>{{ apiLabel }}</strong>
-        <span class="foot-meta">{{ currentSectionLabel }}</span>
+        <div class="foot-block">
+          <span class="foot-label">当前用户</span>
+          <strong>{{ userLabel }}</strong>
+          <span class="foot-meta">{{ userRoleLabel }}</span>
+        </div>
+        <div class="foot-block">
+          <span class="foot-label">环境</span>
+          <strong>{{ apiLabel }}</strong>
+          <span class="foot-meta">{{ apiBase }}</span>
+        </div>
       </div>
     </aside>
 
@@ -64,18 +77,25 @@
             :aria-label="isMobile ? '打开菜单' : (collapsed ? '展开菜单' : '收起菜单')"
             @click="toggleNavigation"
           />
-          <div>
-            <div class="top-title">{{ currentTitle }}</div>
-            <div class="top-subtitle">{{ currentSectionLabel }}</div>
+          <div class="topbar-copy">
+            <div class="top-crumb">{{ currentSectionName }}</div>
+            <div class="top-title-row">
+              <div class="top-title">{{ currentTitle }}</div>
+              <span v-if="currentItemDescription" class="top-route">{{ currentItemDescription }}</span>
+            </div>
           </div>
         </div>
 
         <div class="topbar-right">
-          <div class="topbar-env">
-            <span class="env-label">API</span>
-            <strong>{{ apiBase }}</strong>
+          <div class="topbar-pill">
+            <span>工作域</span>
+            <strong>{{ currentSectionName }}</strong>
           </div>
-          <el-tag effect="plain" type="success">{{ userLabel }}</el-tag>
+          <div class="topbar-pill desktop-only">
+            <span>API</span>
+            <strong>{{ apiLabel }}</strong>
+          </div>
+          <el-tag effect="plain" class="user-tag">{{ userRoleLabel }} · {{ userLabel }}</el-tag>
           <el-dropdown @command="handleCommand">
             <el-button :icon="Setting" circle />
             <template #dropdown>
@@ -96,7 +116,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import {
   Calendar,
   ChatDotRound,
@@ -115,7 +135,6 @@ import {
   Setting,
   Tickets,
   Trophy,
-  User,
   UserFilled,
 } from "@element-plus/icons-vue";
 import { clearSession, getStoredUser } from "@/api/session";
@@ -142,62 +161,60 @@ const apiBase = import.meta.env.VITE_API_BASE_URL?.trim() || "/api";
 const appName = import.meta.env.VITE_APP_NAME?.trim() || "Sola Bot";
 const appDesc = import.meta.env.VITE_APP_DESC?.trim() || "Telegram 运营管理后台";
 const brandInitial = computed(() => appName.trim().slice(0, 1).toUpperCase() || "S");
-const apiLabel = computed(() => (apiBase === "/api" ? "默认 API" : apiBase));
+const apiLabel = computed(() => (apiBase === "/api" ? "默认 API" : "自定义 API"));
 
 const navSections: NavSection[] = [
   {
     key: "overview",
     label: "总览",
     items: [
-      { index: "/", label: "运营总览", description: "全局状态与重点指标", icon: House },
-      { index: "/stats", label: "运营分析", description: "活跃、来源与积分趋势", icon: DataAnalysis },
+      { index: "/", label: "运营总览", description: "今日待办、任务和异常", icon: House },
+      { index: "/stats", label: "运营分析", description: "活跃、来源与趋势观察", icon: DataAnalysis },
     ],
   },
   {
     key: "assets",
-    label: "账号与资产",
+    label: "资产",
     items: [
-      { index: "/bots", label: "机器人管理", description: "接入信息与运行入口", icon: Cpu },
-      { index: "/chats", label: "群组 / 频道", description: "绑定资产与进入运营流", icon: ChatDotRound },
+      { index: "/bots", label: "机器人管理", description: "接入状态与运行入口", icon: Cpu },
+      { index: "/chats", label: "群组与频道", description: "运营资产与工作台入口", icon: ChatDotRound },
     ],
   },
   {
-    key: "ops",
-    label: "群组运营",
+    key: "member-risk",
+    label: "成员与风控",
     items: [
-      { index: "/users", label: "成员管理", description: "积分、封禁与批量处理", icon: UserFilled },
-      { index: "/admin/config", label: "群组设置", description: "群内配置与策略开关", icon: Setting },
+      { index: "/users", label: "成员管理", description: "筛选、调分和批量动作", icon: UserFilled },
       { index: "/points/config", label: "积分规则", description: "积分策略与冷却配置", icon: Coin },
-      { index: "/points/logs", label: "积分记录", description: "积分明细与查询回放", icon: Tickets },
+      { index: "/points/logs", label: "积分记录", description: "积分流水和查询回放", icon: Tickets },
       { index: "/levels", label: "等级体系", description: "等级门槛与成长规则", icon: Trophy },
       { index: "/violations", label: "违规处理", description: "违规队列与处理动作", icon: Lock },
-      { index: "/admin/bans", label: "封禁与警告", description: "封禁记录与人工干预", icon: CircleClose },
+      { index: "/admin/bans", label: "封禁与警告", description: "封禁记录与人工介入", icon: CircleClose },
+      { index: "/admin/config", label: "群组设置", description: "欢迎、验证和策略开关", icon: Setting },
     ],
   },
   {
     key: "content",
-    label: "内容运营",
+    label: "内容",
     items: [
-      { index: "/templates", label: "内容模板", description: "统一管理复用素材", icon: Files },
       { index: "/posts", label: "发布任务", description: "定时发布与任务调度", icon: Calendar },
+      { index: "/templates", label: "内容模板", description: "素材与复用内容库", icon: Files },
       { index: "/keywords", label: "关键词规则", description: "命中词与触发策略", icon: MessageBox },
       { index: "/auto-replies", label: "自动回复", description: "命中后回复与互动文案", icon: ChatDotRound },
     ],
   },
   {
     key: "growth",
-    label: "增长与转化",
+    label: "增长",
     items: [
-      { index: "/invite-links", label: "邀请链接", description: "拉新来源与渠道识别", icon: Tickets },
+      { index: "/invite-links", label: "邀请链接", description: "拉新来源与渠道追踪", icon: Tickets },
       { index: "/lottery", label: "活动抽奖", description: "促活活动与奖励发放", icon: Trophy },
     ],
   },
   {
     key: "system",
-    label: "系统设置",
-    items: [
-      { index: "/backup", label: "备份与恢复", description: "数据导入导出与恢复", icon: Files },
-    ],
+    label: "系统",
+    items: [{ index: "/backup", label: "备份与恢复", description: "数据导入导出与恢复", icon: Files }],
   },
 ];
 
@@ -209,14 +226,28 @@ const currentTitle = computed(() => {
   return (matched?.meta?.title as string | undefined) ?? appName;
 });
 
-const currentSectionLabel = computed(() => {
-  const active = navSections.find((section) =>
+const activeSection = computed(() =>
+  navSections.find((section) =>
     section.items.some((item) => item.index === route.path || (item.index !== "/" && route.path.startsWith(item.index))),
-  );
-  return active ? `${active.label} / ${currentTitle.value}` : currentTitle.value;
-});
+  ),
+);
 
+const activeItem = computed(() =>
+  activeSection.value?.items.find((item) => item.index === route.path || (item.index !== "/" && route.path.startsWith(item.index))),
+);
+
+const currentSectionName = computed(() => activeSection.value?.label ?? "控制台");
+const currentItemDescription = computed(() => activeItem.value?.description ?? appDesc);
 const userLabel = computed(() => getStoredUser()?.name ?? "Operator");
+const userRoleLabel = computed(() => {
+  const role = getStoredUser()?.role ?? "operator";
+  return {
+    owner: "Owner",
+    admin: "Admin",
+    operator: "Operator",
+    super_admin: "Super Admin",
+  }[role];
+});
 
 function syncViewport(): void {
   const mobile = window.innerWidth <= 720;
@@ -247,7 +278,7 @@ function handleMenuNavigate(): void {
 function handleCommand(command: string): void {
   if (command === "logout") {
     clearSession();
-    router.push({ name: "login" });
+    void router.push({ name: "login" });
   }
 }
 
@@ -290,17 +321,15 @@ onBeforeUnmount(() => {
   top: 0;
   display: flex;
   flex-direction: column;
-  width: 272px;
+  width: 264px;
   height: 100vh;
-  padding: 16px 12px;
+  padding: 16px 12px 14px;
   border-right: 1px solid var(--app-border);
-  background:
-    linear-gradient(180deg, rgba(18, 24, 32, 0.98), rgba(12, 17, 23, 0.98)),
-    radial-gradient(circle at top, rgba(94, 205, 195, 0.08), transparent 28%);
+  background: var(--app-surface);
 }
 
 .sidebar.collapsed {
-  width: 92px;
+  width: 88px;
 }
 
 .brand-row {
@@ -308,7 +337,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .brand {
@@ -323,8 +352,9 @@ onBeforeUnmount(() => {
   place-items: center;
   width: 38px;
   height: 38px;
+  border: 1px solid rgba(120, 166, 255, 0.22);
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(94, 205, 195, 0.25), rgba(240, 179, 93, 0.2));
+  background: var(--app-accent-soft);
   color: var(--app-text);
   font-weight: 800;
 }
@@ -345,6 +375,30 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
+.workspace-brief {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface-2);
+}
+
+.workspace-kicker,
+.foot-label,
+.foot-meta {
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.workspace-brief strong,
+.foot-block strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .nav-scroll {
   flex: 1;
   overflow-y: auto;
@@ -355,12 +409,12 @@ onBeforeUnmount(() => {
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   border-right: 0;
 }
 
 .nav-section-label {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   padding: 0 12px;
   color: var(--app-muted);
   font-size: 11px;
@@ -372,7 +426,7 @@ onBeforeUnmount(() => {
 
 .nav-item {
   position: relative;
-  min-height: 48px;
+  min-height: 42px;
 }
 
 .nav-active-line {
@@ -402,32 +456,23 @@ onBeforeUnmount(() => {
 }
 
 .sidebar-footer {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--app-border);
+}
+
+.foot-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 14px;
-  padding: 12px;
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.foot-label,
-.foot-meta {
-  color: var(--app-muted);
-  font-size: 12px;
-}
-
-.sidebar-footer strong {
-  font-size: 13px;
-  font-weight: 600;
+  gap: 3px;
 }
 
 .content {
   min-width: 0;
-  background:
-    linear-gradient(180deg, rgba(10, 14, 18, 0.2), rgba(10, 14, 18, 0.08)),
-    var(--app-bg);
+  background: var(--app-bg);
 }
 
 .topbar {
@@ -441,8 +486,7 @@ onBeforeUnmount(() => {
   min-height: 64px;
   padding: 0 20px;
   border-bottom: 1px solid var(--app-border);
-  backdrop-filter: blur(14px);
-  background: rgba(10, 14, 18, 0.78);
+  background: rgba(15, 17, 21, 0.96);
 }
 
 .topbar-left,
@@ -456,27 +500,50 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
 }
 
+.topbar-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.top-crumb,
+.top-route,
+.topbar-pill span {
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.top-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .top-title {
   font-size: 16px;
   font-weight: 700;
 }
 
-.top-subtitle,
-.env-label {
-  color: var(--app-muted);
+.topbar-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 8px 10px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+  line-height: 1.2;
+}
+
+.topbar-pill strong {
   font-size: 12px;
 }
 
-.topbar-env {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.25;
-}
-
-.topbar-env strong {
-  font-size: 13px;
-  font-weight: 600;
+.user-tag {
+  color: var(--app-text);
 }
 
 .viewport {
@@ -501,6 +568,10 @@ onBeforeUnmount(() => {
   .sidebar.collapsed {
     width: 84px;
   }
+
+  .desktop-only {
+    display: none;
+  }
 }
 
 @media (max-width: 720px) {
@@ -524,6 +595,10 @@ onBeforeUnmount(() => {
     transform: translateX(0);
   }
 
+  .sidebar-footer {
+    grid-template-columns: 1fr;
+  }
+
   .topbar {
     padding: 0 14px;
   }
@@ -532,7 +607,7 @@ onBeforeUnmount(() => {
     gap: 8px;
   }
 
-  .topbar-env {
+  .topbar-pill {
     display: none;
   }
 

@@ -1,6 +1,9 @@
 <template>
-  <div class="page-stack">
-    <PageHeader eyebrow="Member Ops" title="成员管理" description="按群组查看成员状态、积分分布，并执行批量运营动作。">
+  <div class="page-stack users-page">
+    <PageHeader eyebrow="Member Ops" title="成员管理" description="围绕当前群组查看成员状态、积分分布，并执行批量运营动作。">
+      <template #meta>
+        <span class="header-meta">{{ currentChatName }}</span>
+      </template>
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadUsers">刷新</el-button>
       </template>
@@ -15,7 +18,7 @@
       <div class="summary-card">
         <div class="summary-label">已选成员</div>
         <div class="summary-value">{{ selectedRows.length }}</div>
-        <div class="summary-meta">可批量调分或封禁</div>
+        <div class="summary-meta">选择后出现批量动作条</div>
       </div>
       <div class="summary-card">
         <div class="summary-label">正常成员</div>
@@ -29,48 +32,78 @@
       </div>
     </div>
 
-    <PanelSection title="成员列表" description="支持成员导出、批量调分和人工封禁。">
-      <template #actions>
-        <div class="panel-toolbar">
-          <div class="control-cluster filters">
+    <PanelSection title="成员工作台" description="先确定群组范围，再筛选成员、查看详情和执行批量动作。">
+      <div class="scope-toolbar">
+        <div class="scope-main">
+          <div class="scope-field">
+            <label>群组范围</label>
+            <ChatSelect v-model="selectedChatId" @loaded="onChatsLoaded" @update:model-value="loadUsers" />
+          </div>
+          <div class="scope-field">
+            <label>成员状态</label>
+            <el-select v-model="statusFilter">
+              <el-option label="全部状态" value="all" />
+              <el-option label="正常" value="active" />
+              <el-option label="禁言" value="muted" />
+              <el-option label="封禁" value="banned" />
+            </el-select>
+          </div>
+          <div class="scope-field">
+            <label>搜索成员</label>
             <el-input
               v-model="keyword"
-              class="filter-control filter-control-wide"
               clearable
               placeholder="搜索用户名 / 昵称"
+              :prefix-icon="Search"
               @keyup.enter="loadUsers"
             />
-            <div class="filter-control filter-control-wide">
-              <ChatSelect v-model="selectedChatId" @loaded="onChatsLoaded" @update:model-value="loadUsers" />
-            </div>
-          </div>
-          <div class="control-cluster actions-row">
-            <span class="filter-summary">已选 {{ selectedRows.length }} 人</span>
-            <el-button :disabled="!selectedChatId" @click="downloadCsv">导出 CSV</el-button>
-            <el-button :disabled="selectedRows.length === 0" type="warning" @click="openBatchAdjust">批量调分</el-button>
-            <el-button :disabled="selectedRows.length === 0" type="danger" @click="submitBatchBan">批量封禁</el-button>
           </div>
         </div>
-      </template>
+        <div class="scope-meta">
+          <span>当前群组 {{ currentChatName }}</span>
+          <span>结果 {{ filteredUsers.length }} 人</span>
+          <span>风险 {{ statusCounts.muted + statusCounts.banned }} 人</span>
+        </div>
+      </div>
 
-      <el-table class="table-compact" :data="filteredUsers" size="small" stripe @selection-change="onSelectionChange">
+      <div class="table-toolbar">
+        <div class="control-cluster">
+          <el-button :disabled="!selectedChatId" @click="downloadCsv">导出 CSV</el-button>
+        </div>
+        <span class="muted-copy">点成员名查看详情，选中行后再做批量处理。</span>
+      </div>
+
+      <div v-if="selectedRows.length" class="selection-toolbar">
+        <div>
+          <strong>已选 {{ selectedRows.length }} 人</strong>
+          <div class="muted-copy">批量操作只对当前群组和已选成员生效。</div>
+        </div>
+        <div class="control-cluster">
+          <el-button type="warning" @click="openBatchAdjust">批量调分</el-button>
+          <el-button type="danger" @click="submitBatchBan">批量封禁</el-button>
+        </div>
+      </div>
+
+      <el-table class="table-compact" :data="filteredUsers" size="small" stripe empty-text="请选择群组后查看成员" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="48" />
-        <el-table-column prop="username" label="成员" min-width="180">
+        <el-table-column prop="username" label="成员" min-width="220">
           <template #default="{ row }">
-            <strong>{{ row.display_name }}</strong>
-            <div class="muted">{{ row.username || row.id }}</div>
+            <button class="member-button" type="button" @click="openDetails(row)">
+              <strong>{{ row.display_name }}</strong>
+              <span>{{ row.username || row.id }}</span>
+            </button>
           </template>
         </el-table-column>
-        <el-table-column prop="chat_id" label="Chat" min-width="120" />
         <el-table-column prop="total_points" label="积分" width="120" sortable />
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="statusTag(row.status)" effect="dark">{{ statusLabel(row.status) }}</el-tag>
+            <el-tag :type="statusTag(row.status)" effect="plain">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="last_seen_at" label="最后活跃" min-width="160" />
-        <el-table-column label="操作" width="176" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
+            <el-button size="small" @click="openDetails(row)">详情</el-button>
             <el-button size="small" :icon="Coin" @click="openAdjust(row)">调分</el-button>
             <el-dropdown @command="handleUserCommand($event, row)">
               <el-button size="small">
@@ -88,6 +121,43 @@
         </el-table-column>
       </el-table>
     </PanelSection>
+
+    <el-drawer v-model="detailVisible" title="成员详情" size="380px">
+      <template v-if="currentUser">
+        <div class="detail-stack">
+          <div class="detail-hero">
+            <strong>{{ currentUser.display_name }}</strong>
+            <span>{{ currentUser.username || currentUser.id }}</span>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <span>当前积分</span>
+              <strong>{{ currentUser.total_points }}</strong>
+            </div>
+            <div class="detail-card">
+              <span>状态</span>
+              <strong>{{ statusLabel(currentUser.status) }}</strong>
+            </div>
+            <div class="detail-card">
+              <span>最后活跃</span>
+              <strong>{{ currentUser.last_seen_at || "暂无" }}</strong>
+            </div>
+            <div class="detail-card">
+              <span>所属群组</span>
+              <strong>{{ currentChatName }}</strong>
+            </div>
+          </div>
+          <div class="detail-actions">
+            <el-button type="primary" :icon="Coin" @click="openAdjust(currentUser)">调分</el-button>
+            <el-button type="danger" @click="openBan(currentUser)">封禁</el-button>
+            <el-button @click="openMute(currentUser)">禁言提示</el-button>
+          </div>
+          <div class="detail-note">
+            详情抽屉用于先确认成员状态，再决定是否调分、提示或封禁，减少在表格里来回找信息。
+          </div>
+        </div>
+      </template>
+    </el-drawer>
 
     <el-dialog v-model="adjustVisible" title="手动加减分" width="420px">
       <el-form label-position="top">
@@ -128,9 +198,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Coin, MoreFilled, Refresh } from "@element-plus/icons-vue";
+import { Coin, MoreFilled, Refresh, Search } from "@element-plus/icons-vue";
 import ChatSelect from "@/components/ChatSelect.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
@@ -139,12 +210,24 @@ import { updateUserPoints } from "@/api/points";
 import { batchUsers, exportUsersCsv, fetchUsers } from "@/api/users";
 import type { ChatRecord, UserRecord } from "@/types/api";
 
+const route = useRoute();
+const router = useRouter();
+
+function firstQueryValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return String(value[0] ?? "");
+  }
+  return value ? String(value) : "";
+}
+
 const keyword = ref("");
-const selectedChatId = ref("");
+const statusFilter = ref<"all" | UserRecord["status"]>("all");
+const selectedChatId = ref(firstQueryValue(route.query.chat_id));
 const loading = ref(false);
 const saving = ref(false);
 const adjustVisible = ref(false);
 const batchVisible = ref(false);
+const detailVisible = ref(false);
 const users = ref<UserRecord[]>([]);
 const chats = ref<ChatRecord[]>([]);
 const selectedRows = ref<UserRecord[]>([]);
@@ -156,7 +239,8 @@ const filteredUsers = computed(() => {
   const term = keyword.value.trim().toLowerCase();
   return users.value.filter((user) => {
     const matchesKeyword = term ? `${user.username} ${user.display_name}`.toLowerCase().includes(term) : true;
-    return matchesKeyword;
+    const matchesStatus = statusFilter.value === "all" ? true : user.status === statusFilter.value;
+    return matchesKeyword && matchesStatus;
   });
 });
 
@@ -174,6 +258,29 @@ const statusCounts = computed(() => {
     { active: 0, muted: 0, banned: 0 } as Record<UserRecord["status"], number>,
   );
 });
+
+watch(selectedChatId, (value) => {
+  if (firstQueryValue(route.query.chat_id) === value) {
+    return;
+  }
+  void router.replace({
+    query: {
+      ...route.query,
+      chat_id: value || undefined,
+    },
+  });
+});
+
+watch(
+  () => route.query.chat_id,
+  (value) => {
+    const nextValue = firstQueryValue(value);
+    if (nextValue && nextValue !== selectedChatId.value) {
+      selectedChatId.value = nextValue;
+      void loadUsers();
+    }
+  },
+);
 
 function onSelectionChange(items: UserRecord[]): void {
   selectedRows.value = items;
@@ -221,6 +328,11 @@ async function downloadCsv(): Promise<void> {
   } catch {
     ElMessage.error("导出接口不可用");
   }
+}
+
+function openDetails(user: UserRecord): void {
+  currentUser.value = user;
+  detailVisible.value = true;
 }
 
 function openBatchAdjust(): void {
@@ -366,24 +478,87 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.panel-toolbar {
+.header-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--app-surface);
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.member-button {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: min(100%, 980px);
+  align-items: flex-start;
+  gap: 2px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--app-text);
+  text-align: left;
+  cursor: pointer;
 }
 
-.filters :deep(.chat-select) {
-  width: 100%;
-}
-
-.actions-row {
-  justify-content: flex-end;
-}
-
-.muted {
+.member-button span,
+.detail-hero span,
+.detail-card span,
+.detail-note {
   color: var(--app-muted);
   font-size: 12px;
+}
+
+.detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-hero strong {
+  font-size: 18px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface-2);
+}
+
+.detail-card strong {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .wide-control {
@@ -391,8 +566,12 @@ onMounted(async () => {
 }
 
 @media (max-width: 720px) {
-  .actions-row {
-    justify-content: stretch;
+  .table-toolbar {
+    align-items: flex-start;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

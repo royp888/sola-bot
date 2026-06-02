@@ -2,7 +2,12 @@
   <header class="page-header">
     <div class="copy">
       <p v-if="eyebrow" class="eyebrow">{{ eyebrow }}</p>
-      <h1>{{ title }}</h1>
+      <div class="title-row">
+        <h1>{{ title }}</h1>
+        <div v-if="$slots.meta" class="meta">
+          <slot name="meta" />
+        </div>
+      </div>
       <p v-if="description" class="description">
         {{ description }}
       </p>
@@ -26,24 +31,31 @@ defineProps<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 16px;
 }
 
 .copy {
   min-width: 0;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 h1 {
   margin: 0;
-  font-size: 24px;
-  line-height: 1.2;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
 .eyebrow {
-  margin: 0 0 4px;
-  color: var(--app-accent);
+  margin: 0 0 6px;
+  color: var(--app-muted);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -52,10 +64,18 @@ h1 {
 
 .description {
   margin: 8px 0 0;
-  max-width: 720px;
+  max-width: 760px;
   color: var(--app-muted);
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.6;
+}
+
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-muted);
+  font-size: 12px;
 }
 
 .actions {
