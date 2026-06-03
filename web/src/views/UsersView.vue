@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack users-page">
-    <PageHeader eyebrow="Member Ops" title="成员管理" description="围绕当前群组查看成员状态、积分分布，并执行批量运营动作。">
+    <PageHeader eyebrow="成员运营" title="成员管理" description="围绕当前群组查看成员状态、积分分布，并执行批量运营动作。">
       <template #meta>
         <span class="header-meta">{{ currentChatName }}</span>
       </template>
@@ -172,7 +172,7 @@
           <el-input-number v-model="adjustForm.delta" class="wide-control" :min="-999999" :max="999999" />
         </el-form-item>
         <el-form-item label="原因">
-          <el-input v-model="adjustForm.reason" maxlength="64" placeholder="manual_adjust" />
+          <el-input v-model="adjustForm.reason" maxlength="64" placeholder="例如：人工调整" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -190,7 +190,7 @@
           <el-input-number v-model="batchForm.delta" class="wide-control" :min="-999999" :max="999999" />
         </el-form-item>
         <el-form-item label="原因">
-          <el-input v-model="batchForm.reason" maxlength="64" placeholder="batch_adjust" />
+          <el-input v-model="batchForm.reason" maxlength="64" placeholder="例如：批量调整" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -314,7 +314,7 @@ async function loadUsers(): Promise<void> {
     selectedRows.value = [];
   } catch {
     users.value = [];
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     loading.value = false;
   }
@@ -322,7 +322,7 @@ async function loadUsers(): Promise<void> {
 
 async function downloadCsv(): Promise<void> {
   if (!selectedChatId.value) {
-    ElMessage.warning("请先选择或输入 Chat ID");
+    ElMessage.warning("请先选择或输入群组 ID");
     return;
   }
   try {
@@ -333,7 +333,7 @@ async function downloadCsv(): Promise<void> {
     anchor.download = `sola-users-${selectedChatId.value}-${new Date().toISOString().slice(0, 10)}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
-    ElMessage.success("CSV 已导出");
+    ElMessage.success("表格已导出");
   } catch {
     ElMessage.error("导出接口不可用");
   }
@@ -416,7 +416,7 @@ async function submitAdjust(): Promise<void> {
     adjustVisible.value = false;
     await loadUsers();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     saving.value = false;
   }
@@ -442,7 +442,7 @@ async function openBan(user: UserRecord): Promise<void> {
     ElMessage.success("封禁请求已提交");
     await loadUsers();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     saving.value = false;
   }

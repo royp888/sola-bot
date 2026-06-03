@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack chats-page">
-    <PageHeader eyebrow="Assets" title="群组 / 频道" description="把群组资产、同步状态和进入工作台的动作放在同一个界面里。">
+    <PageHeader eyebrow="群组资产" title="群组 / 频道" description="把群组资产、同步状态和进入工作台的动作放在同一个界面里。">
       <template #meta>
         <span class="header-meta">共 {{ filteredChats.length }} 个资产</span>
       </template>
@@ -130,7 +130,7 @@
 
     <el-dialog v-model="bindVisible" title="绑定聊天" width="520px">
       <el-form label-position="top">
-        <el-form-item label="Chat ID">
+        <el-form-item label="群组 ID">
           <el-input v-model="bindForm.chat_id" placeholder="-100xxxxxxxxxx" />
         </el-form-item>
         <el-row :gutter="12">
@@ -145,7 +145,7 @@
           </el-col>
           <el-col :xs="24" :md="12">
             <el-form-item label="负责人">
-              <el-input v-model="bindForm.bound_by" placeholder="admin" />
+              <el-input v-model="bindForm.bound_by" placeholder="管理员" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -153,7 +153,7 @@
           <el-input v-model="bindForm.title" placeholder="群组或频道名称" />
         </el-form-item>
         <el-form-item label="用户名">
-          <el-input v-model="bindForm.username" placeholder="@username，可选" />
+          <el-input v-model="bindForm.username" placeholder="@用户名，可选" />
         </el-form-item>
         <el-form-item label="说明">
           <el-input v-model="bindForm.description" type="textarea" :rows="3" />
@@ -272,7 +272,7 @@ function openDetails(chat: ChatRecord): void {
 async function submitBind(): Promise<void> {
   const chatID = Number(bindForm.chat_id);
   if (!Number.isFinite(chatID) || chatID === 0) {
-    ElMessage.warning("请输入有效 Chat ID");
+    ElMessage.warning("请输入有效的群组 ID");
     return;
   }
   saving.value = true;

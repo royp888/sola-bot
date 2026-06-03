@@ -6,7 +6,7 @@
     filterable
     clearable
     :loading="loading"
-    placeholder="选择群组或输入 Chat ID"
+    placeholder="选择群组或输入群组 ID"
     @update:model-value="emit('update:modelValue', String($event ?? ''))"
   >
     <el-option
@@ -41,7 +41,13 @@ function chatValue(chat: ChatRecord): string {
 }
 
 function chatType(chat: ChatRecord): string {
-  return String(chat.chat_type ?? chat.kind ?? "group");
+  const raw = String(chat.chat_type ?? chat.kind ?? "group");
+  return ({
+    group: "群组",
+    supergroup: "超级群组",
+    channel: "频道",
+    private: "私聊",
+  } as Record<string, string>)[raw] ?? raw;
 }
 
 function chatLabel(chat: ChatRecord): string {
@@ -59,7 +65,7 @@ async function loadChats(): Promise<void> {
     }
   } catch {
     chats.value = [];
-    ElMessage.error("群组列表接口不可用");
+    ElMessage.error("群组列表暂时不可用");
   } finally {
     loading.value = false;
   }

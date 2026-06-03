@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <PageHeader eyebrow="Group Admin" title="群组配置" description="欢迎语、入群验证和警告上限。">
+    <PageHeader eyebrow="群组管理" title="群组配置" description="欢迎语、入群验证和警告上限。">
       <template #actions>
         <ChatSelect v-model="selectedChatId" @update:model-value="loadConfig" />
         <el-button :icon="Refresh" :loading="loading" @click="loadConfig">刷新</el-button>
@@ -39,7 +39,7 @@
       <el-col :xs="24" :lg="8">
         <PanelSection title="预览" description="保存前检查最终下发效果。">
           <div class="preview">
-            <div><span>Chat ID</span><strong>{{ selectedChatId || "-" }}</strong></div>
+            <div><span>群组 ID</span><strong>{{ selectedChatId || "-" }}</strong></div>
             <div><span>验证</span><strong>{{ form.verify_enabled ? "开启" : "关闭" }}</strong></div>
             <div><span>超时</span><strong>{{ form.verify_timeout }} 秒</strong></div>
             <div><span>上限</span><strong>{{ form.warn_limit }}</strong></div>
@@ -79,7 +79,7 @@ async function loadConfig(): Promise<void> {
   try {
     Object.assign(form, await fetchAdminConfig(selectedChatId.value));
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     loading.value = false;
   }
@@ -92,7 +92,7 @@ async function submitConfig(): Promise<void> {
     Object.assign(form, await updateAdminConfig(selectedChatId.value, { ...form }));
     ElMessage.success("群组配置已保存");
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     saving.value = false;
   }

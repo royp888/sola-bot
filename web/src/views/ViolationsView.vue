@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="Violations" title="违规处理" description="查看命中记录、处理状态和跨群风控动作，时间按北京时间显示。">
+    <PageHeader eyebrow="风险处置" title="违规处理" description="查看命中记录、处理状态和跨群风控动作，时间按北京时间显示。">
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadViolations">刷新</el-button>
       </template>
@@ -60,7 +60,7 @@
         </div>
       </template>
 
-      <el-alert v-if="error" class="alert" type="error" :closable="false" show-icon title="接口不可用" />
+      <el-alert v-if="error" class="alert" type="error" :closable="false" show-icon title="服务暂时不可用" />
       <div class="table-wrap">
       <el-table class="table-compact" :data="violations" size="small" stripe v-loading="loading">
         <el-table-column label="用户" min-width="170">
@@ -69,7 +69,7 @@
             <div class="muted">{{ row.user_id }}</div>
           </template>
         </el-table-column>
-        <el-table-column prop="chat_id" label="Chat" min-width="120" />
+        <el-table-column prop="chat_id" label="群组" min-width="120" />
         <el-table-column prop="type" label="类型" min-width="110" />
         <el-table-column prop="reason" label="原因" min-width="180" />
         <el-table-column prop="source" label="来源" min-width="120" />
@@ -190,7 +190,7 @@ async function loadViolations(): Promise<void> {
     violations.value = [];
     nextCursor.value = "";
     error.value = true;
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     loading.value = false;
   }
@@ -240,7 +240,7 @@ async function submitResolution(): Promise<void> {
     dialogVisible.value = false;
     await loadViolations();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     updatingId.value = undefined;
   }
@@ -253,7 +253,7 @@ async function markIgnored(row: AdminViolationRecord): Promise<void> {
     ElMessage.success("违规记录已忽略");
     await loadViolations();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     updatingId.value = undefined;
   }

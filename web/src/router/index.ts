@@ -22,7 +22,7 @@ const TemplatesView = () => import("@/views/TemplatesView.vue");
 const UsersView = () => import("@/views/UsersView.vue");
 const ViolationsView = () => import("@/views/ViolationsView.vue");
 
-const appName = import.meta.env.VITE_APP_NAME?.trim() || "Sola Bot";
+const appName = import.meta.env.VITE_APP_NAME?.trim() || "Sola 管理台";
 
 const router = createRouter({
   history: createWebHistory(),

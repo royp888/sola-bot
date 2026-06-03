@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <PageHeader eyebrow="System" title="备份恢复" description="导出业务配置或全量运营数据，并支持合并/覆盖恢复。">
+    <PageHeader eyebrow="系统工具" title="备份恢复" description="导出业务配置或全量运营数据，并支持合并/覆盖恢复。">
       <template #actions>
         <el-select v-model="scope" class="select">
           <el-option label="业务配置" value="business" />

@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <PageHeader
-      eyebrow="Private Ops"
+      eyebrow="积分运营"
       title="积分配置"
       description="按群组调整消息计分、冷却和积分系统开关。"
     >
@@ -67,7 +67,7 @@
         <PanelSection title="当前配置" description="保存前可快速核对即将生效的数值。">
           <div class="summary">
             <div class="summary-row">
-              <span>Chat ID</span>
+              <span>群组 ID</span>
               <strong>{{ selectedChatId || "-" }}</strong>
             </div>
             <div class="summary-row">
@@ -172,7 +172,7 @@ function applyConfig(payload: ChatPointConfig | ChatPointConfigPayload): void {
 
 async function loadConfig(): Promise<void> {
   if (!selectedChatId.value) {
-    ElMessage.warning("请先选择或输入 Chat ID");
+    ElMessage.warning("请先选择或输入群组 ID");
     return;
   }
 
@@ -181,7 +181,7 @@ async function loadConfig(): Promise<void> {
     const payload = await fetchChatPointConfig(selectedChatId.value);
     applyConfig(payload);
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     loading.value = false;
   }
@@ -189,7 +189,7 @@ async function loadConfig(): Promise<void> {
 
 async function submitConfig(): Promise<void> {
   if (!selectedChatId.value) {
-    ElMessage.warning("请先选择或输入 Chat ID");
+    ElMessage.warning("请先选择或输入群组 ID");
     return;
   }
 
@@ -201,7 +201,7 @@ async function submitConfig(): Promise<void> {
     applyConfig(payload);
     ElMessage.success("积分配置已保存");
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     saving.value = false;
   }

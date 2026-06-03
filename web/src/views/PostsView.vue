@@ -1,8 +1,8 @@
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="Publishing" title="发布任务" description="支持仅文字、图片 + 文字、视频 + 文字的北京时间定时发送。">
+    <PageHeader eyebrow="内容发布" title="发布任务" description="支持仅文字、图片 + 文字、视频 + 文字的北京时间定时发送。">
       <template #meta>
-        <span class="page-meta-chip">页面内时间均为北京时间（UTC+8）</span>
+        <span class="page-meta-chip">页面内时间均为北京时间（东八区）</span>
       </template>
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadPosts">刷新</el-button>
@@ -29,7 +29,7 @@
       <div class="summary-card">
         <div class="summary-label">循环任务</div>
         <div class="summary-value">{{ recurringCount }}</div>
-        <div class="summary-meta">Cron 或间隔调度任务</div>
+        <div class="summary-meta">Cron 表达式或按间隔执行的任务</div>
       </div>
     </div>
 
@@ -101,7 +101,7 @@
 
     <el-dialog v-model="dialogVisible" :title="editingPost ? '编辑发布任务' : '新建发布任务'" width="680px" class="posts-dialog">
       <el-form label-position="top" class="post-form">
-        <el-alert class="preview" type="info" :closable="false" show-icon title="图片和视频任务支持附带文字说明；页面内时间均按北京时间（UTC+8）处理。" />
+        <el-alert class="preview" type="info" :closable="false" show-icon title="图片和视频任务支持附带文字说明；页面内时间均按北京时间（东八区）处理。" />
         <el-form-item label="目标群组">
           <ChatSelect v-model="form.chat_id" @update:model-value="loadTemplatesForPost" />
         </el-form-item>
@@ -215,7 +215,7 @@
             </el-form-item>
           </el-col>
           <el-col v-if="scheduleMode === 'custom'" :xs="24" :md="12">
-            <el-form-item label="自定义发送规则（Cron）">
+            <el-form-item label="自定义发送规则（Cron 表达式）">
               <el-input v-model="form.cron_expr" placeholder="30 20 * * *" />
             </el-form-item>
           </el-col>
@@ -426,7 +426,7 @@ function scheduleFields(showWarning = true): Pick<ScheduledPostPayload, "cron_ex
     case "custom":
       if (!optionalText(form.cron_expr)) {
         if (showWarning) {
-          ElMessage.warning("请输入自定义发送规则（Cron）");
+          ElMessage.warning("请输入自定义发送规则（Cron 表达式）");
         }
         return undefined;
       }
@@ -439,7 +439,7 @@ function scheduleFields(showWarning = true): Pick<ScheduledPostPayload, "cron_ex
 function validateSchedule(showWarning = true): ScheduleCheck {
   const fields = scheduleFields(false);
   if (!fields) {
-    const title = scheduleMode.value === "custom" ? "请输入自定义发送规则（Cron）" : "请先选择发送时间";
+    const title = scheduleMode.value === "custom" ? "请输入自定义发送规则（Cron 表达式）" : "请先选择发送时间";
     if (showWarning) {
       ElMessage.warning(title);
     }
@@ -496,7 +496,7 @@ function cronValidationMessage(expr: string): string | undefined {
 
   const parts = expr.trim().split(/\s+/);
   if (parts.length !== 5) {
-    return "Cron 表达式需要 5 段，例如 30 20 * * *";
+    return "Cron 表达式需包含 5 段，例如 30 20 * * *";
   }
 
   const ranges = [

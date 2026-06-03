@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <PageHeader eyebrow="Group Admin" title="封禁与警告" description="围绕群组执行封禁、解封和警告追踪，时间按北京时间显示。">
+    <PageHeader eyebrow="群组管理" title="封禁与警告" description="围绕群组执行封禁、解封和警告追踪，时间按北京时间显示。">
       <template #actions>
         <ChatSelect v-model="selectedChatId" @update:model-value="loadBans" />
         <el-button :icon="Refresh" :loading="loading" @click="loadBans">刷新</el-button>
@@ -37,7 +37,7 @@
       <el-col :xs="24" :lg="8">
         <PanelSection title="后台操作" description="提供封禁 / 解封的表单骨架。">
           <el-form label-position="top">
-            <el-form-item label="User ID">
+            <el-form-item label="成员">
               <UserSelect v-model="banForm.user_id" :chat-id="selectedChatId" />
             </el-form-item>
             <el-form-item label="原因">
@@ -49,7 +49,7 @@
 
         <PanelSection title="警告记录" description="选择用户后查看 warn_records。">
           <el-form label-position="top">
-            <el-form-item label="User ID">
+            <el-form-item label="成员">
               <UserSelect v-model="warnUserId" :chat-id="selectedChatId" />
             </el-form-item>
             <el-button :loading="warnLoading" @click="loadWarns">查看警告</el-button>
@@ -108,7 +108,7 @@ async function loadBans(): Promise<void> {
     bans.value = await fetchBans(selectedChatId.value);
   } catch {
     bans.value = [];
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     loading.value = false;
   }
@@ -124,7 +124,7 @@ async function loadWarns(): Promise<void> {
     warns.value = await fetchWarns(selectedChatId.value, warnUserId.value);
   } catch {
     warns.value = [];
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     warnLoading.value = false;
   }
@@ -132,7 +132,7 @@ async function loadWarns(): Promise<void> {
 
 async function submitBan(): Promise<void> {
   if (!selectedChatId.value || !banForm.user_id) {
-    ElMessage.warning("请先填写 Chat ID 和 User ID");
+    ElMessage.warning("请先选择群组和成员");
     return;
   }
   try {
@@ -158,7 +158,7 @@ async function submitBan(): Promise<void> {
     ElMessage.success("封禁请求已提交");
     await loadBans();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     saving.value = false;
   }
@@ -171,7 +171,7 @@ async function submitUnban(row: BanRecord): Promise<void> {
     ElMessage.success("解封请求已提交");
     await loadBans();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     deletingId.value = undefined;
   }
@@ -194,3 +194,4 @@ onMounted(loadBans);
 @media (max-width: 720px) {
 }
 </style>
+

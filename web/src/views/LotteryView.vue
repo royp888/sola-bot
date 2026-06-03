@@ -1,8 +1,8 @@
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="Activity" title="活动抽奖" description="管理群内抽奖活动、参与方式和开奖结果。">
+    <PageHeader eyebrow="活动运营" title="活动抽奖" description="管理群内抽奖活动、参与方式和开奖结果。">
       <template #meta>
-        <span class="header-meta">页面时间按北京时间（UTC+8）显示</span>
+        <span class="header-meta">页面时间按北京时间（东八区）显示</span>
       </template>
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadLotteries">刷新</el-button>
@@ -266,7 +266,7 @@ function toRFC3339(value?: string | null): string | undefined {
 function buildPayload(): LotteryPayload | undefined {
   const chatId = parseNumericId(form.chat_id);
   if (!chatId) {
-    ElMessage.warning("请输入有效的 Chat ID");
+    ElMessage.warning("请输入有效的群组 ID");
     return undefined;
   }
   if (!form.title.trim()) {

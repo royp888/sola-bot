@@ -35,11 +35,11 @@
       </el-col>
     </el-row>
 
-    <PanelSection title="积分 Top 用户" description="当前周期积分贡献最高的用户。">
+    <PanelSection title="积分排行用户" description="当前周期积分贡献最高的用户。">
       <div ref="pointsChartRef" class="chart chart-wide" />
     </PanelSection>
 
-    <PanelSection title="积分 Top 用户明细" description="用户在当前周期内贡献的积分占比。">
+    <PanelSection title="积分排行用户明细" description="用户在当前周期内贡献的积分占比。">
       <el-table :data="summary.topPointsUsers" stripe>
         <el-table-column prop="rank" label="排名" width="90" />
         <el-table-column prop="label" label="用户" min-width="140" />

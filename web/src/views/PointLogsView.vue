@@ -105,7 +105,7 @@
                       {{ row.delta >= 0 ? "+" : "" }}{{ row.delta }} 分
                     </el-tag>
                   </div>
-                  <p class="log-card-reason">{{ row.reason || "系统未记录原因" }}</p>
+                  <p class="log-card-reason">{{ formatReason(row.reason) }}</p>
                 </article>
               </div>
 
@@ -122,7 +122,7 @@
                     </template>
                   </el-table-column>
                   <el-table-column label="原因" min-width="320">
-                    <template #default="{ row }">{{ row.reason || "系统未记录原因" }}</template>
+                    <template #default="{ row }">{{ formatReason(row.reason) }}</template>
                   </el-table-column>
                 </el-table>
               </div>
@@ -345,6 +345,60 @@ const resultCards = computed(() => [
 
 function formatDateTime(value?: string | null): string {
   return formatChinaDateTime(value, "-");
+}
+
+const reasonLabelMap: Record<string, string> = {
+  "message:text": "文本消息",
+  "message:photo": "图片消息",
+  "message:video": "视频消息",
+  "message:voice": "语音消息",
+  "message:audio": "音频消息",
+  "message:document": "文件消息",
+  "message:animation": "动图消息",
+  "message:sticker": "表情贴纸",
+  "message:location": "位置消息",
+  "message:contact": "联系人消息",
+  "message:poll": "投票消息",
+  "message:story": "动态消息",
+  "signin": "签到",
+  "checkin": "签到",
+  "daily_checkin": "每日签到",
+  "invite": "邀请奖励",
+  "invite_success": "邀请成功奖励",
+  "manual_adjust": "人工调整",
+  "admin:adjust": "管理员调整",
+  "admin:bonus": "管理员加分",
+  "admin:deduct": "管理员扣分",
+  "ban": "封禁处理",
+  "unban": "解除封禁",
+  "warn": "警告处理",
+  "lottery": "抽奖奖励",
+  "task_reward": "任务奖励",
+};
+
+function formatReason(reason?: string | null): string {
+  if (!reason) return "系统未记录原因";
+
+  const normalized = reason.trim();
+  if (!normalized) return "系统未记录原因";
+
+  if (reasonLabelMap[normalized]) {
+    return reasonLabelMap[normalized];
+  }
+
+  if (normalized.startsWith("message:")) {
+    const type = normalized.slice("message:".length);
+    return `消息互动 · ${type}`;
+  }
+
+  if (normalized.startsWith("admin:")) {
+    const action = normalized.slice("admin:".length);
+    return `管理员操作 · ${action}`;
+  }
+
+  return normalized
+    .replace(/_/g, " ")
+    .replace(/:/g, " · ");
 }
 
 function rankPoints(item: PointRankRecord): number {
@@ -859,3 +913,5 @@ onMounted(() => {
   }
 }
 </style>
+
+

@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <PageHeader eyebrow="Auto Replies" title="自动回复" description="维护群内关键词自动回复，和关键词过滤规则相互独立。">
+    <PageHeader eyebrow="自动化运营" title="自动回复" description="维护群内关键词自动回复，和关键词过滤规则相互独立。">
       <template #actions>
         <ChatSelect v-model="filters.chatId" @update:model-value="loadReplies" />
         <el-select v-model="filters.enabled" class="filter-select" clearable placeholder="状态" @change="loadReplies">
@@ -13,10 +13,10 @@
     </PageHeader>
 
     <PanelSection title="回复列表" description="接口：GET/POST/PATCH/DELETE /api/auto-replies。">
-      <el-alert v-if="error" class="alert" type="error" :closable="false" show-icon title="接口不可用" />
+      <el-alert v-if="error" class="alert" type="error" :closable="false" show-icon title="服务暂时不可用" />
       <el-table :data="replies" stripe v-loading="loading">
         <el-table-column prop="keyword" label="关键词" min-width="160" />
-        <el-table-column prop="chat_id" label="Chat" min-width="120" />
+        <el-table-column prop="chat_id" label="群组" min-width="120" />
         <el-table-column prop="match_type" label="匹配" width="110">
           <template #default="{ row }">{{ matchTypeLabel(row.match_type) }}</template>
         </el-table-column>
@@ -39,7 +39,7 @@
 
     <el-dialog v-model="dialogVisible" :title="editingReply ? '编辑自动回复' : '新建自动回复'" width="560px">
       <el-form label-position="top">
-        <el-form-item label="Chat ID">
+        <el-form-item label="群组 ID">
           <el-input v-if="editingReply" v-model="form.chat_id" disabled />
           <ChatSelect v-else v-model="form.chat_id" />
         </el-form-item>
@@ -139,7 +139,7 @@ async function loadReplies(): Promise<void> {
   } catch {
     replies.value = [];
     error.value = true;
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     loading.value = false;
   }
@@ -165,7 +165,7 @@ function openEdit(row: AutoReplyRecord): void {
 async function submitReply(): Promise<void> {
   const chatId = parseNumericId(form.chat_id);
   if (!editingReply.value && !chatId) {
-    ElMessage.warning("请输入有效的 Chat ID");
+    ElMessage.warning("请输入有效的群组 ID");
     return;
   }
   if (!form.keyword.trim()) {
@@ -194,7 +194,7 @@ async function submitReply(): Promise<void> {
     dialogVisible.value = false;
     await loadReplies();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     saving.value = false;
   }
@@ -206,7 +206,7 @@ async function toggleReply(row: AutoReplyRecord): Promise<void> {
     const updated = await updateAutoReply(row.id, { enabled: !row.enabled });
     Object.assign(row, updated);
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     togglingId.value = undefined;
   }
@@ -228,7 +228,7 @@ async function removeReply(row: AutoReplyRecord): Promise<void> {
     ElMessage.success("自动回复已删除");
     await loadReplies();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     deletingId.value = undefined;
   }

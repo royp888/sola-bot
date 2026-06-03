@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <PageHeader eyebrow="Keywords" title="关键词规则" description="维护关键词匹配、处理动作和群组作用范围。">
+    <PageHeader eyebrow="关键词运营" title="关键词规则" description="维护关键词匹配、处理动作和群组作用范围。">
       <template #actions>
         <ChatSelect v-model="filters.chatId" @update:model-value="loadKeywords" />
         <el-select v-model="filters.action" class="filter-select" clearable placeholder="动作">
@@ -15,10 +15,10 @@
     </PageHeader>
 
     <PanelSection title="关键词列表" description="接口：GET/POST/PATCH/DELETE /api/keywords。">
-      <el-alert v-if="error" class="alert" type="error" :closable="false" show-icon title="接口不可用" />
+      <el-alert v-if="error" class="alert" type="error" :closable="false" show-icon title="服务暂时不可用" />
       <el-table :data="keywords" stripe v-loading="loading">
         <el-table-column prop="pattern" label="关键词" min-width="160" />
-        <el-table-column prop="chat_id" label="Chat" min-width="120" />
+        <el-table-column prop="chat_id" label="群组" min-width="120" />
         <el-table-column prop="match_type" label="匹配" width="110" />
         <el-table-column prop="scope" label="范围" min-width="120" />
         <el-table-column prop="action" label="动作" min-width="120" />
@@ -41,7 +41,7 @@
 
     <el-dialog v-model="dialogVisible" :title="editingKeyword ? '编辑关键词' : '新建关键词'" width="560px">
       <el-form label-position="top">
-        <el-form-item label="Chat ID">
+        <el-form-item label="群组 ID">
           <el-input v-if="editingKeyword" v-model="form.chat_id" disabled />
           <ChatSelect v-else v-model="form.chat_id" />
         </el-form-item>
@@ -64,7 +64,7 @@
         <el-row :gutter="12">
           <el-col :xs="24" :md="12">
             <el-form-item label="范围">
-              <el-input v-model="form.scope" placeholder="global / chat / private" />
+              <el-input v-model="form.scope" placeholder="全局 / 群组 / 私聊" />
             </el-form-item>
           </el-col>
           <el-col :xs="24" :md="12">
@@ -151,7 +151,7 @@ async function loadKeywords(): Promise<void> {
   } catch {
     keywords.value = [];
     error.value = true;
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     loading.value = false;
   }
@@ -179,7 +179,7 @@ function openEdit(row: KeywordRecord): void {
 async function submitKeyword(): Promise<void> {
   const chatId = parseNumericId(form.chat_id);
   if (!editingKeyword.value && !chatId) {
-    ElMessage.warning("请输入有效的 Chat ID");
+    ElMessage.warning("请输入有效的群组 ID");
     return;
   }
   if (!form.pattern.trim()) {
@@ -206,7 +206,7 @@ async function submitKeyword(): Promise<void> {
     dialogVisible.value = false;
     await loadKeywords();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     saving.value = false;
   }
@@ -218,7 +218,7 @@ async function toggleKeyword(row: KeywordRecord): Promise<void> {
     const updated = await updateKeyword(row.id, { enabled: !row.enabled });
     Object.assign(row, updated);
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     togglingId.value = undefined;
   }
@@ -236,7 +236,7 @@ async function removeKeyword(row: KeywordRecord): Promise<void> {
     ElMessage.success("关键词规则已删除");
     await loadKeywords();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     deletingId.value = undefined;
   }

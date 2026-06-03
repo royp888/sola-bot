@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <PageHeader eyebrow="Levels" title="等级规则" description="按群组维护积分等级、门槛和权益标记。">
+    <PageHeader eyebrow="等级体系" title="等级规则" description="按群组维护积分等级、门槛和权益标记。">
       <template #actions>
         <ChatSelect v-model="filters.chatId" @update:model-value="loadLevels" />
         <el-button :icon="Refresh" :loading="loading" @click="loadLevels">刷新</el-button>
@@ -9,10 +9,10 @@
     </PageHeader>
 
     <PanelSection title="等级列表" description="接口：GET/POST/PATCH/DELETE /api/levels。">
-      <el-alert v-if="error" class="alert" type="error" :closable="false" show-icon title="接口不可用" />
+      <el-alert v-if="error" class="alert" type="error" :closable="false" show-icon title="服务暂时不可用" />
       <el-table :data="levels" stripe v-loading="loading">
         <el-table-column prop="name" label="名称" min-width="140" />
-        <el-table-column prop="chat_id" label="Chat" min-width="120" />
+        <el-table-column prop="chat_id" label="群组" min-width="120" />
         <el-table-column prop="min_points" label="最低积分" width="120" sortable />
         <el-table-column prop="badge" label="徽章" min-width="120" />
         <el-table-column label="权限" min-width="180">
@@ -32,7 +32,7 @@
 
     <el-dialog v-model="dialogVisible" :title="editingLevel ? '编辑等级' : '新建等级'" width="520px">
       <el-form label-position="top">
-        <el-form-item label="Chat ID">
+        <el-form-item label="群组 ID">
           <el-input v-if="editingLevel" v-model="form.chat_id" disabled />
           <ChatSelect v-else v-model="form.chat_id" />
         </el-form-item>
@@ -47,7 +47,7 @@
           </el-col>
           <el-col :xs="24" :md="12">
             <el-form-item label="徽章">
-              <el-input v-model="form.badge" placeholder="VIP / Bronze" />
+              <el-input v-model="form.badge" placeholder="VIP / 青铜" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -124,7 +124,7 @@ async function loadLevels(): Promise<void> {
   } catch {
     levels.value = [];
     error.value = true;
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     loading.value = false;
   }
@@ -150,7 +150,7 @@ function openEdit(row: LevelRecord): void {
 async function submitLevel(): Promise<void> {
   const chatId = parseNumericId(form.chat_id);
   if (!editingLevel.value && !chatId) {
-    ElMessage.warning("请输入有效的 Chat ID");
+    ElMessage.warning("请输入有效的群组 ID");
     return;
   }
   if (!form.name.trim()) {
@@ -175,7 +175,7 @@ async function submitLevel(): Promise<void> {
     dialogVisible.value = false;
     await loadLevels();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     saving.value = false;
   }
@@ -193,7 +193,7 @@ async function removeLevel(row: LevelRecord): Promise<void> {
     ElMessage.success("等级规则已删除");
     await loadLevels();
   } catch {
-    ElMessage.error("接口不可用");
+    ElMessage.error("服务暂时不可用");
   } finally {
     deletingId.value = undefined;
   }

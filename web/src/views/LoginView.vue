@@ -1,18 +1,18 @@
 <template>
   <div class="login-shell">
     <section class="brand-panel">
-      <p class="eyebrow">Telegram multi-tenant admin</p>
+      <p class="eyebrow">Telegram 多租户管理后台</p>
       <h1>{{ appName }}</h1>
       <p class="lede">用 Telegram 账号登录，绑定自己的群后只管理自己的数据。</p>
 
       <div class="grid">
         <div class="tile">
           <span>登录方式</span>
-          <strong>Telegram Login Widget</strong>
+          <strong>Telegram 一键登录</strong>
         </div>
         <div class="tile">
-          <span>Bot</span>
-          <strong>@{{ botUsername || "请配置 VITE_BOT_USERNAME" }}</strong>
+          <span>机器人</span>
+          <strong>@{{ botUsername || "请配置机器人用户名" }}</strong>
         </div>
       </div>
     </section>
@@ -30,7 +30,7 @@
           type="warning"
           show-icon
           :closable="false"
-          title="请在前端环境变量中配置 VITE_BOT_USERNAME，不带 @"
+          title="请在前端环境变量中配置机器人用户名（VITE_BOT_USERNAME，不带 @）"
         />
 
         <el-divider>平台超管</el-divider>
@@ -272,3 +272,4 @@ h1 {
   }
 }
 </style>
+

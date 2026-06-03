@@ -7,7 +7,7 @@
     clearable
     :disabled="!chatId"
     :loading="loading"
-    placeholder="选择用户或输入用户 ID"
+    placeholder="选择成员或输入成员 ID"
     @update:model-value="emit('update:modelValue', String($event ?? ''))"
   >
     <el-option
@@ -58,7 +58,7 @@ async function loadUsers(): Promise<void> {
     emit("loaded", users.value);
   } catch {
     users.value = [];
-    ElMessage.error("用户列表接口不可用");
+    ElMessage.error("成员列表暂时不可用");
   } finally {
     loading.value = false;
   }

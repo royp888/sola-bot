@@ -1,26 +1,26 @@
 <template>
   <div class="page">
     <PageHeader
-      eyebrow="Bots"
+      eyebrow="机器人管理"
       title="机器人管理"
-      description="管理多个 TG Bot 的在线状态、绑定关系和语言配置，心跳时间按北京时间显示。"
+      description="管理多个 Telegram 机器人 的在线状态、绑定关系和语言配置，心跳时间按北京时间显示。"
     >
       <template #actions>
-        <el-input v-model="keyword" class="search" placeholder="搜索 Bot">
+        <el-input v-model="keyword" class="search" placeholder="搜索机器人">
           <template #prefix>
             <el-icon><Search /></el-icon>
           </template>
         </el-input>
         <el-button :icon="Refresh" @click="loadBots">刷新</el-button>
-        <el-button type="primary" :icon="Plus" disabled>新增 Bot</el-button>
+        <el-button type="primary" :icon="Plus" disabled>新增机器人</el-button>
       </template>
     </PageHeader>
 
-    <PanelSection title="Bot 列表" description="来自后端 /bots 的实时清单。">
+    <PanelSection title="机器人列表" description="来自后端 /bots 的实时清单。">
       <div class="table-wrap">
       <el-table :data="filteredBots" stripe>
         <el-table-column prop="name" label="名称" min-width="160" />
-        <el-table-column prop="username" label="Username" min-width="180" />
+        <el-table-column prop="username" label="用户名" min-width="180" />
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
             <el-tag :type="botTag(row.status)" effect="dark">{{ botStatus(row.status) }}</el-tag>
@@ -41,7 +41,7 @@
       </div>
     </PanelSection>
 
-    <el-dialog v-model="detailVisible" title="Bot 详情" width="520px">
+    <el-dialog v-model="detailVisible" title="机器人详情" width="520px">
       <el-descriptions v-if="currentBot" :column="1" border>
         <el-descriptions-item label="名称">{{ currentBot.name }}</el-descriptions-item>
         <el-descriptions-item label="用户名">{{ currentBot.username }}</el-descriptions-item>
@@ -87,7 +87,7 @@ async function loadBots(): Promise<void> {
     bots.value = await fetchBots();
   } catch {
     bots.value = [];
-    ElMessage.error("Bot 列表接口不可用");
+    ElMessage.error("机器人列表暂时不可用");
   }
 }
 

@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="Growth" title="邀请链接追踪" description="创建专属邀请链接，并统计不同渠道带来的新增成员。">
+    <PageHeader eyebrow="增长运营" title="邀请链接追踪" description="创建专属邀请链接，并统计不同渠道带来的新增成员。">
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadLinks">刷新</el-button>
         <el-button type="primary" :icon="Plus" @click="openCreate">创建链接</el-button>
@@ -49,7 +49,7 @@
 
       <el-table :data="filteredLinks" stripe class="table-compact">
         <el-table-column prop="name" label="名称" min-width="160" />
-        <el-table-column prop="chat_id" label="Chat" min-width="120" />
+        <el-table-column prop="chat_id" label="群组" min-width="120" />
         <el-table-column prop="invite_link" label="链接" min-width="260" show-overflow-tooltip />
         <el-table-column prop="join_count" label="加入数" width="100" sortable />
         <el-table-column label="审批" width="100">
@@ -68,7 +68,7 @@
 
     <el-dialog v-model="dialogVisible" title="创建邀请链接" width="460px">
       <el-form label-position="top">
-        <el-form-item label="Chat ID">
+        <el-form-item label="群组 ID">
           <ChatSelect v-model="form.chat_id" />
         </el-form-item>
         <el-form-item label="名称">
@@ -166,7 +166,7 @@ function openCreate(): void {
 
 async function submitLink(): Promise<void> {
   if (!Number(form.chat_id)) {
-    ElMessage.warning("请选择或输入 Chat ID");
+    ElMessage.warning("请选择或输入群组 ID");
     return;
   }
   saving.value = true;
@@ -176,7 +176,7 @@ async function submitLink(): Promise<void> {
     dialogVisible.value = false;
     await loadLinks();
   } catch {
-    ElMessage.error("创建失败，请确认 Bot 权限");
+    ElMessage.error("创建失败，请确认 机器人权限");
   } finally {
     saving.value = false;
   }

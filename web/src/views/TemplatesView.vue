@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="Content" title="内容模板" description="先明确作用范围，再维护可复用的文案与媒体模板。">
+    <PageHeader eyebrow="内容资产" title="内容模板" description="先明确作用范围，再维护可复用的文案与媒体模板。">
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="loadTemplates">刷新</el-button>
         <el-button type="primary" :icon="Plus" @click="openCreate">新建模板</el-button>
