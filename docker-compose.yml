@@ -51,7 +51,7 @@ services:
             echo "Skipping migration $$version"
             continue
           fi
-          echo "Applying migration $$version from $file"
+          echo "Applying migration $$version from $$file"
           psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$file"
           psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO schema_migrations (version) VALUES ('$$version')"
         done
