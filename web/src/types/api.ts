@@ -175,6 +175,11 @@ export interface PointLogRecord {
   created_at: string;
 }
 
+export interface PointLogListResponse {
+  items: PointLogRecord[];
+  next_cursor?: string;
+}
+
 export interface UserPointDetail {
   user_id: ChatID;
   chat_id: ChatID;

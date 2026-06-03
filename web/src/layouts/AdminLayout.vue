@@ -16,94 +16,54 @@
         <el-button v-if="isMobile" text :icon="Close" aria-label="关闭菜单" @click="closeMobileNav" />
       </div>
 
-      <div v-if="!collapsed || isMobile" class="context-card">
-        <span class="context-kicker">当前工作区</span>
-        <strong>{{ currentTitle }}</strong>
-        <p>{{ currentItemDescription || currentSectionName }}</p>
-        <div class="context-tags">
-          <span>{{ currentSectionName }}</span>
-          <span>{{ userRoleLabel }}</span>
-        </div>
-      </div>
-
       <div class="nav-scroll">
-        <el-menu
-          class="nav"
-          :default-active="route.path"
-          :collapse="collapsed && !isMobile"
-          :router="true"
-          background-color="transparent"
-          text-color="var(--app-text)"
-          active-text-color="var(--app-text)"
-        >
-          <template v-for="section in navSections" :key="section.key">
-            <li v-if="!collapsed || isMobile" class="nav-section-label">{{ section.label }}</li>
-            <el-menu-item
-              v-for="item in section.items"
-              :key="item.index"
-              :index="item.index"
-              class="nav-item"
-              @click="handleMenuNavigate"
-            >
-              <span class="nav-active-line" />
-              <el-icon><component :is="item.icon" /></el-icon>
-              <template #title>
-                <div class="nav-copy">
-                  <span>{{ item.label }}</span>
-                  <small v-if="(!collapsed || isMobile) && item.description">{{ item.description }}</small>
-                </div>
-              </template>
-            </el-menu-item>
-          </template>
-        </el-menu>
-      </div>
-
-      <div v-if="!collapsed || isMobile" class="sidebar-footer">
-        <div class="foot-block">
-          <span class="foot-label">登录身份</span>
-          <strong>{{ userLabel }}</strong>
-          <span class="foot-meta">{{ userRoleLabel }}</span>
-        </div>
-        <div class="foot-block foot-block-muted">
-          <span class="foot-label">接口环境</span>
-          <strong>{{ apiLabel }}</strong>
-          <span class="foot-meta">{{ apiBase }}</span>
-        </div>
+        <nav class="nav" aria-label="主导航">
+          <section v-for="section in navSections" :key="section.key" class="nav-section" :class="{ 'is-active': isSectionActive(section) }">
+            <p v-if="!collapsed || isMobile" class="nav-section-label">{{ section.label }}</p>
+            <div class="nav-section-list">
+              <router-link
+                v-for="item in section.items"
+                :key="item.path"
+                :to="item.path"
+                class="nav-item"
+                :class="{ 'is-active': isRouteActive(item) }"
+                :aria-current="isRouteActive(item) ? 'page' : undefined"
+                :title="item.label"
+                @click="handleMenuNavigate"
+              >
+                <span class="nav-icon"><el-icon><component :is="item.icon" /></el-icon></span>
+                <span v-if="!collapsed || isMobile" class="nav-copy">{{ item.label }}</span>
+              </router-link>
+            </div>
+          </section>
+        </nav>
       </div>
     </aside>
 
     <div class="content">
       <header class="topbar">
-        <div class="topbar-left">
-          <el-button
-            text
-            :icon="isMobile ? Menu : (collapsed ? Expand : Fold)"
-            :aria-label="isMobile ? '打开菜单' : (collapsed ? '展开菜单' : '收起菜单')"
-            @click="toggleNavigation"
-          />
-          <div class="topbar-copy">
-            <div class="top-crumb">{{ currentSectionName }}</div>
-            <div class="top-title-row">
-              <div class="top-title">{{ currentTitle }}</div>
-              <span v-if="currentItemDescription" class="top-route">{{ currentItemDescription }}</span>
-            </div>
+        <div class="topbar-inner">
+          <div class="topbar-left">
+            <el-button
+              text
+              :icon="isMobile ? Menu : (collapsed ? Expand : Fold)"
+              :aria-label="isMobile ? '打开菜单' : (collapsed ? '展开菜单' : '收起菜单')"
+              @click="toggleNavigation"
+            />
+            <div class="top-crumb" :title="topbarContext">{{ topbarContext }}</div>
           </div>
-        </div>
 
-        <div class="topbar-right">
-          <div class="topbar-context desktop-only">
-            <span>当前模块</span>
-            <strong>{{ currentSectionName }}</strong>
+          <div class="topbar-right">
+            <el-tag effect="plain" class="user-tag">{{ userRoleLabel }} · {{ userLabel }}</el-tag>
+            <el-dropdown @command="handleCommand">
+              <el-button :icon="Setting" circle />
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
-          <el-tag effect="plain" class="user-tag">{{ userRoleLabel }} · {{ userLabel }}</el-tag>
-          <el-dropdown @command="handleCommand">
-            <el-button :icon="Setting" circle />
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
         </div>
       </header>
 
@@ -140,10 +100,11 @@ import {
 import { clearSession, getStoredUser } from "@/api/session";
 
 interface NavItem {
-  index: string;
+  path: string;
   label: string;
   description: string;
   icon: unknown;
+  matches?: string[];
 }
 
 interface NavSection {
@@ -159,7 +120,7 @@ const isMobile = ref(false);
 const mobileNavOpen = ref(false);
 
 const appName = "Sola 管理台";
-const appDesc = "社群运营与自动化";
+const appDesc = "社群运营中心";
 const brandInitial = "S";
 
 const navSections: NavSection[] = [
@@ -167,63 +128,97 @@ const navSections: NavSection[] = [
     key: "overview",
     label: "总览",
     items: [
-      { index: "/dashboard", label: "运营总览", description: "优先异常、任务与系统状态", icon: House },
-      { index: "/stats", label: "数据分析", description: "查看趋势、积分与活跃情况", icon: DataAnalysis },
+      { path: "/", label: "运营总览", description: "优先查看异常、任务与系统状态", icon: House },
+      { path: "/stats", label: "数据分析", description: "查看趋势、活跃度与积分表现", icon: DataAnalysis },
     ],
   },
   {
-    key: "accounts",
-    label: "账号与对象",
+    key: "members",
+    label: "成员运营",
     items: [
-      { index: "/users", label: "成员管理", description: "批量处理成员、积分与封禁", icon: UserFilled },
-      { index: "/groups", label: "群组设置", description: "管理群组接入与权限配置", icon: ChatDotRound },
+      { path: "/users", label: "成员管理", description: "批量处理成员、积分与封禁", icon: UserFilled },
+      { path: "/points/logs", label: "积分流水", description: "按成员追踪积分变动与处理原因", icon: Tickets },
+      { path: "/violations", label: "违规记录", description: "查看违规记录与处置进度", icon: CircleClose },
+      { path: "/admin/bans", label: "封禁与警告", description: "管理封禁、警告与处理历史", icon: Lock },
+    ],
+  },
+  {
+    key: "community",
+    label: "社群配置",
+    items: [
+      { path: "/admin/config", label: "群组设置", description: "管理群组接入、权限与管理员", icon: ChatDotRound },
+      { path: "/chats", label: "群组会话", description: "查看已接入的群组与频道列表", icon: MessageBox },
+      { path: "/invite-links", label: "邀请追踪", description: "跟踪邀请链接与成员转化情况", icon: Files },
+      { path: "/bots", label: "机器人管理", description: "查看机器人令牌、状态与实例配置", icon: Cpu },
     ],
   },
   {
     key: "rules",
-    label: "社群规则",
+    label: "规则自动化",
     items: [
-      { index: "/violations", label: "违规处理", description: "查看违规记录与处置状态", icon: CircleClose },
-      { index: "/keywords", label: "敏感词", description: "维护规则词库与匹配策略", icon: Lock },
-      { index: "/templates", label: "消息模板", description: "沉淀常用回复与发布模板", icon: Files },
+      { path: "/points/config", label: "积分规则", description: "配置奖励、扣分与排行榜策略", icon: Coin },
+      { path: "/levels", label: "积分等级", description: "调整成长等级、门槛与展示头衔", icon: Trophy },
+      { path: "/keywords", label: "关键词规则", description: "维护词库、匹配策略与触发方式", icon: ChatDotRound },
+      { path: "/auto-replies", label: "自动回复", description: "配置关键词与场景自动回复", icon: MessageBox },
     ],
   },
   {
-    key: "growth",
-    label: "成长与激励",
+    key: "content",
+    label: "内容活动",
     items: [
-      { index: "/points", label: "积分规则", description: "配置积分发放与排行榜策略", icon: Coin },
-      { index: "/lotteries", label: "抽奖活动", description: "管理进行中与历史抽奖", icon: Trophy },
+      { path: "/posts", label: "发布任务", description: "安排图文、视频与定时发布任务", icon: Calendar },
+      { path: "/templates", label: "内容模板", description: "沉淀常用发布内容与消息模板", icon: Files },
+      { path: "/lottery", label: "活动抽奖", description: "管理进行中与历史抽奖活动", icon: Tickets },
     ],
   },
   {
-    key: "operations",
-    label: "内容与运维",
+    key: "system",
+    label: "系统",
     items: [
-      { index: "/posts", label: "发布任务", description: "编排定时消息与自动发布", icon: Calendar },
-      { index: "/schedules", label: "任务调度", description: "查看调度配置与执行状态", icon: Tickets },
-      { index: "/system", label: "系统设置", description: "查看接口与机器人运行参数", icon: Cpu },
-      { index: "/messages", label: "消息记录", description: "追踪消息投递与交互记录", icon: MessageBox },
+      { path: "/backup", label: "备份恢复", description: "管理备份策略与恢复操作", icon: Files },
     ],
   },
 ];
 
-const currentItem = computed<NavItem | undefined>(() =>
-  navSections.flatMap((section) => section.items).find((item) => route.path.startsWith(item.index)),
-);
+const allNavItems = navSections.flatMap((section) => section.items);
 
-const currentSectionName = computed(() =>
-  navSections.find((section) => section.items.some((item) => route.path.startsWith(item.index)))?.label || "工作台",
-);
+function matchesPath(pattern: string, currentPath: string): boolean {
+  if (pattern === "/") {
+    return currentPath === "/";
+  }
+  return currentPath === pattern || currentPath.startsWith(`${pattern}/`);
+}
 
-const currentTitle = computed(() => currentItem.value?.label || "控制台");
-const currentItemDescription = computed(() => currentItem.value?.description || "");
+function isRouteActive(item: NavItem): boolean {
+  return (item.matches ?? [item.path]).some((pattern) => matchesPath(pattern, route.path));
+}
 
+function isSectionActive(section: NavSection): boolean {
+  return section.items.some((item) => isRouteActive(item));
+}
+
+const currentItem = computed<NavItem | undefined>(() => allNavItems.find((item) => isRouteActive(item)));
+
+const currentSectionName = computed(() => navSections.find((section) => section.items.some((item) => isRouteActive(item)))?.label || "工作台");
+
+const currentMetaTitle = computed(() => {
+  const matched = route.matched
+    .slice()
+    .reverse()
+    .find((record) => typeof record.meta?.title === "string");
+  return matched?.meta?.title as string | undefined;
+});
+
+const currentTitle = computed(() => currentItem.value?.label || currentMetaTitle.value || "控制台");
+const topbarContext = computed(() => {
+  if (currentSectionName.value === currentTitle.value) {
+    return currentTitle.value;
+  }
+  return `${currentSectionName.value} / ${currentTitle.value}`;
+});
 const storedUser = computed(() => getStoredUser());
 const userLabel = computed(() => storedUser.value?.username || "未命名用户");
 const userRoleLabel = computed(() => (storedUser.value?.role === "super_admin" ? "超级管理员" : "群主管理员"));
-const apiBase = computed(() => (import.meta.env.VITE_API_BASE_URL as string | undefined) || "/api");
-const apiLabel = computed(() => (apiBase.value.startsWith("http") ? "远程接口" : "同源接口"));
 
 function syncViewport(): void {
   isMobile.value = window.innerWidth <= 720;
@@ -281,9 +276,7 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(73, 113, 197, 0.16), transparent 26%),
-    linear-gradient(180deg, rgba(8, 11, 17, 0.98), rgba(10, 13, 19, 0.98));
+  background: linear-gradient(180deg, rgba(8, 11, 17, 0.98), rgba(10, 13, 19, 0.98));
 }
 
 .mobile-backdrop {
@@ -299,44 +292,46 @@ onBeforeUnmount(() => {
   top: 0;
   display: flex;
   flex-direction: column;
-  width: 274px;
+  width: 244px;
   height: 100vh;
-  padding: 18px 14px 16px;
+  padding: 16px 12px 14px;
   border-right: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(9, 13, 20, 0.88);
-  backdrop-filter: blur(20px);
+  background: rgba(9, 13, 20, 0.94);
+  backdrop-filter: blur(14px);
 }
 
 .sidebar.collapsed {
-  width: 92px;
+  width: 78px;
 }
 
 .brand-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 14px;
+  padding: 2px 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid rgba(120, 166, 255, 0.18);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(120, 166, 255, 0.2), rgba(120, 166, 255, 0.08));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(120, 166, 255, 0.14);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(120, 166, 255, 0.17), rgba(120, 166, 255, 0.06));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   color: var(--app-text);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -348,146 +343,160 @@ onBeforeUnmount(() => {
 }
 
 .brand-copy strong {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .brand-copy span {
   color: var(--app-muted);
-  font-size: 12px;
-}
-
-.context-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(20, 28, 41, 0.95), rgba(15, 21, 31, 0.95));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.context-kicker,
-.foot-label,
-.foot-meta {
-  color: var(--app-muted);
-  font-size: 12px;
-}
-
-.context-card strong,
-.foot-block strong {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.context-card p {
-  margin: 0;
-  color: var(--app-muted-strong);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.context-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.context-tags span {
-  padding: 5px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--app-muted-strong);
   font-size: 11px;
 }
 
 .nav-scroll {
   flex: 1;
   overflow-y: auto;
-  margin-right: -8px;
-  padding-right: 8px;
+  margin-right: -4px;
+  padding-right: 4px;
+  padding-bottom: 8px;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  border-right: 0;
+  gap: 12px;
+}
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 7px 8px;
+  border-radius: 14px;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.nav-section.is-active {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nav-section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .nav-section-label {
-  margin: 10px 0 2px;
-  padding: 0 12px;
-  color: rgba(164, 177, 196, 0.68);
+  margin: 0;
+  padding: 0 0 0 12px;
+  color: rgba(164, 177, 196, 0.42);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  list-style: none;
-  text-transform: uppercase;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.nav-section.is-active .nav-section-label {
+  color: rgba(214, 224, 238, 0.66);
 }
 
 .nav-item {
   position: relative;
-  min-height: 48px;
-  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
 
-.nav-active-line {
+.nav-item::before {
+  content: "";
   position: absolute;
-  left: 10px;
-  top: 11px;
-  bottom: 11px;
-  width: 3px;
+  left: 3px;
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
   border-radius: 999px;
   background: transparent;
+  transition: background 0.18s ease;
 }
 
-.nav-item.is-active .nav-active-line {
-  background: linear-gradient(180deg, #8fb5ff, #6d90dc);
+.nav-item:hover {
+  border-color: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.028);
+}
+
+.nav-item.is-active {
+  border-color: rgba(132, 170, 255, 0.08);
+  background: rgba(84, 124, 255, 0.12);
+}
+
+.nav-item.is-active::before {
+  background: rgba(125, 169, 255, 0.9);
+}
+
+.nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(197, 208, 223, 0.68);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.nav-icon :deep(.el-icon) {
+  font-size: 14px;
+}
+
+.nav-item:hover .nav-icon {
+  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.036);
+  color: rgba(236, 242, 255, 0.92);
+}
+
+.nav-item.is-active .nav-icon {
+  border-color: rgba(132, 170, 255, 0.09);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(245, 248, 255, 0.96);
 }
 
 .nav-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.nav-copy span {
+  min-width: 0;
+  color: rgba(213, 222, 236, 0.76);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 560;
+  line-height: 1.2;
 }
 
-.nav-copy small {
-  color: rgba(164, 177, 196, 0.72);
-  font-size: 11px;
-  line-height: 1.45;
+.nav-item.is-active .nav-copy {
+  color: rgba(245, 248, 255, 0.96);
 }
 
-.sidebar-footer {
-  display: grid;
+.sidebar.collapsed .brand-row {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.sidebar.collapsed .brand {
+  justify-content: center;
+}
+
+.sidebar.collapsed .nav-item {
   grid-template-columns: 1fr;
-  gap: 10px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.foot-block {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.foot-block-muted {
-  opacity: 0.82;
+  justify-items: center;
+  padding: 0;
 }
 
 .content {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   background: transparent;
 }
@@ -496,15 +505,22 @@ onBeforeUnmount(() => {
   position: sticky;
   top: 0;
   z-index: 10;
+  min-height: 58px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  background: rgba(9, 13, 20, 0.56);
+  backdrop-filter: blur(12px);
+}
+
+.topbar-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 72px;
-  padding: 0 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(9, 13, 20, 0.8);
-  backdrop-filter: blur(18px);
+  width: 100%;
+  max-width: 1320px;
+  min-height: 58px;
+  margin: 0 auto;
+  padding: 0 28px;
 }
 
 .topbar-left,
@@ -518,52 +534,27 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
 }
 
-.topbar-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.top-crumb {
   min-width: 0;
-}
-
-.top-crumb,
-.top-route,
-.topbar-context span {
-  color: var(--app-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(213, 222, 236, 0.66);
   font-size: 12px;
-}
-
-.top-title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.top-title {
-  font-size: 18px;
-  font-weight: 760;
-}
-
-.topbar-context {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.topbar-context strong {
-  font-size: 12px;
+  font-weight: 600;
 }
 
 .user-tag {
-  color: var(--app-text);
+  color: var(--app-muted-strong);
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.045);
 }
 
 .viewport {
-  padding: 24px;
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 18px 28px 28px;
 }
 
 .nav-fade-enter-active,
@@ -578,15 +569,16 @@ onBeforeUnmount(() => {
 
 @media (max-width: 960px) {
   .sidebar {
-    width: 252px;
+    width: 236px;
   }
 
   .sidebar.collapsed {
-    width: 86px;
+    width: 76px;
   }
 
-  .desktop-only {
-    display: none;
+  .topbar-inner,
+  .viewport {
+    padding-inline: 20px;
   }
 }
 
@@ -601,7 +593,7 @@ onBeforeUnmount(() => {
     top: 0;
     bottom: 0;
     z-index: 40;
-    width: min(88vw, 320px);
+    width: min(86vw, 308px);
     transform: translateX(-100%);
     transition: transform 0.2s ease;
   }
@@ -610,7 +602,15 @@ onBeforeUnmount(() => {
     transform: translateX(0);
   }
 
-  .topbar {
+  .nav-section-label {
+    padding-left: 46px;
+  }
+
+  .user-tag {
+    display: none;
+  }
+
+  .topbar-inner {
     padding: 0 14px;
   }
 

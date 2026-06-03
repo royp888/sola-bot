@@ -96,7 +96,7 @@ const router = createRouter({
           name: "points-logs",
           component: PointLogsView,
           meta: {
-            title: "积分记录",
+            title: "成员积分记录",
           },
         },
         {

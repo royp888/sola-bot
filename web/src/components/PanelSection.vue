@@ -26,9 +26,9 @@ defineProps<{
 .panel {
   overflow: hidden;
   border: 1px solid var(--app-border);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(28, 34, 45, 0.96) 0%, rgba(21, 26, 35, 0.96) 100%);
-  box-shadow: var(--app-shadow-soft);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(17, 24, 34, 0.96) 0%, rgba(14, 20, 29, 0.96) 100%);
+  box-shadow: 0 10px 28px rgba(4, 9, 16, 0.18);
 }
 
 .panel-head {
@@ -36,8 +36,8 @@ defineProps<{
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
-  padding: 20px 22px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .panel-copy {
@@ -46,16 +46,16 @@ defineProps<{
 
 h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1.3;
-  font-weight: 700;
+  font-weight: 680;
 }
 
 p {
   margin: 6px 0 0;
   color: var(--app-muted);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .panel-actions {
@@ -67,18 +67,18 @@ p {
 }
 
 .panel-body {
-  padding: 20px 22px 22px;
+  padding: 18px;
   overflow-x: auto;
 }
 
 @media (max-width: 720px) {
   .panel-head {
     flex-direction: column;
-    padding: 18px 18px 14px;
+    padding: 16px 16px 12px;
   }
 
   .panel-body {
-    padding: 18px;
+    padding: 16px;
   }
 
   .panel-actions {

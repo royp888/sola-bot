@@ -1,11 +1,11 @@
 :root {
-  --app-bg: #090d13;
-  --app-surface: #0f1621;
-  --app-surface-2: #131d2a;
-  --app-surface-3: #182434;
-  --app-surface-4: #223145;
-  --app-border: rgba(255, 255, 255, 0.08);
-  --app-border-strong: rgba(143, 181, 255, 0.26);
+  --app-bg: #0a0f15;
+  --app-surface: #101722;
+  --app-surface-2: #141d29;
+  --app-surface-3: #182332;
+  --app-surface-4: #213043;
+  --app-border: rgba(255, 255, 255, 0.07);
+  --app-border-strong: rgba(143, 181, 255, 0.18);
   --app-text: #edf3ff;
   --app-muted: #8d9bb0;
   --app-muted-strong: #c5d0df;
@@ -14,11 +14,11 @@
   --app-success: #72c091;
   --app-warning: #d8a25f;
   --app-danger: #d27878;
-  --app-radius: 14px;
-  --app-radius-sm: 10px;
-  --app-radius-lg: 18px;
-  --app-shadow: 0 18px 44px rgba(4, 9, 16, 0.28);
-  --app-shadow-soft: 0 10px 24px rgba(4, 9, 16, 0.18);
+  --app-radius: 12px;
+  --app-radius-sm: 8px;
+  --app-radius-lg: 14px;
+  --app-shadow: 0 14px 34px rgba(4, 9, 16, 0.24);
+  --app-shadow-soft: 0 8px 18px rgba(4, 9, 16, 0.14);
   color-scheme: dark;
   font-family:
     "Inter",
@@ -62,8 +62,8 @@ body,
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(90, 132, 216, 0.12), transparent 26%),
-    linear-gradient(180deg, #090d13 0%, #0b1017 100%);
+    radial-gradient(circle at top left, rgba(90, 132, 216, 0.07), transparent 24%),
+    linear-gradient(180deg, #0a0f15 0%, #0c1118 100%);
 }
 
 body,
@@ -110,7 +110,7 @@ a {
 .el-button--default,
 .el-button--info {
   border-color: var(--app-border);
-  background: linear-gradient(180deg, rgba(25, 36, 52, 0.98), rgba(18, 27, 39, 0.98));
+  background: rgba(20, 29, 41, 0.92);
   color: var(--app-text);
 }
 
@@ -119,19 +119,19 @@ a {
 .el-button--info:hover,
 .el-button--info:focus-visible {
   border-color: var(--app-border-strong);
-  background: linear-gradient(180deg, rgba(30, 45, 66, 0.98), rgba(21, 33, 47, 0.98));
+  background: rgba(24, 35, 49, 0.96);
   color: var(--app-text);
 }
 
 .el-button--primary {
-  border-color: rgba(125, 169, 255, 0.18);
-  background: linear-gradient(180deg, #8ab1ff, #6e93df);
-  box-shadow: 0 12px 28px rgba(61, 102, 184, 0.24);
+  border-color: rgba(125, 169, 255, 0.16);
+  background: #7da9ff;
+  box-shadow: 0 6px 14px rgba(61, 102, 184, 0.14);
 }
 
 .el-button--primary:hover,
 .el-button--primary:focus-visible {
-  background: linear-gradient(180deg, #94b8ff, #779ce8);
+  background: #8bb4ff;
 }
 
 .el-button.is-text:hover,
@@ -144,7 +144,7 @@ a {
 .el-textarea__inner,
 .el-input-number,
 .el-date-editor.el-input__wrapper {
-  background: rgba(17, 26, 38, 0.96);
+  background: rgba(18, 27, 39, 0.92);
   box-shadow: inset 0 0 0 1px var(--app-border);
 }
 
@@ -153,7 +153,7 @@ a {
 .el-textarea__inner:focus,
 .el-input-number.is-controls-right.is-focus,
 .el-date-editor.el-input__wrapper.is-focus {
-  box-shadow: inset 0 0 0 1px var(--app-accent);
+  box-shadow: inset 0 0 0 1px var(--app-accent), 0 0 0 3px rgba(125, 169, 255, 0.1);
 }
 
 .el-textarea__inner {
@@ -194,11 +194,31 @@ a {
 }
 
 .el-menu-item.is-active {
-  background: rgba(125, 169, 255, 0.12) !important;
+  background: rgba(125, 169, 255, 0.08) !important;
 }
 
 .el-tag {
-  border-color: transparent;
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--app-muted-strong);
+}
+
+.el-tag.el-tag--success {
+  border-color: rgba(114, 192, 145, 0.18);
+  background: rgba(114, 192, 145, 0.08);
+  color: #9bddb3;
+}
+
+.el-tag.el-tag--warning {
+  border-color: rgba(216, 162, 95, 0.18);
+  background: rgba(216, 162, 95, 0.08);
+  color: #efc489;
+}
+
+.el-tag.el-tag--danger {
+  border-color: rgba(210, 120, 120, 0.18);
+  background: rgba(210, 120, 120, 0.08);
+  color: #efaaaa;
 }
 
 .el-table,
@@ -209,10 +229,12 @@ a {
 }
 
 .el-table {
-  --el-table-border-color: rgba(255, 255, 255, 0.06);
+  --el-table-border-color: rgba(255, 255, 255, 0.05);
   --el-table-header-bg-color: rgba(255, 255, 255, 0.03);
-  --el-table-row-hover-bg-color: rgba(125, 169, 255, 0.06);
+  --el-table-row-hover-bg-color: rgba(125, 169, 255, 0.04);
   --el-table-current-row-bg-color: rgba(125, 169, 255, 0.08);
+  overflow: hidden;
+  border-radius: 12px;
   color: var(--app-text);
 }
 
@@ -226,19 +248,39 @@ a {
   font-weight: 700;
 }
 
+.el-table tr {
+  background: rgba(12, 18, 26, 0.64);
+}
+
 .el-table .cell {
-  line-height: 1.5;
+  line-height: 1.55;
+}
+
+.el-table td.el-table__cell .cell {
+  color: var(--app-muted-strong);
 }
 
 .el-table td.el-table__cell,
 .el-table th.el-table__cell {
-  padding-top: 13px;
-  padding-bottom: 13px;
+  padding-top: 12px;
+  padding-bottom: 12px;
   border-bottom-color: rgba(255, 255, 255, 0.05);
 }
 
 .el-pagination {
   justify-content: flex-end;
+}
+
+.el-pagination .btn-prev,
+.el-pagination .btn-next,
+.el-pagination .el-pager li {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.el-pagination .el-pager li.is-active {
+  background: rgba(125, 169, 255, 0.1);
+  border-color: rgba(125, 169, 255, 0.14);
 }
 
 .el-empty {
@@ -287,9 +329,9 @@ a {
 
 .summary-card {
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--app-radius-lg);
-  background: linear-gradient(180deg, rgba(19, 28, 41, 0.94), rgba(15, 22, 32, 0.94));
+  background: linear-gradient(180deg, rgba(18, 27, 39, 0.94), rgba(14, 21, 31, 0.94));
   box-shadow: var(--app-shadow-soft);
 }
 
@@ -360,10 +402,10 @@ a {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 12px 14px;
-  border: 1px solid rgba(125, 169, 255, 0.16);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(23, 35, 51, 0.9), rgba(18, 27, 40, 0.9));
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(20, 29, 41, 0.88), rgba(16, 24, 35, 0.88));
 }
 
 .selection-toolbar strong,
@@ -422,6 +464,43 @@ a {
   gap: 8px;
   align-items: flex-start;
   padding: 10px 0 4px;
+}
+
+.state-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.state-block.is-loading {
+  border-color: rgba(125, 169, 255, 0.1);
+  background: rgba(125, 169, 255, 0.04);
+}
+
+.state-block.is-error {
+  border-color: rgba(210, 120, 120, 0.14);
+  background: rgba(210, 120, 120, 0.05);
+}
+
+.state-block.is-empty {
+  border-color: rgba(255, 255, 255, 0.045);
+}
+
+.state-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.state-description {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.65;
 }
 
 .empty-state strong {

@@ -4,6 +4,7 @@ import type {
   ChatID,
   ChatPointConfig,
   ChatPointConfigPayload,
+  PointLogListResponse,
   PointLogRecord,
   PointRankRecord,
   UserPointDetail,
@@ -60,12 +61,12 @@ export function fetchPointLogs(
   chatId: ChatID,
   userId: ChatID,
   query: PointLogQuery = {},
-): Promise<PointLogRecord[]> {
+): Promise<PointLogListResponse> {
   const params = new URLSearchParams();
   if (query.limit) params.set("limit", String(query.limit));
   if (query.offset) params.set("offset", String(query.offset));
   const suffix = params.toString();
-  return request<PointLogRecord[]>(
+  return request<PointLogRecord[] | PointLogListResponse>(
     `/points/logs/${encodeId(chatId)}/${encodeId(userId)}${suffix ? `?${suffix}` : ""}`,
-  );
+  ).then((response) => (Array.isArray(response) ? { items: response } : response));
 }
