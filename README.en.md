@@ -7,16 +7,17 @@
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js&logoColor=white)](https://vuejs.org/)
 [![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots)
 
-Sola is an open-source Telegram operations platform for group-centric use cases. It includes a real Telegram bot, a web admin panel, and a dedicated worker process. Rather than being a single-purpose bot script, Sola is intended as an engineering-ready foundation for long-term operations, secondary development, and production deployment.
+Sola is an open-source Telegram operations platform focused on group-centric workflows. It includes a real Telegram bot, a web admin panel, Mini App pages, and a dedicated worker process. Rather than being a single-purpose bot script, Sola is intended as an engineering-ready foundation for long-term operations, secondary development, and production deployment.
 
 ## Project Positioning
 
-Sola is built for a common gap in the Telegram bot ecosystem: many open-source bots solve one isolated problem well, but do not provide a usable admin backend, task execution layer, data persistence, or multi-group management model. This project brings the bot, API, web admin, and worker into one codebase so you can extend it into a real product.
+Sola is built for a common gap in the Telegram bot ecosystem: many open-source bots solve one isolated problem well, but do not provide a usable admin backend, task execution layer, data persistence, or multi-group management model. This project brings the bot, API, web admin, Mini App, and worker into one codebase so you can extend it into a real product.
 
 It is a good fit if you want to:
 
 - build an operations-focused Telegram bot product
 - manage chats, users, scheduled posts, and lotteries from a web panel
+- keep moderation, engagement, lotteries, and operational data in one system
 - start from a practical codebase instead of assembling the entire stack from scratch
 
 ## Features
@@ -28,31 +29,60 @@ It is a good fit if you want to:
   - points by message type
   - per-chat point configuration
   - anti-spam cooldown controls
-  - commands such as `/points`, `/rank`, and `/points_config`
+  - rankings, point logs, and manual point adjustments
+  - commands such as `/points`, `/rank`, `/points_config`, `/set_points`, `/set_cooldown`, and `/points_toggle`
 - Group moderation
   - ban and unban
   - mute and unmute
-  - warnings and violation records
-  - join verification
+  - warnings, warning cleanup, and violation records
+  - welcome flow, whitelist support, and permission checks
+  - join verification with button, multi-choice, and quiz-poll interactions
+  - commands such as `/ban`, `/unban`, `/mute`, `/unmute`, `/warn`, `/warns`, and `/unwarn`
 - Lottery system
   - button-based participation
   - keyword-based participation
-  - created from the admin panel and joined inside the group
+  - in-group announcements and result publishing
+  - created from the admin panel, joined inside the group, and drawn automatically by the worker
+  - `/lottery`, lottery lobby, and active list flows
 - Scheduled posting
   - one-time tasks
   - recurring tasks
   - auto-delete support
+  - delivery records and repeated-failure auto-disable protection
+  - `/posts` for chat-level task visibility
+- Content operations helpers
+  - keyword rules
+  - auto replies
+  - message templates
+  - invite link management
+  - level and growth configuration
+- Audit and risk-control support
+  - violation records
+  - audit logs
+  - AI filter configuration entry points
 
 ### Web Admin
 
 - Admin login with JWT session handling
 - Chat binding and multi-tenant isolation
-- User and points management
-- Point configuration and point logs
-- Group settings, ban records, and violation records
+- Dashboard and operational statistics
+- User list, point adjustment, ban, mute, and unmute actions
+- Point configuration, point logs, and ranking queries
+- Group settings, ban records, warning records, and violation records
 - Scheduled post management
+  - create, edit, toggle, and delete
+  - support for media, inline buttons, and auto-delete settings
 - Lottery management
-- Statistics dashboard
+  - create lotteries
+  - inspect participation and results
+- Operator pages for keywords, auto replies, templates, invite links, and levels
+- Audit logs and admin operation traceability
+
+### Mini App / Lightweight Pages
+
+- Built-in `web/src/mini` structure
+- Lightweight operation views and quick publishing entry points
+- `bot.mini_app_url` configuration ready for Telegram Mini App integration
 
 ### Engineering Capabilities
 
@@ -62,6 +92,8 @@ It is a good fit if you want to:
 - One-command Docker Compose deployment
 - Owner-based access isolation
 - Audit logging and operation traceability
+- Worker startup recovery for enabled scheduled posts
+- Failure counting and auto-disable protection for broken scheduled jobs
 
 ## Architecture Overview
 
@@ -78,22 +110,19 @@ Telegram Users / Groups
 |  Group actions        |
 +-----------------------+
           |
-          +--------------------+
-          |                    |
-          v                    v
-+-----------------------+  +-----------------------+
-|  cmd/api              |  |  cmd/worker           |
-|  Admin API            |  |  Async and scheduled  |
-|                       |  |  task execution       |
-+-----------------------+  +-----------------------+
-          |                    |
-          +---------+----------+
+          +--------------------+-------------------+
+          |                    |                   |
+          v                    v                   v
++-----------------------+  +-----------------------+  +-----------------------+
+|  cmd/api              |  |  cmd/worker           |  |  web / web/mini       |
+|  Admin API            |  |  Async and scheduled  |  |  Admin and Mini App   |
+|                       |  |  task execution       |  |  frontend             |
++-----------------------+  +-----------------------+  +-----------------------+
+          |                    |                   |
+          +---------+----------+-------------------+
                     |
                     v
           PostgreSQL + Redis
-                    |
-                    v
-             Vue 3 Admin Web
 ```
 
 ## Tech Stack
@@ -136,6 +165,7 @@ internal/
   service/    business logic
   store/      database and Redis setup
 web/          Vue 3 admin panel
+web/mini/     Telegram Mini App / lightweight frontend
 database/
   migrations/ SQL migration files
 ```
