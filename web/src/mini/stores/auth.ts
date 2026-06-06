@@ -46,7 +46,7 @@ export function useAuth(): AuthState {
         body: { init_data: initData },
       });
 
-      const accessToken = resp.accessToken || resp["access_token"];
+      const accessToken = (resp as any).accessToken || (resp as any).access_token;
       if (accessToken && resp.user) {
         setSession(accessToken, resp.user);
         token.value = "***";
