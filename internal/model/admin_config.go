@@ -23,10 +23,16 @@ type WarnRecord struct {
 }
 
 type ChatAdminConfig struct {
-	ChatID        int64     `gorm:"primaryKey" json:"chat_id"`
-	WelcomeText   string    `gorm:"type:text;not null;default:'欢迎 {name} 加入！'" json:"welcome_text"`
-	VerifyEnabled bool      `gorm:"not null;default:true" json:"verify_enabled"`
-	VerifyTimeout int       `gorm:"not null;default:60" json:"verify_timeout"`
-	WarnLimit     int       `gorm:"not null;default:3" json:"warn_limit"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ChatID             int64     `gorm:"primaryKey" json:"chat_id"`
+	WelcomeText        string    `gorm:"type:text;not null;default:'欢迎 {name} 加入！'" json:"welcome_text"`
+	VerifyEnabled      bool      `gorm:"not null;default:true" json:"verify_enabled"`
+	VerifyType         string    `gorm:"type:text;not null;default:'button'" json:"verify_type"`
+	VerifyTimeout      int       `gorm:"not null;default:60" json:"verify_timeout"`
+	VerifyQuestion     string    `gorm:"type:text;not null;default:''" json:"verify_question"`
+	VerifyOptions      string    `gorm:"type:text;not null;default:'[]'" json:"verify_options"`
+	VerifyCorrectIndex int       `gorm:"not null;default:-1" json:"verify_correct_index"`
+	VerifyWhitelist    string    `gorm:"type:text;not null;default:''" json:"verify_whitelist"`
+	VerifyDifficulty   string    `gorm:"type:text;not null;default:'medium'" json:"verify_difficulty"`
+	WarnLimit          int       `gorm:"not null;default:3" json:"warn_limit"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }

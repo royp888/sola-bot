@@ -1,7 +1,9 @@
 package bot
 
 import (
+	"context"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -33,6 +35,19 @@ func (a *App) handleMessageModeration(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	text := moderationMessageText(msg)
 	scope := requestScope(ctx)
+
+	// Restrict unverified users from sending links and media.
+	if a.isUnverifiedUser(scope.Context, msg.Chat.Id, msg.From.Id) {
+		modCfg, err := a.services.KeywordFilter.GetModerationConfig(scope.Context, msg.Chat.Id)
+		if err == nil && modCfg.RestrictUnverified {
+			if messageHasLink(msg, text) || messageHasMedia(msg) {
+				_, _ = b.DeleteMessageWithContext(scope.Context, msg.Chat.Id, msg.MessageId, nil)
+				_, _ = b.SendMessageWithContext(scope.Context, msg.From.Id, "请先完成验证，再发送链接或媒体。", nil)
+				return ext.EndGroups
+			}
+		}
+	}
+
 	cfg, err := a.services.KeywordFilter.GetModerationConfig(scope.Context, msg.Chat.Id)
 	if err != nil {
 		return err
@@ -50,6 +65,19 @@ func (a *App) handleMessageModeration(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	score, reasons := a.spamScore(scope, msg, text, cfg, match)
+	// AI secondary check for suspicious messages
+	if score >= cfg.SpamScoreThreshold && score < 90 && !match.Matched && a.services.AiFilter != nil {
+		userName := strings.TrimSpace(msg.From.FirstName + " " + msg.From.LastName)
+		if userName == "" {
+			userName = msg.From.Username
+		}
+		isSpam, reason, aiErr := a.services.AiFilter.IsSpam(scope.Context, text, userName)
+		if aiErr == nil && isSpam {
+			score = 90 // escalate to ban level
+			reasons = append(reasons, "AI判定:"+reason)
+		}
+	}
+
 	if match.Matched {
 		action := normalizeBotKeywordAction(match.Action)
 		duration := 0
@@ -216,6 +244,19 @@ func (a *App) updateKeywordFilter(b *gotgbot.Bot, ctx *ext.Context, action strin
 	return respondText(b, ctx, result+"\n\n可继续增删关键词，或点按钮回到过滤面板。", keywordPanelMarkup())
 }
 
+func (a *App) auditKeywordAction(scope RequestScope, targetID int64, action string, detail string) {
+	if a.services.AuditLog != nil {
+		a.services.AuditLog.Log(bot.AuditLogEntry{
+			ActorTelegramID:  0,
+			ChatTelegramID:   scope.Chat.ID,
+			Action:           "keyword_filter",
+			EntityType:       "user",
+			TargetTelegramID: targetID,
+			Detail:           fmt.Sprintf("action=%s %s", action, detail),
+		})
+	}
+}
+
 func (a *App) applyKeywordFilterAction(b *gotgbot.Bot, ctx *ext.Context, match KeywordFilterMatch, action string) error {
 	scope := requestScope(ctx)
 	msg := ctx.Message
@@ -224,6 +265,7 @@ func (a *App) applyKeywordFilterAction(b *gotgbot.Bot, ctx *ext.Context, match K
 	}
 
 	reason := fmt.Sprintf("关键词命中：%s", match.Keyword)
+	a.auditKeywordAction(scope, msg.From.Id, action, match.Keyword)
 	_, deleteErr := b.DeleteMessageWithContext(scope.Context, msg.Chat.Id, msg.MessageId, nil)
 	switch action {
 	case "warn":
@@ -261,6 +303,19 @@ func (a *App) applyKeywordFilterAction(b *gotgbot.Bot, ctx *ext.Context, match K
 	}
 }
 
+func (a *App) auditSpamAction(scope RequestScope, targetID int64, action string, score int, reasons []string) {
+	if a.services.AuditLog != nil {
+		a.services.AuditLog.Log(bot.AuditLogEntry{
+			ActorTelegramID:  0,
+			ChatTelegramID:   scope.Chat.ID,
+			Action:           "keyword_filter",
+			EntityType:       "user",
+			TargetTelegramID: targetID,
+			Detail:           fmt.Sprintf("spam_score=%d action=%s reasons=%v", score, action, reasons),
+		})
+	}
+}
+
 func (a *App) applySpamScoreAction(b *gotgbot.Bot, ctx *ext.Context, score int, reasons []string, action string, durationSeconds int) error {
 	scope := requestScope(ctx)
 	msg := ctx.Message
@@ -268,6 +323,7 @@ func (a *App) applySpamScoreAction(b *gotgbot.Bot, ctx *ext.Context, score int, 
 		return nil
 	}
 	reasonText := strings.Join(reasons, "、")
+	a.auditSpamAction(scope, msg.From.Id, action, score, reasons)
 	if reasonText == "" {
 		reasonText = "规则命中"
 	}
@@ -319,7 +375,7 @@ func (a *App) spamScore(scope RequestScope, msg *gotgbot.Message, text string, c
 		score += 30
 		reasons = append(reasons, "多次提及")
 	}
-	if cfg.BlockLinks && messageHasLink(msg, text) {
+	if cfg.BlockLinks && messageHasBlockedLink(msg, text, cfg.LinkWhitelist, cfg.LinkBlacklist) {
 		score += 25
 		reasons = append(reasons, "链接")
 	}
@@ -392,6 +448,121 @@ func messageHasLink(msg *gotgbot.Message, text string) bool {
 	return regexp.MustCompile(`(?i)\b((https?://|t\.me/|telegram\.me/|www\.)\S+)`).MatchString(text)
 }
 
+func messageHasBlockedLink(msg *gotgbot.Message, text string, whitelist, blacklist []string) bool {
+	links := extractLinks(msg, text)
+	if len(links) == 0 {
+		return false
+	}
+	// Whitelist takes priority: if whitelist is set, only whitelisted domains pass.
+	if len(whitelist) > 0 {
+		for _, link := range links {
+			host := extractHost(link)
+			if host != "" && !domainMatches(host, whitelist) {
+				return true
+			}
+		}
+		return false
+	}
+	// Blacklist mode: if blacklist is set, block matching domains.
+	if len(blacklist) > 0 {
+		for _, link := range links {
+			host := extractHost(link)
+			if host != "" && domainMatches(host, blacklist) {
+				return true
+			}
+		}
+		return false
+	}
+	// No whitelist or blacklist: block all links (original behaviour).
+	return true
+}
+
+func extractLinks(msg *gotgbot.Message, text string) []string {
+	seen := map[string]bool{}
+	var links []string
+	for _, entity := range append(msg.Entities, msg.CaptionEntities...) {
+		switch entity.Type {
+		case "url":
+			u := entityText(msg, entity)
+			u = strings.TrimSpace(u)
+			if u != "" && !seen[u] {
+				seen[u] = true
+				links = append(links, u)
+			}
+		case "text_link":
+			u := strings.TrimSpace(entity.Url)
+			if u != "" && !seen[u] {
+				seen[u] = true
+				links = append(links, u)
+			}
+		}
+	}
+	re := regexp.MustCompile(`(?i)\b((https?://|t\.me/|telegram\.me/|www\.)\S+)`)
+	for _, m := range re.FindAllString(text, -1) {
+		m = strings.TrimSpace(m)
+		if m != "" && !seen[m] {
+			seen[m] = true
+			links = append(links, m)
+		}
+	}
+	return links
+}
+
+func extractHost(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return ""
+	}
+	if !strings.Contains(rawURL, "://") {
+		rawURL = "https://" + rawURL
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Hostname() == "" {
+		return ""
+	}
+	host := strings.ToLower(u.Hostname())
+	host = strings.TrimPrefix(host, "www.")
+	return host
+}
+
+func domainMatches(host string, domains []string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	if host == "" {
+		return false
+	}
+	for _, d := range domains {
+		d = strings.ToLower(strings.TrimSpace(d))
+		if d == "" {
+			continue
+		}
+		if host == d {
+			return true
+		}
+		if strings.HasSuffix(host, "."+d) {
+			return true
+		}
+	}
+	return false
+}
+
+func entityText(msg *gotgbot.Message, entity gotgbot.MessageEntity) string {
+	if msg == nil {
+		return ""
+	}
+	text := msg.Text
+	if entity.Offset >= int64(len(text)) && msg.Caption != "" {
+		text = msg.Caption
+	}
+	if entity.Offset >= int64(len(text)) {
+		return ""
+	}
+	end := entity.Offset + entity.Length
+	if end > int64(len(text)) {
+		end = int64(len(text))
+	}
+	return text[entity.Offset:end]
+}
+
 func messageHasMedia(msg *gotgbot.Message) bool {
 	return msg.Photo != nil || msg.Video != nil || msg.Document != nil || msg.Sticker != nil || msg.Animation != nil || msg.Audio != nil || msg.Voice != nil || msg.VideoNote != nil
 }
@@ -438,4 +609,14 @@ func truncateRunes(text string, limit int) string {
 		return text
 	}
 	return string(runes[:limit])
+}
+
+// isUnverifiedUser returns true if the user has an active unverified key in Redis.
+func (a *App) isUnverifiedUser(ctx context.Context, chatID int64, userID int64) bool {
+	if a.services.Redis == nil {
+		return false
+	}
+	key := fmt.Sprintf("unverified:%d:%d", chatID, userID)
+	_, err := a.services.Redis.Get(ctx, key).Result()
+	return err == nil
 }

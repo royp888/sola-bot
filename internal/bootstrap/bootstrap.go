@@ -62,7 +62,7 @@ func New(ctx context.Context, path string) (*Resources, error) {
 		}
 	}
 
-	bundle := service.NewBundleWithBotToken(st, rdb, cfg.Bot.Token)
+	bundle := service.NewBundleWithBotToken(st, rdb, cfg.Bot.Token, cfg)
 
 	return &Resources{
 		Config:   cfg,

@@ -1,0 +1,5 @@
+ALTER TABLE scheduled_posts
+ADD COLUMN IF NOT EXISTS parse_mode TEXT NOT NULL DEFAULT 'HTML';
+
+ALTER TABLE scheduled_posts
+ADD COLUMN IF NOT EXISTS inline_keyboard_json TEXT NOT NULL DEFAULT '[]';

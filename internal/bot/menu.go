@@ -238,7 +238,7 @@ func (a *App) showHomeMenu(b *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func (a *App) showChannelMenu(b *gotgbot.Bot, ctx *ext.Context) error {
-	return respondText(b, ctx, "正在设置频道，选择要更改的项目：", channelMarkup())
+	return respondText(b, ctx, "📢 频道设置\n━━━━━━━━━━\n选择要更改的项目：", channelMarkup())
 }
 
 func (a *App) showGroupMenu(b *gotgbot.Bot, ctx *ext.Context) error {
@@ -261,7 +261,8 @@ func (a *App) showGroupMenu(b *gotgbot.Bot, ctx *ext.Context) error {
 
 func (a *App) showLanguageMenu(b *gotgbot.Bot, ctx *ext.Context) error {
 	text := strings.Join([]string{
-		"语言设置",
+		"🌐 语言设置",
+		"━━━━━━━━━━",
 		"",
 		"当前：简体中文",
 		"后台与 Bot 文案目前默认中文，English 菜单已保留入口。",
@@ -273,7 +274,7 @@ func (a *App) showLanguageMenu(b *gotgbot.Bot, ctx *ext.Context) error {
 				{Text: "English", CallbackData: CallbackData("menu", "noop")},
 			},
 			{
-				{Text: "返回首页", CallbackData: CallbackData("menu", "home")},
+				{Text: "🔙 返回首页", CallbackData: CallbackData("menu", "home")},
 			},
 		}},
 	})
@@ -281,7 +282,8 @@ func (a *App) showLanguageMenu(b *gotgbot.Bot, ctx *ext.Context) error {
 
 func (a *App) showTimezoneMenu(b *gotgbot.Bot, ctx *ext.Context) error {
 	text := strings.Join([]string{
-		"时区设置",
+		"🕐 时区设置",
+		"━━━━━━━━━━",
 		"",
 		"当前调度按服务器本地时间运行。后台创建定时任务时，请直接用页面里的日期/时间选择器。",
 		"常用时区：UTC+8 北京/上海，UTC+0 伦敦，UTC-5 美东。",
@@ -294,7 +296,7 @@ func (a *App) showTimezoneMenu(b *gotgbot.Bot, ctx *ext.Context) error {
 				{Text: "UTC-5", CallbackData: CallbackData("menu", "noop")},
 			},
 			{
-				{Text: "返回首页", CallbackData: CallbackData("menu", "home")},
+				{Text: "🔙 返回首页", CallbackData: CallbackData("menu", "home")},
 			},
 		}},
 	})
@@ -303,20 +305,20 @@ func (a *App) showTimezoneMenu(b *gotgbot.Bot, ctx *ext.Context) error {
 func homeMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "群组入口", CallbackData: CallbackData("menu", "groups")},
-			{Text: "频道入口", CallbackData: CallbackData("menu", "channels")},
+			{Text: "👥 群组入口", CallbackData: CallbackData("menu", "groups")},
+			{Text: "📢 频道入口", CallbackData: CallbackData("menu", "channels")},
 		},
 		{
-			{Text: "私聊工作台", CallbackData: CallbackData("private", "home")},
-			{Text: "检查权限", CallbackData: CallbackData("admin", "check_admin")},
+			{Text: "📋 私聊工作台", CallbackData: CallbackData("private", "home")},
+			{Text: "🔑 检查权限", CallbackData: CallbackData("admin", "check_admin")},
 		},
 		{
-			{Text: "快捷发布", CallbackData: CallbackData("publish", "quick")},
-			{Text: "抽奖大厅", CallbackData: CallbackData("lottery", "active")},
+			{Text: "📣 快捷发布", CallbackData: CallbackData("publish", "quick")},
+			{Text: "🎁 抽奖大厅", CallbackData: CallbackData("lottery", "active")},
 		},
 		{
-			{Text: "时区设置", CallbackData: CallbackData("menu", "timezone")},
-			{Text: "语言设置", CallbackData: CallbackData("menu", "language")},
+			{Text: "🕐 时区设置", CallbackData: CallbackData("menu", "timezone")},
+			{Text: "🌐 语言设置", CallbackData: CallbackData("menu", "language")},
 		},
 	}}}
 }
@@ -324,19 +326,19 @@ func homeMarkup() *gotgbot.SendMessageOpts {
 func channelMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "定时消息", CallbackData: CallbackData("publish", "queue")},
-			{Text: "快捷发布", CallbackData: CallbackData("publish", "quick")},
+			{Text: "⏰ 定时消息", CallbackData: CallbackData("publish", "queue")},
+			{Text: "📣 快捷发布", CallbackData: CallbackData("publish", "quick")},
 		},
 		{
-			{Text: "检查绑定", CallbackData: CallbackData("admin", "check_admin")},
+			{Text: "🔗 检查绑定", CallbackData: CallbackData("admin", "check_admin")},
 		},
 		{
-			{Text: "频道同步", CallbackData: CallbackData("publish", "sync")},
-			{Text: "控制权限", CallbackData: CallbackData("admin", "permissions")},
+			{Text: "🔄 频道同步", CallbackData: CallbackData("publish", "sync")},
+			{Text: "🔒 控制权限", CallbackData: CallbackData("admin", "permissions")},
 		},
 		{
-			{Text: "数据统计", CallbackData: CallbackData("points", "stats")},
-			{Text: "首页", CallbackData: CallbackData("menu", "home")},
+			{Text: "📊 数据统计", CallbackData: CallbackData("points", "stats")},
+			{Text: "🏠 首页", CallbackData: CallbackData("menu", "home")},
 		},
 	}}}
 }
@@ -344,36 +346,36 @@ func channelMarkup() *gotgbot.SendMessageOpts {
 func groupMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "我的积分", CallbackData: CallbackData("points", "menu")},
-			{Text: "抽奖大厅", CallbackData: CallbackData("lottery", "active")},
+			{Text: "💎 我的积分", CallbackData: CallbackData("points", "menu")},
+			{Text: "🎁 抽奖大厅", CallbackData: CallbackData("lottery", "active")},
 		},
 		{
-			{Text: "定时发帖", CallbackData: CallbackData("publish", "quick")},
-			{Text: "群组配置", CallbackData: CallbackData("admin", "config")},
+			{Text: "📣 定时发帖", CallbackData: CallbackData("publish", "quick")},
+			{Text: "⚙️ 群组配置", CallbackData: CallbackData("admin", "config")},
 		},
 		{
-			{Text: "封禁与验证", CallbackData: CallbackData("admin", "moderation")},
-			{Text: "关键词与模板", CallbackData: CallbackData("admin", "keywords")},
+			{Text: "🛡 封禁验证", CallbackData: CallbackData("admin", "moderation")},
+			{Text: "🔍 关键词", CallbackData: CallbackData("admin", "keywords")},
 		},
 		{
-			{Text: "等级规则", CallbackData: CallbackData("admin", "levels")},
-			{Text: "邀请链接", CallbackData: CallbackData("admin", "invites")},
+			{Text: "🏅 等级规则", CallbackData: CallbackData("admin", "levels")},
+			{Text: "🔗 邀请链接", CallbackData: CallbackData("admin", "invites")},
 		},
 		{
-			{Text: "私聊工作台", CallbackData: CallbackData("private", "home")},
-			{Text: "返回首页", CallbackData: CallbackData("menu", "home")},
+			{Text: "📋 私聊工作台", CallbackData: CallbackData("private", "home")},
+			{Text: "🔙 返回首页", CallbackData: CallbackData("menu", "home")},
 		},
 	}}}
 }
 
 func backHomeMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-		{{Text: "返回首页", CallbackData: CallbackData("menu", "home")}},
+		{{Text: "🔙 返回首页", CallbackData: CallbackData("menu", "home")}},
 	}}}
 }
 
 func backPrivateHomeMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-		{{Text: "返回运营台", CallbackData: CallbackData("private", "home")}},
+		{{Text: "🔙 返回运营台", CallbackData: CallbackData("private", "home")}},
 	}}}
 }

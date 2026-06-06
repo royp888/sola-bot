@@ -32,12 +32,19 @@ type ChatModerationConfig struct {
 	VerifyEnabled        bool      `gorm:"not null;default:true" json:"verify_enabled"`
 	VerifyType           string    `gorm:"type:text;not null;default:'button'" json:"verify_type"`
 	VerifyTimeoutSeconds int       `gorm:"not null;default:60" json:"verify_timeout_seconds"`
+	VerifyQuestion       string    `gorm:"type:text;not null;default:''" json:"verify_question"`
+	VerifyOptions        string    `gorm:"type:text;not null;default:'[]'" json:"verify_options"`
+	VerifyCorrectIndex   int       `gorm:"not null;default:-1" json:"verify_correct_index"`
 	WarnLimit            int       `gorm:"not null;default:3" json:"warn_limit"`
 	BlockLinks           bool      `gorm:"not null;default:false" json:"block_links"`
+	LinkWhitelist        string    `gorm:"type:text;not null;default:''" json:"link_whitelist"`
+	LinkBlacklist        string    `gorm:"type:text;not null;default:''" json:"link_blacklist"`
 	BlockForwards        bool      `gorm:"not null;default:false" json:"block_forwards"`
 	BlockMedia           bool      `gorm:"not null;default:false" json:"block_media"`
 	KeywordFilterEnabled bool      `gorm:"not null;default:false" json:"keyword_filter_enabled"`
 	SpamScoreThreshold   int       `gorm:"not null;default:60" json:"spam_score_threshold"`
+	AiFilterEnabled      bool      `gorm:"not null;default:false" json:"ai_filter_enabled"`
+	RestrictUnverified   bool      `gorm:"not null;default:true" json:"restrict_unverified"`
 	WelcomeText          string    `gorm:"type:text;not null;default:'欢迎 {name}！'" json:"welcome_text"`
 	WelcomeDeleteSeconds int       `gorm:"not null;default:30" json:"welcome_delete_seconds"`
 	UpdatedAt            time.Time `json:"updated_at"`

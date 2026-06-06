@@ -45,6 +45,7 @@ func NewAPIDependencies(cfg config.Config, st *store.Store) api.Dependencies {
 		Schedules:        &scheduleAPIService{store: st},
 		Stats:            &statsAPIService{store: st},
 		Users:            &userAPIService{store: st},
+		AuditLogs:        &auditLogAPIService{store: st},
 		Redis:            st.Redis,
 		AllowedOriginSet: cfg.App.AllowedOrigins,
 		EnableSwagger:    cfg.App.EnableSwagger,
@@ -1835,6 +1836,84 @@ func applyUserRecord(item *api.UserRecord, user model.User) {
 type uuidCursor struct {
 	CreatedAt time.Time `json:"created_at"`
 	ID        string    `json:"id"`
+}
+
+type auditLogAPIService struct {
+	store *store.Store
+}
+
+func (s *auditLogAPIService) List(ctx context.Context, query api.AuditLogListQuery) (*api.CursorListResponse[api.AuditLogEntry], error) {
+	if s == nil || s.store == nil || s.store.DB == nil {
+		return &api.CursorListResponse[api.AuditLogEntry]{Items: []api.AuditLogEntry{}}, nil
+	}
+	db := s.store.DB.WithContext(ctx).Model(&model.AuditLog{})
+	if query.ChatID != 0 {
+		db = db.Where("chat_telegram_id = ?", query.ChatID)
+	}
+	if query.Action != "" {
+		db = db.Where("action = ?", query.Action)
+	}
+	if query.ActorUserID != 0 {
+		db = db.Where("actor_telegram_id = ?", query.ActorUserID)
+	}
+	if query.TargetID != 0 {
+		db = db.Where("target_telegram_id = ?", query.TargetID)
+	}
+	if query.OwnerUserID != "" {
+		ownedIDs, err := ownedTelegramChatIDs(ctx, s.store, query.OwnerUserID)
+		if err != nil {
+			return nil, err
+		}
+		if query.ChatID != 0 {
+			found := false
+			for _, id := range ownedIDs {
+				if id == query.ChatID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return &api.CursorListResponse[api.AuditLogEntry]{Items: []api.AuditLogEntry{}}, nil
+			}
+		} else if len(ownedIDs) > 0 {
+			db = db.Where("chat_telegram_id IN ?", ownedIDs)
+		}
+	}
+	if query.Cursor != "" {
+		parsed, err := decodeUUIDCursor(query.Cursor)
+		if err == nil {
+			db = db.Where("(occurred_at, id) < (?, ?)", parsed.CreatedAt, parsed.ID)
+		}
+	}
+	total := query.Limit + 1
+	var records []model.AuditLog
+	if err := db.Order("occurred_at desc, id desc").Limit(total).Find(&records).Error; err != nil {
+		if isMissingTableError(err) {
+			return &api.CursorListResponse[api.AuditLogEntry]{Items: []api.AuditLogEntry{}}, nil
+		}
+		return nil, err
+	}
+	nextCursor := ""
+	if len(records) > query.Limit && query.Limit > 0 {
+		last := records[query.Limit-1]
+		nextCursor = encodeUUIDCursor(last.OccurredAt, last.ID)
+		records = records[:query.Limit]
+	}
+	out := make([]api.AuditLogEntry, 0, len(records))
+	for _, r := range records {
+		out = append(out, api.AuditLogEntry{
+			ID:               r.ID.String(),
+			ActorTelegramID:  r.ActorTelegramID,
+			ChatTelegramID:   r.ChatTelegramID,
+			Action:           r.Action,
+			EntityType:       r.EntityType,
+			TargetTelegramID: r.TargetTelegramID,
+			Detail:           r.Detail,
+			OccurredAt:       r.OccurredAt,
+			CreatedAt:        r.CreatedAt,
+		})
+	}
+	return &api.CursorListResponse[api.AuditLogEntry]{Items: out, NextCursor: nextCursor}, nil
 }
 
 func encodeUUIDCursor(createdAt time.Time, id uuid.UUID) string {

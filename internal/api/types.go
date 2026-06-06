@@ -50,6 +50,7 @@ type Dependencies struct {
 	Schedules        ScheduleService
 	Stats            StatsService
 	Users            UserService
+	AuditLogs        AuditLogService
 	JWT              JWTConfig
 	Redis            LoginRateLimiter
 	AllowedOriginSet []string
@@ -855,6 +856,32 @@ type StatsService interface {
 	Overview(ctx context.Context, query StatsQuery) (*StatsOverview, error)
 	Activity(ctx context.Context, query StatsQuery) ([]ActivityStats, error)
 	Points(ctx context.Context, query StatsQuery) ([]PointsStats, error)
+}
+
+type AuditLogListQuery struct {
+	ChatID      int64  `form:"chat_id"`
+	Action      string `form:"action"`
+	ActorUserID int64  `form:"actor_user_id"`
+	TargetID    int64  `form:"target_id"`
+	Limit       int    `form:"limit,default=20" binding:"omitempty,gte=1,lte=100"`
+	Cursor      string `form:"cursor"`
+	OwnerUserID string `form:"-"`
+}
+
+type AuditLogEntry struct {
+	ID               string     `json:"id"`
+	ActorTelegramID  *int64     `json:"actor_telegram_id,omitempty"`
+	ChatTelegramID   *int64     `json:"chat_telegram_id,omitempty"`
+	Action           string     `json:"action"`
+	EntityType       string     `json:"entity_type"`
+	TargetTelegramID *int64     `json:"target_telegram_id,omitempty"`
+	Detail           *string    `json:"detail,omitempty"`
+	OccurredAt       time.Time  `json:"occurred_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+}
+
+type AuditLogService interface {
+	List(ctx context.Context, query AuditLogListQuery) (*CursorListResponse[AuditLogEntry], error)
 }
 
 type UserService interface {

@@ -12,6 +12,16 @@ type ScheduledPost struct {
 	MediaMime string `gorm:"type:text;not null;default:''" json:"media_mime,omitempty"`
 	MediaData []byte `gorm:"type:bytea" json:"-"`
 	MediaType string `gorm:"size:16" json:"media_type,omitempty"`
+
+	// ParseMode controls how the caption is rendered. Defaults to "HTML".
+	// Also accepts "MarkdownV2" and "" (plain text).
+	ParseMode string `gorm:"size:16;not null;default:'HTML'" json:"parse_mode"`
+
+	// InlineKeyboardJSON stores the inline keyboard definition as a JSON
+	// array of rows, each row an array of button objects. Example:
+	// [ [ {"text":"查看详情","url":"https://..."}, {"text":"我要参与","callback_data":"join"} ] ]
+	InlineKeyboardJSON string `gorm:"type:text;not null;default:'[]'" json:"inline_keyboard_json"`
+
 	CronExpr  string `gorm:"size:64" json:"cron_expr,omitempty"`
 
 	RunOnceAt *time.Time `gorm:"index" json:"run_once_at,omitempty"`

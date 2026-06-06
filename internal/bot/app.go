@@ -6,6 +6,7 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/chatmember"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/pollanswer"
 )
 
 func New(services Services, options Options) *App {
@@ -75,6 +76,10 @@ func (a *App) Register(dispatcher *ext.Dispatcher) {
 	dispatcher.AddHandler(handlers.NewCommand("add_level", a.wrap(a.handleAddLevel, a.RateLimit("cmd:add_level", 1))))
 	dispatcher.AddHandler(handlers.NewCommand("del_level", a.wrap(a.handleDelLevel, a.RateLimit("cmd:del_level", 1))))
 	dispatcher.AddHandler(handlers.NewCommand("verify_toggle", a.wrap(a.handleVerifyToggle, a.RateLimit("cmd:verify_toggle", 1))))
+	dispatcher.AddHandler(handlers.NewCommand("set_verify", a.wrap(a.handleSetVerify, a.RateLimit("cmd:set_verify", 1))))
+	dispatcher.AddHandler(handlers.NewCommand("verify_stats", a.wrap(a.handleVerifyStats, a.RateLimit("cmd:verify_stats", 1))))
+	dispatcher.AddHandler(handlers.NewCommand("allowuser", a.wrap(a.handleAllowUser, a.RateLimit("cmd:allowuser", 1))))
+	dispatcher.AddHandler(handlers.NewCommand("delallowuser", a.wrap(a.handleDelAllowUser, a.RateLimit("cmd:delallowuser", 1))))
 	dispatcher.AddHandler(handlers.NewCommand("add_keyword", a.wrap(a.handleAddKeyword, a.RateLimit("cmd:add_keyword", 1))))
 	dispatcher.AddHandler(handlers.NewCommand("del_keyword", a.wrap(a.handleDelKeyword, a.RateLimit("cmd:del_keyword", 1))))
 	dispatcher.AddHandler(handlers.NewCommand("keywords", a.wrap(a.handleKeywords, a.RateLimit("cmd:keywords", 1))))
@@ -90,7 +95,9 @@ func (a *App) Register(dispatcher *ext.Dispatcher) {
 
 	dispatcher.AddHandler(handlers.NewChatMember(chatmember.InviteLink, a.handleChatMemberInviteLink))
 	dispatcher.AddHandler(handlers.NewMessage(message.NewChatMembers, a.handleNewChatMembers))
+	dispatcher.AddHandler(handlers.NewMessage(message.All, a.handleChineseCommand))
 	dispatcher.AddHandler(handlers.NewMessage(message.All, a.handleMessageModeration))
 	dispatcher.AddHandler(handlers.NewMessage(message.All, a.handleMessagePoints))
 	dispatcher.AddHandler(handlers.NewCallback(callbackquery.Prefix(CallbackPrefix+":"), a.wrap(a.router.Handle, a.RateLimit("callback", 1))))
+	dispatcher.AddHandler(handlers.NewPollAnswer(pollanswer.All, a.handlePollAnswer))
 }

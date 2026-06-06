@@ -48,6 +48,8 @@ type Services struct {
 	InviteLink     InviteLinkService
 	Templates      MessageTemplateService
 	Violations     ViolationService
+	AuditLog       AuditLogService
+	AiFilter       AiFilterService
 	Redis          RedisStateService
 }
 
@@ -173,18 +175,30 @@ type PointAwardResult struct {
 }
 
 type ChatAdminConfig struct {
-	ChatID        int64
-	WelcomeText   string
-	VerifyEnabled bool
-	VerifyTimeout int
-	WarnLimit     int
+	ChatID             int64
+	WelcomeText        string
+	VerifyEnabled      bool
+	VerifyType         string
+	VerifyTimeout      int
+	WarnLimit          int
+	VerifyQuestion     string
+	VerifyOptions      string
+	VerifyCorrectIndex int
+	VerifyWhitelist    string
+	VerifyDifficulty   string
 }
 
 type ChatAdminConfigPatch struct {
-	WelcomeText   *string
-	VerifyEnabled *bool
-	VerifyTimeout *int
-	WarnLimit     *int
+	WelcomeText        *string
+	VerifyEnabled      *bool
+	VerifyType         *string
+	VerifyTimeout      *int
+	WarnLimit          *int
+	VerifyQuestion     *string
+	VerifyOptions      *string
+	VerifyCorrectIndex *int
+	VerifyWhitelist    *string
+	VerifyDifficulty   *string
 }
 
 type BanLog struct {
@@ -222,6 +236,8 @@ type AdminService interface {
 	CheckVerifyChallenge(ctx context.Context, chatID int64, userID int64, answer string) (VerifyCheckResult, error)
 	GetVerifyChallenge(ctx context.Context, chatID int64, userID int64) (VerifyChallenge, bool, error)
 	ClearVerifyChallenge(ctx context.Context, chatID int64, userID int64) error
+	RecordVerifyEvent(ctx context.Context, chatID int64, userID int64, eventType string, detail string) error
+	GetVerifyStats(ctx context.Context, chatID int64) (VerifyStats, error)
 }
 
 type VerifyChallenge struct {
@@ -231,6 +247,7 @@ type VerifyChallenge struct {
 	ExpireAt   time.Time
 	Question   string
 	MemberName string
+	PollID     string
 }
 
 type VerifyCheckResult struct {
@@ -239,6 +256,13 @@ type VerifyCheckResult struct {
 	RemainingAttempts int
 	ShouldKick        bool
 	Challenge         VerifyChallenge
+}
+
+type VerifyStats struct {
+	TotalPassed  int64
+	TotalFailed  int64
+	TotalTimeout int64
+	PendingCount int64
 }
 
 type LotteryService interface {
@@ -313,10 +337,14 @@ type KeywordFilterService interface {
 type ChatModerationConfig struct {
 	ChatID               int64
 	BlockLinks           bool
+	LinkWhitelist        []string
+	LinkBlacklist        []string
 	BlockForwards        bool
 	BlockMedia           bool
 	KeywordFilterEnabled bool
 	SpamScoreThreshold   int
+	AiFilterEnabled      bool
+	RestrictUnverified   bool
 }
 
 type KeywordFilterMatch struct {
@@ -403,6 +431,24 @@ type MessageTemplateService interface {
 	ListForChat(ctx context.Context, chatID int64, limit int) ([]MessageTemplateRecord, error)
 	CreateForBot(ctx context.Context, req MessageTemplateCreate) (MessageTemplateRecord, error)
 	DeleteForChat(ctx context.Context, chatID int64, id string) error
+}
+
+type AuditLogService interface {
+	Log(entry AuditLogEntry)
+}
+
+// AiFilterService uses an LLM to judge whether a message is spam.
+type AiFilterService interface {
+	IsSpam(ctx context.Context, text string, userName string) (bool, string, error)
+}
+
+type AuditLogEntry struct {
+	ActorTelegramID  int64
+	ChatTelegramID   int64
+	Action           string
+	EntityType       string
+	TargetTelegramID int64
+	Detail           string
 }
 
 type ViolationService interface {

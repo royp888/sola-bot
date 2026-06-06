@@ -20,6 +20,7 @@ const PostsView = () => import("@/views/PostsView.vue");
 const StatsView = () => import("@/views/StatsView.vue");
 const TemplatesView = () => import("@/views/TemplatesView.vue");
 const UsersView = () => import("@/views/UsersView.vue");
+const AuditLogsView = () => import("@/views/AuditLogsView.vue");
 const ViolationsView = () => import("@/views/ViolationsView.vue");
 
 const appName = import.meta.env.VITE_APP_NAME?.trim() || "Sola 管理台";
@@ -137,6 +138,14 @@ const router = createRouter({
           component: AutoRepliesView,
           meta: {
             title: "自动回复",
+          },
+        },
+        {
+          path: "audit-logs",
+          name: "audit-logs",
+          component: AuditLogsView,
+          meta: {
+            title: "审计日志",
           },
         },
         {

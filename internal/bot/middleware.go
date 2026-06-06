@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log"
+	"runtime/debug"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -16,10 +17,16 @@ func (a *App) wrap(handler HandlerFunc, middleware ...Middleware) HandlerFunc {
 	for i := len(middleware) - 1; i >= 0; i-- {
 		wrapped = middleware[i](wrapped)
 	}
-	return func(b *gotgbot.Bot, ctx *ext.Context) error {
+	return func(b *gotgbot.Bot, ctx *ext.Context) (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("panic in handler: %v\nstack trace:\n%s", r, debug.Stack())
+				err = fmt.Errorf("panic: %v", r)
+			}
+		}()
 		logInteraction(ctx)
 		start := time.Now()
-		err := wrapped(b, ctx)
+		err = wrapped(b, ctx)
 		if err != nil {
 			log.Printf("telegram handler failed: duration=%s error=%v", time.Since(start).Round(time.Millisecond), err)
 			return err

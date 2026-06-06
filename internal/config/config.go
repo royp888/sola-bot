@@ -27,6 +27,7 @@ type Config struct {
 		DefaultLocale string `mapstructure:"default_locale"`
 	} `mapstructure:"bot"`
 	Database DatabaseConfig `mapstructure:"database"`
+	AiFilter AiFilterConfig `mapstructure:"ai_filter"`
 	Redis    struct {
 		Addr     string `mapstructure:"addr"`
 		Password string `mapstructure:"password"`
@@ -46,6 +47,15 @@ type DatabaseConfig struct {
 	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 }
+// AiFilterConfig holds the AI-based spam/ad filter settings.
+type AiFilterConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Provider string `mapstructure:"provider"`
+	APIKey   string `mapstructure:"api_key"`
+	Model    string `mapstructure:"model"`
+	Endpoint string `mapstructure:"endpoint"`
+}
+
 
 var activeDatabaseConfig = DatabaseConfig{
 	AutoMigrate:     false,
@@ -195,6 +205,11 @@ func bindEnv(v *viper.Viper) error {
 		"redis.db":                   "SOLA_REDIS_DB",
 		"jwt.secret":                 "SOLA_JWT_SECRET",
 		"jwt.issuer":                 "SOLA_JWT_ISSUER",
+		"ai_filter.enabled":          "SOLA_AI_FILTER_ENABLED",
+		"ai_filter.provider":         "SOLA_AI_FILTER_PROVIDER",
+		"ai_filter.api_key":          "SOLA_AI_FILTER_API_KEY",
+		"ai_filter.model":            "SOLA_AI_FILTER_MODEL",
+		"ai_filter.endpoint":         "SOLA_AI_FILTER_ENDPOINT",
 		"jwt.access_token_ttl":       "SOLA_JWT_ACCESS_TOKEN_TTL",
 	}
 

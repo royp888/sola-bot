@@ -1,0 +1,2 @@
+ALTER TABLE chat_moderation_configs
+ADD COLUMN IF NOT EXISTS ai_filter_enabled BOOLEAN NOT NULL DEFAULT FALSE;

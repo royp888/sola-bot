@@ -121,9 +121,9 @@ func (a *App) showLotteryCreateEntry(b *gotgbot.Bot, ctx *ext.Context) error {
 		"创建抽奖",
 		"",
 		"请选择参与方式：",
-		"按钮抽奖：成员点击按钮参与",
-		"口令抽奖：成员发送口令参与",
-		"双模式：按钮和口令都支持",
+		"🔘 按钮抽奖：成员点击按钮参与",
+		"🔤 口令抽奖：成员发送口令参与",
+		"🔀 双模式：按钮和口令都支持",
 	}, "\n")
 	return respondText(b, ctx, text, lotteryCreateTypeGroupMarkup())
 }
@@ -131,12 +131,12 @@ func (a *App) showLotteryCreateEntry(b *gotgbot.Bot, ctx *ext.Context) error {
 func lotteryCreateTypeGroupMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "按钮抽奖", CallbackData: CallbackData("lottery", "create", "button")},
-			{Text: "口令抽奖", CallbackData: CallbackData("lottery", "create", "keyword")},
+			{Text: "🔘 按钮抽奖", CallbackData: CallbackData("lottery", "create", "button")},
+			{Text: "🔤 口令抽奖", CallbackData: CallbackData("lottery", "create", "keyword")},
 		},
 		{
-			{Text: "双模式", CallbackData: CallbackData("lottery", "create", "both")},
-			{Text: "返回列表", CallbackData: CallbackData("lottery", "active")},
+			{Text: "🔀 双模式", CallbackData: CallbackData("lottery", "create", "both")},
+			{Text: "🔙 返回列表", CallbackData: CallbackData("lottery", "active")},
 		},
 	}}}
 }
@@ -195,7 +195,7 @@ func (a *App) cancelLotteryFromCallback(b *gotgbot.Bot, ctx *ext.Context, payloa
 
 func (a *App) showLotteryCreateHelp(b *gotgbot.Bot, ctx *ext.Context) error {
 	text := strings.Join([]string{
-		"抽奖创建说明",
+		"❓ 抽奖创建说明",
 		"",
 		"支持三种参与方式：",
 		"1. 按钮抽奖：成员点按钮直接参与",
@@ -390,8 +390,8 @@ func sendLotteryAnnouncement(b *gotgbot.Bot, ctx *ext.Context, lottery api.Lotte
 	opts := &gotgbot.SendMessageOpts{}
 	if lotteryHasJoinButton(lottery.JoinType) {
 		buttons := [][]gotgbot.InlineKeyboardButton{{
-			{Text: "立即参与", CallbackData: CallbackData("lottery", "join", strconv.FormatInt(lottery.ID, 10))},
-			{Text: "查看详情", CallbackData: CallbackData("lottery", "info", strconv.FormatInt(lottery.ID, 10))},
+			{Text: "🎯 立即参与", CallbackData: CallbackData("lottery", "join", strconv.FormatInt(lottery.ID, 10))},
+			{Text: "📋 查看详情", CallbackData: CallbackData("lottery", "info", strconv.FormatInt(lottery.ID, 10))},
 		}}
 		opts.ReplyMarkup = gotgbot.InlineKeyboardMarkup{InlineKeyboard: buttons}
 	}
@@ -576,24 +576,24 @@ func lotteryMenuMarkup(items []api.Lottery, canCreate bool) *gotgbot.SendMessage
 		if len([]rune(title)) > 10 {
 			title = string([]rune(title)[:10]) + "..."
 		}
-		row := []gotgbot.InlineKeyboardButton{{Text: "详情 " + title, CallbackData: CallbackData("lottery", "info", id)}}
+		row := []gotgbot.InlineKeyboardButton{{Text: "📋 详情 " + title, CallbackData: CallbackData("lottery", "info", id)}}
 		if lotteryHasJoinButton(item.JoinType) {
-			row = append(row, gotgbot.InlineKeyboardButton{Text: "立即参与", CallbackData: CallbackData("lottery", "join", id)})
+			row = append(row, gotgbot.InlineKeyboardButton{Text: "🎯 立即参与", CallbackData: CallbackData("lottery", "join", id)})
 		}
 		rows = append(rows, row)
 	}
 	rows = append(rows,
 		[]gotgbot.InlineKeyboardButton{
-			{Text: "进行中列表", CallbackData: CallbackData("lottery", "active")},
-			{Text: "创建说明", CallbackData: CallbackData("lottery", "create_help")},
+			{Text: "📋 进行中列表", CallbackData: CallbackData("lottery", "active")},
+			{Text: "❓ 创建说明", CallbackData: CallbackData("lottery", "create_help")},
 		},
 	)
 	if canCreate {
-		rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "创建抽奖", CallbackData: CallbackData("lottery", "create")}})
+		rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "🎲 创建抽奖", CallbackData: CallbackData("lottery", "create")}})
 	} else {
-		rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "私聊创建", CallbackData: CallbackData("private", "lottery_create")}})
+		rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "💬 私聊创建", CallbackData: CallbackData("private", "lottery_create")}})
 	}
-	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "返回群组", CallbackData: CallbackData("menu", "groups")}})
+	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "🔙 返回群组", CallbackData: CallbackData("menu", "groups")}})
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}}
 }
 
@@ -602,23 +602,23 @@ func lotteryDetailMarkup(lottery api.Lottery, groupView bool) *gotgbot.SendMessa
 	rows := [][]gotgbot.InlineKeyboardButton{}
 	first := []gotgbot.InlineKeyboardButton{}
 	if lottery.Status == "active" && lotteryHasJoinButton(lottery.JoinType) {
-		first = append(first, gotgbot.InlineKeyboardButton{Text: "立即参与", CallbackData: CallbackData("lottery", "join", id)})
+		first = append(first, gotgbot.InlineKeyboardButton{Text: "🎯 立即参与", CallbackData: CallbackData("lottery", "join", id)})
 	}
 	if lottery.Status == "active" {
-		first = append(first, gotgbot.InlineKeyboardButton{Text: "取消抽奖", CallbackData: CallbackData("lottery", "cancel", id)})
+		first = append(first, gotgbot.InlineKeyboardButton{Text: "❌ 取消抽奖", CallbackData: CallbackData("lottery", "cancel", id)})
 	}
 	if len(first) > 0 {
 		rows = append(rows, first)
 	}
 	if groupView {
 		rows = append(rows,
-			[]gotgbot.InlineKeyboardButton{{Text: "返回抽奖大厅", CallbackData: CallbackData("lottery", "active")}},
-			[]gotgbot.InlineKeyboardButton{{Text: "创建新抽奖", CallbackData: CallbackData("lottery", "create")}},
+			[]gotgbot.InlineKeyboardButton{{Text: "🔙 返回抽奖大厅", CallbackData: CallbackData("lottery", "active")}},
+			[]gotgbot.InlineKeyboardButton{{Text: "🎲 创建新抽奖", CallbackData: CallbackData("lottery", "create")}},
 		)
 	} else {
 		rows = append(rows,
-			[]gotgbot.InlineKeyboardButton{{Text: "返回抽奖中心", CallbackData: CallbackData("private", "lottery_active")}},
-			[]gotgbot.InlineKeyboardButton{{Text: "创建新抽奖", CallbackData: CallbackData("private", "lottery_create")}},
+			[]gotgbot.InlineKeyboardButton{{Text: "🔙 返回抽奖中心", CallbackData: CallbackData("private", "lottery_active")}},
+			[]gotgbot.InlineKeyboardButton{{Text: "🎲 创建新抽奖", CallbackData: CallbackData("private", "lottery_create")}},
 		)
 	}
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}}

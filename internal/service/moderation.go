@@ -28,12 +28,19 @@ type ModerationConfigPatch struct {
 	VerifyEnabled        *bool
 	VerifyType           *string
 	VerifyTimeoutSeconds *int
+	VerifyQuestion       *string
+	VerifyOptions        *string
+	VerifyCorrectIndex   *int
 	WarnLimit            *int
 	BlockLinks           *bool
+	LinkWhitelist        *string
+	LinkBlacklist        *string
 	BlockForwards        *bool
 	BlockMedia           *bool
 	KeywordFilterEnabled *bool
 	SpamScoreThreshold   *int
+	AiFilterEnabled      *bool
+	RestrictUnverified   *bool
 	WelcomeText          *string
 	WelcomeDeleteSeconds *int
 }
@@ -116,6 +123,8 @@ func (s *ModerationService) GetModerationConfig(ctx context.Context, chatID int6
 		BlockMedia:           cfg.BlockMedia,
 		KeywordFilterEnabled: cfg.KeywordFilterEnabled,
 		SpamScoreThreshold:   cfg.SpamScoreThreshold,
+		AiFilterEnabled:      cfg.AiFilterEnabled,
+		RestrictUnverified:   cfg.RestrictUnverified,
 	}, nil
 }
 
@@ -135,13 +144,20 @@ func (s *ModerationService) UpdateConfig(ctx context.Context, chatID int64, patc
 			"verify_enabled":         cfg.VerifyEnabled,
 			"verify_type":            cfg.VerifyType,
 			"verify_timeout_seconds": cfg.VerifyTimeoutSeconds,
+			"verify_question":        cfg.VerifyQuestion,
+			"verify_options":         cfg.VerifyOptions,
+			"verify_correct_index":   cfg.VerifyCorrectIndex,
 			"warn_limit":             cfg.WarnLimit,
 			"block_links":            cfg.BlockLinks,
+			"link_whitelist":         cfg.LinkWhitelist,
+			"link_blacklist":         cfg.LinkBlacklist,
 			"block_forwards":         cfg.BlockForwards,
-			"block_media":            cfg.BlockMedia,
-			"keyword_filter_enabled": cfg.KeywordFilterEnabled,
-			"spam_score_threshold":   cfg.SpamScoreThreshold,
-			"welcome_text":           cfg.WelcomeText,
+		"block_media":            cfg.BlockMedia,
+		"keyword_filter_enabled": cfg.KeywordFilterEnabled,
+		"spam_score_threshold":   cfg.SpamScoreThreshold,
+			"ai_filter_enabled":      cfg.AiFilterEnabled,
+		"restrict_unverified":    cfg.RestrictUnverified,
+		"welcome_text":           cfg.WelcomeText,
 			"welcome_delete_seconds": cfg.WelcomeDeleteSeconds,
 			"updated_at":             cfg.UpdatedAt,
 		}).Error
@@ -603,9 +619,14 @@ func defaultModerationConfig(chatID int64) model.ChatModerationConfig {
 		VerifyEnabled:        true,
 		VerifyType:           "button",
 		VerifyTimeoutSeconds: 60,
+		VerifyQuestion:       "",
+		VerifyOptions:        "[]",
+		VerifyCorrectIndex:   -1,
 		WarnLimit:            3,
 		KeywordFilterEnabled: true,
 		SpamScoreThreshold:   60,
+		AiFilterEnabled:      false,
+		RestrictUnverified:   true,
 		WelcomeText:          "欢迎 {name}！",
 		WelcomeDeleteSeconds: 30,
 		UpdatedAt:            time.Now(),
@@ -631,6 +652,35 @@ func normalizeModerationConfig(cfg *model.ChatModerationConfig) {
 	if cfg.WelcomeDeleteSeconds < 0 {
 		cfg.WelcomeDeleteSeconds = 0
 	}
+	if cfg.VerifyOptions == "" {
+		cfg.VerifyOptions = "[]"
+	}
+	if cfg.VerifyCorrectIndex < 0 {
+		cfg.VerifyCorrectIndex = -1
+	}
+}
+
+func parseDomainList(text string) []string {
+	if strings.TrimSpace(text) == "" {
+		return nil
+	}
+	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	var domains []string
+	for _, line := range lines {
+		d := strings.TrimSpace(line)
+		if d != "" {
+			domains = append(domains, strings.ToLower(d))
+		}
+	}
+	return domains
+}
+
+func normalizeDomainList(text string) string {
+	domains := parseDomainList(text)
+	if len(domains) == 0 {
+		return ""
+	}
+	return strings.Join(domains, "\n")
 }
 
 func applyModerationConfigPatch(cfg *model.ChatModerationConfig, patch ModerationConfigPatch) {
@@ -643,11 +693,26 @@ func applyModerationConfigPatch(cfg *model.ChatModerationConfig, patch Moderatio
 	if patch.VerifyTimeoutSeconds != nil {
 		cfg.VerifyTimeoutSeconds = nonNegative(*patch.VerifyTimeoutSeconds)
 	}
+	if patch.VerifyQuestion != nil {
+		cfg.VerifyQuestion = strings.TrimSpace(*patch.VerifyQuestion)
+	}
+	if patch.VerifyOptions != nil {
+		cfg.VerifyOptions = strings.TrimSpace(*patch.VerifyOptions)
+	}
+	if patch.VerifyCorrectIndex != nil {
+		cfg.VerifyCorrectIndex = *patch.VerifyCorrectIndex
+	}
 	if patch.WarnLimit != nil && *patch.WarnLimit > 0 {
 		cfg.WarnLimit = *patch.WarnLimit
 	}
 	if patch.BlockLinks != nil {
 		cfg.BlockLinks = *patch.BlockLinks
+	}
+	if patch.LinkWhitelist != nil {
+		cfg.LinkWhitelist = normalizeDomainList(*patch.LinkWhitelist)
+	}
+	if patch.LinkBlacklist != nil {
+		cfg.LinkBlacklist = normalizeDomainList(*patch.LinkBlacklist)
 	}
 	if patch.BlockForwards != nil {
 		cfg.BlockForwards = *patch.BlockForwards
@@ -660,6 +725,9 @@ func applyModerationConfigPatch(cfg *model.ChatModerationConfig, patch Moderatio
 	}
 	if patch.SpamScoreThreshold != nil {
 		cfg.SpamScoreThreshold = nonNegative(*patch.SpamScoreThreshold)
+	}
+	if patch.RestrictUnverified != nil {
+		cfg.RestrictUnverified = *patch.RestrictUnverified
 	}
 	if patch.WelcomeText != nil {
 		cfg.WelcomeText = strings.TrimSpace(*patch.WelcomeText)

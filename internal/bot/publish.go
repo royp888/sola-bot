@@ -135,16 +135,16 @@ func (a *App) syncChannel(b *gotgbot.Bot, ctx *ext.Context) error {
 func publishMenuMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "任务列表", CallbackData: CallbackData("publish", "list")},
-			{Text: "一次提醒", CallbackData: CallbackData("publish", "once")},
+			{Text: "📋 任务列表", CallbackData: CallbackData("publish", "list")},
+			{Text: "🔔 一次提醒", CallbackData: CallbackData("publish", "once")},
 		},
 		{
-			{Text: "循环发布", CallbackData: CallbackData("publish", "repeat")},
-			{Text: "自动按钮", CallbackData: CallbackData("publish", "buttons")},
+			{Text: "🔄 循环发布", CallbackData: CallbackData("publish", "repeat")},
+			{Text: "🔘 自动按钮", CallbackData: CallbackData("publish", "buttons")},
 		},
 		{
-			{Text: "频道同步", CallbackData: CallbackData("publish", "sync")},
-			{Text: "返回群组", CallbackData: CallbackData("menu", "groups")},
+			{Text: "🔄 频道同步", CallbackData: CallbackData("publish", "sync")},
+			{Text: "🔙 返回群组", CallbackData: CallbackData("menu", "groups")},
 		},
 	}}}
 }
@@ -210,11 +210,11 @@ func (a *App) confirmDeletePostFromCallback(b *gotgbot.Bot, ctx *ext.Context, ra
 	if _, err := strconv.ParseUint(strings.TrimSpace(rawID), 10, 64); err != nil {
 		return answerCallback(b, ctx, "任务 ID 无效")
 	}
-	return respondText(b, ctx, "确认删除定时任务 #"+strings.TrimSpace(rawID)+"？", &gotgbot.SendMessageOpts{
+	return respondText(b, ctx, "❓ 确认删除定时任务 #"+strings.TrimSpace(rawID)+"？", &gotgbot.SendMessageOpts{
 		ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: "确认删除", CallbackData: CallbackData("publish", "delete", strings.TrimSpace(rawID))},
-				{Text: "返回列表", CallbackData: CallbackData("publish", "list")},
+				{Text: "✅ 确认删除", CallbackData: CallbackData("publish", "delete", strings.TrimSpace(rawID))},
+				{Text: "🔙 返回列表", CallbackData: CallbackData("publish", "list")},
 			},
 		}},
 	})
@@ -269,11 +269,11 @@ func (a *App) confirmDeletePostForChatFromCallback(b *gotgbot.Bot, ctx *ext.Cont
 	if _, err := strconv.ParseUint(strings.TrimSpace(rawID), 10, 64); err != nil {
 		return answerCallback(b, ctx, "任务 ID 无效")
 	}
-	return respondText(b, ctx, "确认删除定时任务 #"+strings.TrimSpace(rawID)+"？", &gotgbot.SendMessageOpts{
+	return respondText(b, ctx, "❓ 确认删除定时任务 #"+strings.TrimSpace(rawID)+"？", &gotgbot.SendMessageOpts{
 		ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: "确认删除", CallbackData: CallbackData("publish", "private_delete", strconv.FormatInt(chatID, 10), strings.TrimSpace(rawID))},
-				{Text: "返回列表", CallbackData: CallbackData("private", "posts")},
+				{Text: "✅ 确认删除", CallbackData: CallbackData("publish", "private_delete", strconv.FormatInt(chatID, 10), strings.TrimSpace(rawID))},
+				{Text: "🔙 返回列表", CallbackData: CallbackData("private", "posts")},
 			},
 		}},
 	})
@@ -329,17 +329,17 @@ func formatScheduledPostLine(post ScheduledPostItem) string {
 func postListMarkup(posts []ScheduledPostItem) *gotgbot.SendMessageOpts {
 	rows := [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "新建任务", CallbackData: CallbackData("publish", "create")},
-			{Text: "刷新", CallbackData: CallbackData("publish", "list")},
+			{Text: "➕ 新建任务", CallbackData: CallbackData("publish", "create")},
+			{Text: "🔄 刷新", CallbackData: CallbackData("publish", "list")},
 		},
 	}
 	for _, post := range posts {
 		id := strconv.FormatUint(post.ID, 10)
 		rows = append(rows, []gotgbot.InlineKeyboardButton{
-			{Text: fmt.Sprintf("#%d 开关", post.ID), CallbackData: CallbackData("publish", "toggle", id)},
-			{Text: "删除", CallbackData: CallbackData("publish", "delete_confirm", id)},
+			{Text: fmt.Sprintf("🔧 #%d 开关", post.ID), CallbackData: CallbackData("publish", "toggle", id)},
+			{Text: "🗑 删除", CallbackData: CallbackData("publish", "delete_confirm", id)},
 		})
 	}
-	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "返回发布", CallbackData: CallbackData("publish", "quick")}})
+	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "🔙 返回发布", CallbackData: CallbackData("publish", "quick")}})
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}}
 }

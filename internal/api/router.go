@@ -78,6 +78,7 @@ func NewRouter(deps Dependencies) *gin.Engine {
 			compatSecured.PUT("/levels/:level_id", server.UpdateLevel)
 			compatSecured.PATCH("/levels/:level_id", server.UpdateLevel)
 			compatSecured.DELETE("/levels/:level_id", server.DeleteLevel)
+			compatSecured.GET("/audit-logs", server.ListAuditLogs)
 			compatSecured.GET("/admin/violations", server.ListAdminViolations)
 			compatSecured.PATCH("/admin/violations/:violation_id", server.UpdateAdminViolation)
 			compatSecured.GET("/keywords", server.ListKeywords)
@@ -239,6 +240,11 @@ func NewRouter(deps Dependencies) *gin.Engine {
 				inviteLinks.GET("", server.ListInviteLinks)
 				inviteLinks.POST("", server.CreateInviteLink)
 				inviteLinks.DELETE("/:invite_link_id", server.DeleteInviteLink)
+			}
+
+			auditLogs := secured.Group("/audit-logs")
+			{
+				auditLogs.GET("", server.ListAuditLogs)
 			}
 
 			stats := secured.Group("/stats")

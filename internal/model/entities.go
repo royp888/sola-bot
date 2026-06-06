@@ -164,19 +164,23 @@ type Point struct {
 type AuditLog struct {
 	BaseModel
 
-	ActorUserID  *UUID     `gorm:"type:uuid;index" json:"actor_user_id,omitempty"`
-	BotID        *UUID     `gorm:"type:uuid;index" json:"bot_id,omitempty"`
-	ChatID       *UUID     `gorm:"type:uuid;index" json:"chat_id,omitempty"`
-	Action       string    `gorm:"size:128;not null;index" json:"action"`
-	EntityType   string    `gorm:"size:64;not null;index" json:"entity_type"`
-	EntityID     *UUID     `gorm:"type:uuid;index" json:"entity_id,omitempty"`
-	RequestID    *string   `gorm:"size:128;index" json:"request_id,omitempty"`
-	IP           *string   `gorm:"size:64" json:"ip,omitempty"`
-	UserAgent    *string   `gorm:"type:text" json:"user_agent,omitempty"`
-	BeforeJSON   string    `gorm:"type:jsonb;not null;default:'{}'" json:"before_json"`
-	AfterJSON    string    `gorm:"type:jsonb;not null;default:'{}'" json:"after_json"`
-	MetadataJSON string    `gorm:"type:jsonb;not null;default:'{}'" json:"metadata_json"`
-	OccurredAt   time.Time `gorm:"not null;index" json:"occurred_at"`
+	ActorUserID      *UUID     `gorm:"type:uuid;index" json:"actor_user_id,omitempty"`
+	ActorTelegramID  *int64    `gorm:"index" json:"actor_telegram_id,omitempty"`
+	BotID            *UUID     `gorm:"type:uuid;index" json:"bot_id,omitempty"`
+	ChatID           *UUID     `gorm:"type:uuid;index" json:"chat_id,omitempty"`
+	ChatTelegramID   *int64    `gorm:"index" json:"chat_telegram_id,omitempty"`
+	Action           string    `gorm:"size:128;not null;index" json:"action"`
+	EntityType       string    `gorm:"size:64;not null;index" json:"entity_type"`
+	EntityID         *UUID     `gorm:"type:uuid;index" json:"entity_id,omitempty"`
+	TargetTelegramID *int64    `gorm:"index" json:"target_telegram_id,omitempty"`
+	RequestID        *string   `gorm:"size:128;index" json:"request_id,omitempty"`
+	IP               *string   `gorm:"size:64" json:"ip,omitempty"`
+	UserAgent        *string   `gorm:"type:text" json:"user_agent,omitempty"`
+	Detail           *string   `gorm:"type:text" json:"detail,omitempty"`
+	BeforeJSON       string    `gorm:"type:jsonb;not null;default:'{}'" json:"before_json"`
+	AfterJSON        string    `gorm:"type:jsonb;not null;default:'{}'" json:"after_json"`
+	MetadataJSON     string    `gorm:"type:jsonb;not null;default:'{}'" json:"metadata_json"`
+	OccurredAt       time.Time `gorm:"not null;index" json:"occurred_at"`
 }
 
 // UUID is a local alias to keep the entity declarations compact.

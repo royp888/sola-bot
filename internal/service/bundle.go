@@ -12,6 +12,7 @@ import (
 
 	"github.com/dabowin/sola/internal/bot"
 	"github.com/dabowin/sola/internal/model"
+	"github.com/dabowin/sola/internal/config"
 	"github.com/dabowin/sola/internal/store"
 )
 
@@ -30,13 +31,15 @@ type Bundle struct {
 	Backup          *BackupService
 	MessageTemplate *MessageTemplateService
 	InviteLink      *InviteLinkService
+	AuditLog        *AuditService
+	AiFilter        *AiFilterService
 }
 
 func NewBundle(st *store.Store, redisClient *redis.Client) *Bundle {
-	return NewBundleWithBotToken(st, redisClient, "")
+	return NewBundleWithBotToken(st, redisClient, "", config.Config{})
 }
 
-func NewBundleWithBotToken(st *store.Store, redisClient *redis.Client, botToken string) *Bundle {
+func NewBundleWithBotToken(st *store.Store, redisClient *redis.Client, botToken string, cfg config.Config) *Bundle {
 	return &Bundle{
 		store:           st,
 		Access:          NewAccessService(st),
@@ -52,6 +55,8 @@ func NewBundleWithBotToken(st *store.Store, redisClient *redis.Client, botToken 
 		Backup:          NewBackupService(st),
 		MessageTemplate: NewMessageTemplateService(st),
 		InviteLink:      NewInviteLinkService(st, botToken),
+		AuditLog:        NewAuditService(st),
+		AiFilter:        NewAiFilterService(cfg),
 	}
 }
 
@@ -71,6 +76,8 @@ func (b *Bundle) BotServices() bot.Services {
 		InviteLink:     b.InviteLink,
 		Templates:      b.MessageTemplate,
 		Violations:     b.Moderation,
+		AuditLog:       b.AuditLog,
+		AiFilter:       b.AiFilter,
 	}
 }
 

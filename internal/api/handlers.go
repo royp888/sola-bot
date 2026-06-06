@@ -859,6 +859,28 @@ func (s *Server) UpdateAdminViolation(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /keywords [get]
+func (s *Server) ListAuditLogs(c *gin.Context) {
+	if s.deps.AuditLogs == nil {
+		writeError(c, http.StatusInternalServerError, "audit log service is not configured")
+		return
+	}
+	var query AuditLogListQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if query.ChatID != 0 && !s.ensureChatAllowed(c, query.ChatID) {
+		return
+	}
+	query.OwnerUserID = s.ownerUserID(c)
+	items, err := s.deps.AuditLogs.List(c.Request.Context(), query)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
 func (s *Server) ListKeywords(c *gin.Context) {
 	if s.deps.Keywords == nil {
 		writeError(c, http.StatusInternalServerError, "keyword service is not configured")

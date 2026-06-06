@@ -446,6 +446,18 @@ export interface AdminViolationRecord {
   resolved_at?: string | null;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  actor_telegram_id?: number | null;
+  chat_telegram_id?: number | null;
+  action: string;
+  entity_type: string;
+  target_telegram_id?: number | null;
+  detail?: string | null;
+  occurred_at: string;
+  created_at: string;
+}
+
 export interface AdminViolationUpdatePayload {
   status?: string;
   resolution?: string;

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm/clause"
 
@@ -41,11 +42,17 @@ func (s *AdminService) GetConfig(ctx context.Context, chatID int64) (bot.ChatAdm
 	}
 
 	cfg := model.ChatAdminConfig{
-		ChatID:        chatID,
-		WelcomeText:   defaultWelcomeText,
-		VerifyEnabled: true,
-		VerifyTimeout: 60,
-		WarnLimit:     3,
+		ChatID:             chatID,
+		WelcomeText:        defaultWelcomeText,
+		VerifyEnabled:      true,
+		VerifyType:         "button",
+		VerifyTimeout:      60,
+		WarnLimit:          3,
+		VerifyQuestion:     "",
+		VerifyOptions:      "[]",
+		VerifyCorrectIndex: -1,
+		VerifyWhitelist:    "",
+		VerifyDifficulty:   "medium",
 	}
 	db := s.store.DB.WithContext(ctx)
 	err := db.Clauses(clause.OnConflict{
@@ -76,11 +83,17 @@ func (s *AdminService) UpdateConfig(ctx context.Context, chatID int64, patch bot
 	applyAdminConfigPatch(&current, patch)
 
 	updates := map[string]any{
-		"welcome_text":   current.WelcomeText,
-		"verify_enabled": current.VerifyEnabled,
-		"verify_timeout": current.VerifyTimeout,
-		"warn_limit":     current.WarnLimit,
-		"updated_at":     time.Now(),
+		"welcome_text":         current.WelcomeText,
+		"verify_enabled":       current.VerifyEnabled,
+		"verify_type":          current.VerifyType,
+		"verify_timeout":       current.VerifyTimeout,
+		"warn_limit":           current.WarnLimit,
+		"verify_question":      current.VerifyQuestion,
+		"verify_options":       current.VerifyOptions,
+		"verify_correct_index": current.VerifyCorrectIndex,
+		"verify_whitelist":     current.VerifyWhitelist,
+		"verify_difficulty":    current.VerifyDifficulty,
+		"updated_at":           time.Now(),
 	}
 	err = s.store.DB.WithContext(ctx).Model(&model.ChatAdminConfig{}).
 		Where("chat_id = ?", chatID).
@@ -357,13 +370,82 @@ func (s *AdminService) DueVerifyTimeouts(ctx context.Context, now time.Time, lim
 	return out, nil
 }
 
+func (s *AdminService) RecordVerifyEvent(ctx context.Context, chatID int64, userID int64, eventType string, detail string) error {
+	if s == nil || s.store == nil || s.store.DB == nil {
+		return nil
+	}
+	now := time.Now()
+	record := model.ViolationRecord{
+		BaseModel: model.BaseModel{
+			ID:        uuid.New(),
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+		UserID:        userID,
+		ChatID:        chatID,
+		ViolationType: eventType,
+		ActionTaken:   detail,
+		DetectedBy:    "verify",
+	}
+	err := s.store.DB.WithContext(ctx).Create(&record).Error
+	if isMissingTableError(err) {
+		return nil
+	}
+	return err
+}
+
+func (s *AdminService) GetVerifyStats(ctx context.Context, chatID int64) (bot.VerifyStats, error) {
+	stats := bot.VerifyStats{}
+	if s == nil || s.store == nil || s.store.DB == nil {
+		return stats, nil
+	}
+	db := s.store.DB.WithContext(ctx).Model(&model.ViolationRecord{}).Where("chat_id = ? AND detected_by = ?", chatID, "verify")
+
+	// count passed
+	var passed int64
+	if err := db.Where("violation_type = ?", "verify_pass").Count(&passed).Error; err != nil && !isMissingTableError(err) {
+		return stats, err
+	}
+	stats.TotalPassed = passed
+
+	// count failed
+	var failed int64
+	if err := s.store.DB.WithContext(ctx).Model(&model.ViolationRecord{}).Where("chat_id = ? AND detected_by = ? AND violation_type = ?", chatID, "verify", "verify_fail").Count(&failed).Error; err != nil && !isMissingTableError(err) {
+		return stats, err
+	}
+	stats.TotalFailed = failed
+
+	// count timeout
+	var timeout int64
+	if err := s.store.DB.WithContext(ctx).Model(&model.ViolationRecord{}).Where("chat_id = ? AND detected_by = ? AND violation_type = ?", chatID, "verify", "verify_timeout").Count(&timeout).Error; err != nil && !isMissingTableError(err) {
+		return stats, err
+	}
+	stats.TotalTimeout = timeout
+
+	// count pending from redis
+	if s.redis != nil {
+		count, err := s.redis.ZCard(ctx, verifyPendingSetKey).Result()
+		if err == nil {
+			stats.PendingCount = count
+		}
+	}
+
+	return stats, nil
+}
+
 func defaultAdminConfig(chatID int64) bot.ChatAdminConfig {
 	return bot.ChatAdminConfig{
-		ChatID:        chatID,
-		WelcomeText:   defaultWelcomeText,
-		VerifyEnabled: true,
-		VerifyTimeout: 60,
-		WarnLimit:     3,
+		ChatID:             chatID,
+		WelcomeText:        defaultWelcomeText,
+		VerifyEnabled:      true,
+		VerifyType:         "button",
+		VerifyTimeout:      60,
+		WarnLimit:          3,
+		VerifyQuestion:     "",
+		VerifyOptions:      "[]",
+		VerifyCorrectIndex: -1,
+		VerifyWhitelist:    "",
+		VerifyDifficulty:   "medium",
 	}
 }
 
@@ -377,6 +459,21 @@ func normalizeAdminConfig(cfg *model.ChatAdminConfig) {
 	if cfg.WarnLimit <= 0 {
 		cfg.WarnLimit = 3
 	}
+	if strings.TrimSpace(cfg.VerifyType) == "" {
+		cfg.VerifyType = "button"
+	}
+	if cfg.VerifyOptions == "" {
+		cfg.VerifyOptions = "[]"
+	}
+	if cfg.VerifyCorrectIndex < 0 {
+		cfg.VerifyCorrectIndex = -1
+	}
+	difficulty := strings.TrimSpace(cfg.VerifyDifficulty)
+	if difficulty != "easy" && difficulty != "medium" && difficulty != "hard" {
+		cfg.VerifyDifficulty = "medium"
+	} else {
+		cfg.VerifyDifficulty = difficulty
+	}
 }
 
 func applyAdminConfigPatch(cfg *bot.ChatAdminConfig, patch bot.ChatAdminConfigPatch) {
@@ -386,21 +483,45 @@ func applyAdminConfigPatch(cfg *bot.ChatAdminConfig, patch bot.ChatAdminConfigPa
 	if patch.VerifyEnabled != nil {
 		cfg.VerifyEnabled = *patch.VerifyEnabled
 	}
+	if patch.VerifyType != nil {
+		cfg.VerifyType = strings.TrimSpace(*patch.VerifyType)
+	}
 	if patch.VerifyTimeout != nil && *patch.VerifyTimeout >= 0 {
 		cfg.VerifyTimeout = *patch.VerifyTimeout
 	}
 	if patch.WarnLimit != nil && *patch.WarnLimit > 0 {
 		cfg.WarnLimit = *patch.WarnLimit
 	}
+	if patch.VerifyQuestion != nil {
+		cfg.VerifyQuestion = strings.TrimSpace(*patch.VerifyQuestion)
+	}
+	if patch.VerifyOptions != nil {
+		cfg.VerifyOptions = strings.TrimSpace(*patch.VerifyOptions)
+	}
+	if patch.VerifyCorrectIndex != nil {
+		cfg.VerifyCorrectIndex = *patch.VerifyCorrectIndex
+	}
+	if patch.VerifyWhitelist != nil {
+		cfg.VerifyWhitelist = strings.TrimSpace(*patch.VerifyWhitelist)
+	}
+	if patch.VerifyDifficulty != nil {
+		cfg.VerifyDifficulty = strings.TrimSpace(*patch.VerifyDifficulty)
+	}
 }
 
 func modelAdminConfigToBot(cfg model.ChatAdminConfig) bot.ChatAdminConfig {
 	return bot.ChatAdminConfig{
-		ChatID:        cfg.ChatID,
-		WelcomeText:   cfg.WelcomeText,
-		VerifyEnabled: cfg.VerifyEnabled,
-		VerifyTimeout: cfg.VerifyTimeout,
-		WarnLimit:     cfg.WarnLimit,
+		ChatID:             cfg.ChatID,
+		WelcomeText:        cfg.WelcomeText,
+		VerifyEnabled:      cfg.VerifyEnabled,
+		VerifyType:         cfg.VerifyType,
+		VerifyTimeout:      cfg.VerifyTimeout,
+		WarnLimit:          cfg.WarnLimit,
+		VerifyQuestion:     cfg.VerifyQuestion,
+		VerifyOptions:      cfg.VerifyOptions,
+		VerifyCorrectIndex: cfg.VerifyCorrectIndex,
+		VerifyWhitelist:    cfg.VerifyWhitelist,
+		VerifyDifficulty:   cfg.VerifyDifficulty,
 	}
 }
 

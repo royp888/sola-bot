@@ -87,6 +87,9 @@ func shouldPreAnswerCallback(payload CallbackPayload) bool {
 	if payload.Domain == "wizard" {
 		return false
 	}
+	if payload.Domain == "verify" {
+		return false
+	}
 	return true
 }
 
@@ -98,4 +101,5 @@ func (a *App) registerCallbackRoutes() {
 	a.router.HandleDomain("admin", a.routeAdminCallback)
 	a.router.HandleDomain("private", a.routePrivateCallback)
 	a.router.HandleDomain("wizard", a.routeWizardCallback)
+	a.router.HandleDomain("verify", a.routeVerifyCallback)
 }

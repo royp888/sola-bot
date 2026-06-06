@@ -17,10 +17,15 @@ Sola 是一个基于 Go + Vue 构建的开源 Telegram 运营平台。
 - 支持群组与超级群管理场景
 - 可配置积分系统，支持不同消息类型分值与冷却时间
 - 积分排行榜与积分流水
-- 群管功能：封禁、禁言、踢人、警告、入群验证
-- 定时发帖，支持 Worker 执行与可选自动删除
+- **群管功能**：封禁、禁言、踢人、警告、关键词过滤、垃圾评分、链接域名白名单/黑名单
+- **入群验证**：5 种类型（按钮 / 数字码 / 多选 / Telegram Poll 投票 / 数学运算），难度分级、白名单、未验证行为限制
+- **定时发帖**：纯文字 / 图片 / 视频 / 文件 + HTML 格式化 + Inline Keyboard 按钮，Worker 执行 + 可选自动删除
+- **即时发布**：`/publish` 支持 HTML 富文本 + Inline Keyboard 按钮
+- **中文命令**：发送"签到""积分""排行榜""抽奖""加积分 10"即可触发
 - 抽奖系统，支持按钮参与和口令参与
 - 基于 Vue 3 + Element Plus 的管理后台
+- **AI 垃圾广告检测**：可选启用 DeepSeek/OpenAI/中转站，在规则评分基础上做 LLM 二次确认
+- **操作审计**：群管操作自动写入审计日志，后台提供查询页面
 - 面向多群运营的任务式后台导航与管理页面
 - 支持 Docker Compose 部署
 
@@ -31,6 +36,8 @@ Sola 是一个基于 Go + Vue 构建的开源 Telegram 运营平台。
 - 数据库结构通过显式 SQL 迁移管理，不依赖生产环境 AutoMigrate
 - 补齐高频复合索引、部分索引与 N+1 查询优化，适配积分、违规、抽奖、定时任务等场景
 - 管理后台支持路由懒加载、依赖拆包和重资源页面按需加载
+- Bot 命令处理器内置 panic recovery，单 handler 崩溃不影响整体服务
+- 操作审计日志异步写入，不阻塞主业务流程
 
 ## 不包含的模块
 
@@ -263,6 +270,47 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 - CORS 使用白名单，而不是反射任意来源
 - 涉及群资源的管理接口带有归属校验
 - 前端会话令牌保存在内存中，而不是 `localStorage`
+- 群管操作（封禁/禁言/踢人/关键词命中）自动写入 `audit_logs`，支持后台查询和追溯
+
+## 入群验证
+
+Sola 提供 5 种验证类型，可通过 `/set_verify` 命令配置：
+
+| 类型 | 命令 | 说明 |
+|------|------|------|
+| `button` | `/set_verify type button` | 点击"我是人类"按钮即可通过 |
+| `captcha` | `/set_verify type captcha` | 输入随机数字验证码 |
+| `multi_choice` | `/set_verify type multi_choice` | 自定义问题 + 多选按钮 |
+| `poll` | `/set_verify type poll` | Telegram 原生测验投票，更自然的交互 |
+| `math` | `/set_verify type math` | 随机算式（如 7+3=?），4 选 1 |
+
+附加能力：
+- **难度分级**：`/set_verify difficulty easy\|medium\|hard`（影响超时和重试次数）
+- **免验证白名单**：`/allowuser @user` 跳过验证
+- **未验证行为限制**：验证通过前自动删除 URL 和媒体消息
+- **统计**：`/verify_stats` 查看今日通过/拒绝/超时数据
+
+## 富媒体公告发布
+
+定时发帖和即时发布均支持：
+
+```text
+纯文字 + <b>HTML</b> 格式化 + Inline Keyboard 按钮  ✅
+图片    + <b>HTML</b> caption  + Inline Keyboard 按钮  ✅
+视频    + <b>HTML</b> caption  + Inline Keyboard 按钮  ✅
+文件    + <b>HTML</b> caption  + Inline Keyboard 按钮  ✅
+```
+
+按钮 JSON 示例（存储在 `inline_keyboard_json` 字段）：
+
+```json
+[
+  [{"text":"查看详情","url":"https://example.com"}, {"text":"我要参与","callback_data":"join"}],
+  [{"text":"私聊咨询","url":"tg://user?id=123456"}]
+]
+```
+
+支持的 HTML 标签：`<b>` `<i>` `<u>` `<s>` `<a href>` `<code>` `<pre>` `<blockquote>` `<tg-spoiler>
 
 ## 配置说明
 
@@ -280,10 +328,17 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 ## 路线图
 
-- 补充更完整的仓库截图和演示材料
-- 继续增强机器人功能模块化能力
-- 持续优化多群运营场景下的后台体验
-- 增加更多 Bot 流程的自动化测试覆盖
+- ✅ 入群验证增强（Poll / Math / 多选 / 难度 / 白名单）
+- ✅ 链接域名白名单/黑名单
+- ✅ 操作审计日志系统
+- ✅ 中文自然语言命令
+- ✅ 富媒体公告发布（HTML + 图片/视频 + 按钮）
+- ✅ Bot 菜单 emoji 美化
+- ✅ AI 垃圾广告检测（DeepSeek/OpenAI）
+- [ ] 补充更完整的仓库截图和演示材料
+- [ ] 多语言 i18n 支持
+- [ ] 增加更多 Bot 流程的自动化测试覆盖
+- [ ] 频道消息自动同步到群
 
 ## 参与贡献
 

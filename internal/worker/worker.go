@@ -3,7 +3,9 @@ package worker
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -59,6 +61,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.runDueJobs()
 	sched.Start()
 	r.log.Info("worker scheduler started")
+
+	go r.scanVerifyTimeoutsLoop(ctx)
 
 	<-ctx.Done()
 	return sched.Shutdown()
@@ -247,8 +251,18 @@ func (r *Runner) sendScheduledPost(ctx context.Context, post model.ScheduledPost
 		mediaName = "media-upload"
 	}
 	hasInlineMedia := len(post.MediaData) > 0
+
+	keyboard, err := parseInlineKeyboard(post.InlineKeyboardJSON)
+	if err != nil {
+		r.log.Warn("scheduled post has invalid inline keyboard", zap.Uint64("post_id", post.ID), zap.Error(err))
+	}
+
+	parseMode := strings.TrimSpace(post.ParseMode)
+	if parseMode == "" {
+		parseMode = "HTML"
+	}
+
 	var sent *gotgbot.Message
-	var err error
 	switch strings.ToLower(strings.TrimSpace(post.MediaType)) {
 	case "photo":
 		if !hasInlineMedia && mediaURL == "" {
@@ -258,7 +272,11 @@ func (r *Runner) sendScheduledPost(ctx context.Context, post model.ScheduledPost
 		if hasInlineMedia {
 			photoFile = gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
 		}
-		sent, err = r.tgBot.SendPhotoWithContext(ctx, post.ChatID, photoFile, &gotgbot.SendPhotoOpts{Caption: content})
+		opts := &gotgbot.SendPhotoOpts{Caption: content, ParseMode: parseMode}
+		if keyboard != nil {
+			opts.ReplyMarkup = keyboard
+		}
+		sent, err = r.tgBot.SendPhotoWithContext(ctx, post.ChatID, photoFile, opts)
 	case "video":
 		if !hasInlineMedia && mediaURL == "" {
 			return fmt.Errorf("video scheduled post requires media")
@@ -267,7 +285,11 @@ func (r *Runner) sendScheduledPost(ctx context.Context, post model.ScheduledPost
 		if hasInlineMedia {
 			videoFile = gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
 		}
-		sent, err = r.tgBot.SendVideoWithContext(ctx, post.ChatID, videoFile, &gotgbot.SendVideoOpts{Caption: content})
+		opts := &gotgbot.SendVideoOpts{Caption: content, ParseMode: parseMode}
+		if keyboard != nil {
+			opts.ReplyMarkup = keyboard
+		}
+		sent, err = r.tgBot.SendVideoWithContext(ctx, post.ChatID, videoFile, opts)
 	case "document", "file":
 		if !hasInlineMedia && mediaURL == "" {
 			return fmt.Errorf("document scheduled post requires media")
@@ -276,12 +298,20 @@ func (r *Runner) sendScheduledPost(ctx context.Context, post model.ScheduledPost
 		if hasInlineMedia {
 			documentFile = gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
 		}
-		sent, err = r.tgBot.SendDocumentWithContext(ctx, post.ChatID, documentFile, &gotgbot.SendDocumentOpts{Caption: content})
+		opts := &gotgbot.SendDocumentOpts{Caption: content, ParseMode: parseMode}
+		if keyboard != nil {
+			opts.ReplyMarkup = keyboard
+		}
+		sent, err = r.tgBot.SendDocumentWithContext(ctx, post.ChatID, documentFile, opts)
 	default:
 		if content == "" {
 			return fmt.Errorf("text scheduled post requires content")
 		}
-		sent, err = r.tgBot.SendMessageWithContext(ctx, post.ChatID, content, nil)
+		opts := &gotgbot.SendMessageOpts{ParseMode: parseMode}
+		if keyboard != nil {
+			opts.ReplyMarkup = keyboard
+		}
+		sent, err = r.tgBot.SendMessageWithContext(ctx, post.ChatID, content, opts)
 	}
 	if err != nil {
 		return err
@@ -376,6 +406,9 @@ func (r *Runner) scanDueVerifyTimeouts(ctx context.Context, now time.Time) {
 			r.log.Warn("kick unverified member", zap.Int64("chat_id", item.ChatID), zap.Int64("user_id", item.UserID), zap.Error(err))
 			continue
 		}
+		if err := adminService.RecordVerifyEvent(ctx, item.ChatID, item.UserID, "verify_timeout", "验证超时自动踢出"); err != nil {
+			r.log.Warn("record verify timeout event", zap.Int64("chat_id", item.ChatID), zap.Int64("user_id", item.UserID), zap.Error(err))
+		}
 		if item.Challenge.MessageID != 0 {
 			if _, err := r.tgBot.DeleteMessageWithContext(ctx, item.ChatID, item.Challenge.MessageID, nil); err != nil {
 				r.log.Warn("delete verify challenge message", zap.Int64("chat_id", item.ChatID), zap.Int64("message_id", item.Challenge.MessageID), zap.Error(err))
@@ -383,6 +416,95 @@ func (r *Runner) scanDueVerifyTimeouts(ctx context.Context, now time.Time) {
 		}
 		if err := adminService.ClearVerifyChallenge(ctx, item.ChatID, item.UserID); err != nil {
 			r.log.Warn("clear verify challenge", zap.Int64("chat_id", item.ChatID), zap.Int64("user_id", item.UserID), zap.Error(err))
+		}
+		if r.store.Redis != nil {
+			_ = r.store.Redis.Del(ctx, fmt.Sprintf("unverified:%d:%d", item.ChatID, item.UserID)).Err()
+		}
+	}
+}
+
+func (r *Runner) scanVerifyTimeoutsLoop(ctx context.Context) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			r.scanVerifyTimeoutsFromDB(ctx)
+		}
+	}
+}
+
+func (r *Runner) scanVerifyTimeoutsFromDB(ctx context.Context) {
+	if r.tgBot == nil || r.store == nil || r.store.DB == nil || r.store.Redis == nil {
+		return
+	}
+	var configs []model.ChatAdminConfig
+	if err := r.store.DB.WithContext(ctx).Where("verify_enabled = ?", true).Find(&configs).Error; err != nil {
+		r.log.Error("load verify enabled chats", zap.Error(err))
+		return
+	}
+	adminService := service.NewAdminService(r.store, r.store.Redis)
+	for _, cfg := range configs {
+		r.scanVerifyKeysForChat(ctx, adminService, cfg.ChatID)
+	}
+}
+
+func (r *Runner) scanVerifyKeysForChat(ctx context.Context, adminService *service.AdminService, chatID int64) {
+	pattern := fmt.Sprintf("verify:%d:*", chatID)
+	keys, err := r.store.Redis.Keys(ctx, pattern).Result()
+	if err != nil {
+		r.log.Warn("scan verify keys", zap.Int64("chat_id", chatID), zap.Error(err))
+		return
+	}
+	for _, key := range keys {
+		ttl, err := r.store.Redis.TTL(ctx, key).Result()
+		if err != nil {
+			continue
+		}
+		if ttl > 0 {
+			continue
+		}
+		// Key exists but has no TTL or is expired (should not happen with TTL-set keys, but handle it)
+		// Actually, if TTL is -2, the key doesn't exist (expired). Since KEYS found it, it might be -1 (no expiry) or positive.
+		// Only handle keys with TTL -2 (expired but still in scan) or -1 (no TTL set).
+		if ttl == -2 {
+			continue // key already gone
+		}
+		// For keys with no TTL or keys we want to force check
+		parts := strings.Split(key, ":")
+		if len(parts) < 3 {
+			continue
+		}
+		userID, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			continue
+		}
+		// Check if challenge exists
+		challenge, ok, err := adminService.GetVerifyChallenge(ctx, chatID, userID)
+		if err != nil || !ok {
+			continue
+		}
+		if time.Now().After(challenge.ExpireAt) {
+			if err := r.kickUnverifiedMember(ctx, chatID, userID); err != nil {
+				r.log.Warn("kick unverified member (db scan)", zap.Int64("chat_id", chatID), zap.Int64("user_id", userID), zap.Error(err))
+				continue
+			}
+			if err := adminService.RecordVerifyEvent(ctx, chatID, userID, "verify_timeout", "验证超时自动踢出"); err != nil {
+				r.log.Warn("record verify timeout event", zap.Int64("chat_id", chatID), zap.Int64("user_id", userID), zap.Error(err))
+			}
+			if challenge.MessageID != 0 {
+				if _, err := r.tgBot.DeleteMessageWithContext(ctx, chatID, challenge.MessageID, nil); err != nil {
+					r.log.Warn("delete verify challenge message", zap.Int64("chat_id", chatID), zap.Int64("message_id", challenge.MessageID), zap.Error(err))
+				}
+			}
+			if err := adminService.ClearVerifyChallenge(ctx, chatID, userID); err != nil {
+				r.log.Warn("clear verify challenge", zap.Int64("chat_id", chatID), zap.Int64("user_id", userID), zap.Error(err))
+			}
+			if r.store.Redis != nil {
+				_ = r.store.Redis.Del(ctx, fmt.Sprintf("unverified:%d:%d", chatID, userID)).Err()
+			}
 		}
 	}
 }
@@ -470,4 +592,42 @@ func lotteryWinnerName(winner model.LotteryEntry) string {
 
 func (r *Runner) String() string {
 	return fmt.Sprintf("worker(%s)", r.cfg.App.Env)
+}
+
+// inlineKeyboardButton is a minimal representation of a Telegram inline
+// keyboard button used for JSON deserialization.
+type inlineKeyboardButton struct {
+	Text         string `json:"text"`
+	URL          string `json:"url,omitempty"`
+	CallbackData string `json:"callback_data,omitempty"`
+}
+
+// parseInlineKeyboard unmarshals a JSON inline keyboard definition
+// and returns a gotgbot.InlineKeyboardMarkup suitable for ReplyMarkup.
+// Returns nil when the input is empty or "[]".
+func parseInlineKeyboard(raw string) (*gotgbot.InlineKeyboardMarkup, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" || raw == "null" {
+		return nil, nil
+	}
+	var rows [][]inlineKeyboardButton
+	if err := json.Unmarshal([]byte(raw), &rows); err != nil {
+		return nil, fmt.Errorf("parse inline keyboard: %w", err)
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	keyboard := make([][]gotgbot.InlineKeyboardButton, 0, len(rows))
+	for _, row := range rows {
+		buttons := make([]gotgbot.InlineKeyboardButton, 0, len(row))
+		for _, btn := range row {
+			buttons = append(buttons, gotgbot.InlineKeyboardButton{
+				Text:         btn.Text,
+				Url:          btn.URL,
+				CallbackData: btn.CallbackData,
+			})
+		}
+		keyboard = append(keyboard, buttons)
+	}
+	return &gotgbot.InlineKeyboardMarkup{InlineKeyboard: keyboard}, nil
 }

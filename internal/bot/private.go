@@ -118,7 +118,8 @@ func (a *App) showPrivateHome(b *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 	text := strings.Join([]string{
-		"运营控制台",
+		"🏠 运营控制台",
+		"━━━━━━━━━━",
 		"",
 		"在私聊里选择一个已绑定的群组或频道，就能像面板一样继续操作。",
 		"支持切换目标、创建抽奖、查看积分、定时发帖和群管入口。",
@@ -157,8 +158,8 @@ func (a *App) showPrivateChatList(b *gotgbot.Bot, ctx *ext.Context) error {
 			CallbackData: CallbackData("private", "select", strconv.FormatInt(chat.ChatID, 10)),
 		}})
 	}
-	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "返回首页", CallbackData: CallbackData("private", "home")}})
-	text := "请选择当前要管理的目标。\n\n后续所有按钮都会针对你选中的群组或频道执行。"
+	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "🔙 返回首页", CallbackData: CallbackData("private", "home")}})
+	text := "🎯 选择目标\n━━━━━━━━━━\n\n请选择当前要管理的目标。\n\n后续所有按钮都会针对你选中的群组或频道执行。"
 	return respondText(b, ctx, text, &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}})
 }
 
@@ -238,16 +239,16 @@ func privateHomeMarkup(hasChats bool, hasSelection bool) *gotgbot.SendMessageOpt
 	rows := [][]gotgbot.InlineKeyboardButton{}
 	if hasChats {
 		rows = append(rows,
-			[]gotgbot.InlineKeyboardButton{{Text: "选择目标", CallbackData: CallbackData("private", "list")}},
+			[]gotgbot.InlineKeyboardButton{{Text: "🎯 选择目标", CallbackData: CallbackData("private", "list")}},
 		)
 		if hasSelection {
 			rows = append(rows,
-				[]gotgbot.InlineKeyboardButton{{Text: "进入工作台", CallbackData: CallbackData("private", "console")}},
+				[]gotgbot.InlineKeyboardButton{{Text: "📋 进入工作台", CallbackData: CallbackData("private", "console")}},
 			)
 		}
 	}
 	rows = append(rows,
-		[]gotgbot.InlineKeyboardButton{{Text: "私聊功能说明", CallbackData: CallbackData("menu", "private_help")}},
+		[]gotgbot.InlineKeyboardButton{{Text: "❓ 私聊功能说明", CallbackData: CallbackData("menu", "private_help")}},
 	)
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}}
 }
@@ -256,20 +257,20 @@ func privateConsoleMarkup(chat api.ChatBinding) *gotgbot.SendMessageOpts {
 	chatResource := strconv.FormatInt(chat.ChatID, 10)
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "抽奖中心", CallbackData: CallbackData("private", "lottery_active", chatResource)},
-			{Text: "创建抽奖", CallbackData: CallbackData("private", "lottery_create", chatResource)},
+			{Text: "🎁 抽奖中心", CallbackData: CallbackData("private", "lottery_active", chatResource)},
+			{Text: "🎲 创建抽奖", CallbackData: CallbackData("private", "lottery_create", chatResource)},
 		},
 		{
-			{Text: "积分中心", CallbackData: CallbackData("private", "points", chatResource)},
-			{Text: "定时发帖", CallbackData: CallbackData("private", "posts", chatResource)},
+			{Text: "💎 积分中心", CallbackData: CallbackData("private", "points", chatResource)},
+			{Text: "📣 定时发帖", CallbackData: CallbackData("private", "posts", chatResource)},
 		},
 		{
-			{Text: "群管中心", CallbackData: CallbackData("private", "admin", chatResource)},
-			{Text: "运行概览", CallbackData: CallbackData("private", "summary", chatResource)},
+			{Text: "🛡 群管中心", CallbackData: CallbackData("private", "admin", chatResource)},
+			{Text: "📊 运行概览", CallbackData: CallbackData("private", "summary", chatResource)},
 		},
 		{
-			{Text: "切换目标", CallbackData: CallbackData("private", "list")},
-			{Text: "返回首页", CallbackData: CallbackData("private", "home")},
+			{Text: "🔄 切换目标", CallbackData: CallbackData("private", "list")},
+			{Text: "🔙 返回首页", CallbackData: CallbackData("private", "home")},
 		},
 	}}}
 }
@@ -277,7 +278,8 @@ func privateConsoleMarkup(chat api.ChatBinding) *gotgbot.SendMessageOpts {
 func (a *App) showPrivateSummary(b *gotgbot.Bot, ctx *ext.Context, chat api.ChatBinding) error {
 	scope := requestScope(ctx)
 	lines := []string{
-		"运行概览",
+		"📊 运行概览",
+		"━━━━━━━━━━",
 		"",
 		fmt.Sprintf("目标：%s", chatTitle(chat)),
 		fmt.Sprintf("类型：%s", chatTypeLabel(chat.ChatType)),
@@ -332,12 +334,12 @@ func privateLotteryMarkup(chat api.ChatBinding, items []api.Lottery) *gotgbot.Se
 	chatResource := strconv.FormatInt(chat.ChatID, 10)
 	rows := [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "按钮抽奖", CallbackData: CallbackData("private", "lottery_button_create", chatResource)},
-			{Text: "口令抽奖", CallbackData: CallbackData("private", "lottery_keyword_create", chatResource)},
+			{Text: "🔘 按钮抽奖", CallbackData: CallbackData("private", "lottery_button_create", chatResource)},
+			{Text: "🔤 口令抽奖", CallbackData: CallbackData("private", "lottery_keyword_create", chatResource)},
 		},
 		{
-			{Text: "双模式", CallbackData: CallbackData("private", "lottery_both_create", chatResource)},
-			{Text: "刷新中心", CallbackData: CallbackData("private", "lottery_active", chatResource)},
+			{Text: "🔀 双模式", CallbackData: CallbackData("private", "lottery_both_create", chatResource)},
+			{Text: "🔄 刷新中心", CallbackData: CallbackData("private", "lottery_active", chatResource)},
 		},
 	}
 	for _, item := range items {
@@ -347,17 +349,17 @@ func privateLotteryMarkup(chat api.ChatBinding, items []api.Lottery) *gotgbot.Se
 			title = string([]rune(title)[:10]) + "..."
 		}
 		rows = append(rows, []gotgbot.InlineKeyboardButton{
-			{Text: "详情 " + title, CallbackData: CallbackData("lottery", "info", id)},
-			{Text: "取消", CallbackData: CallbackData("lottery", "cancel", id)},
+			{Text: "📋 详情 " + title, CallbackData: CallbackData("lottery", "info", id)},
+			{Text: "❌ 取消", CallbackData: CallbackData("lottery", "cancel", id)},
 		})
 	}
-	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "返回工作台", CallbackData: CallbackData("private", "console")}})
+	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "🔙 返回工作台", CallbackData: CallbackData("private", "console")}})
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}}
 }
 func (a *App) showPrivateAdminCenter(b *gotgbot.Bot, ctx *ext.Context, chat api.ChatBinding) error {
 	scope := requestScope(ctx)
 	lines := []string{
-		"群管中心",
+		"🛡 群管中心",
 		"",
 		fmt.Sprintf("目标：%s", chatTitle(chat)),
 		"群组里可直接使用：/ban /mute /kick /warn /unwarn /warns",
@@ -381,7 +383,7 @@ func (a *App) showPointsMenuForChat(b *gotgbot.Bot, ctx *ext.Context, chatID int
 		return err
 	}
 	text := strings.Join([]string{
-		"积分中心",
+		"💎 积分中心",
 		"",
 		"自动计分、防刷冷却、排行榜和手动调分都在这里。",
 		stats,
@@ -393,19 +395,19 @@ func privatePointsMarkup(chatID int64) *gotgbot.SendMessageOpts {
 	chatResource := strconv.FormatInt(chatID, 10)
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "总榜", CallbackData: CallbackData("points", "private_rank", chatResource, "all")},
-			{Text: "今日榜", CallbackData: CallbackData("points", "private_rank", chatResource, "day")},
+			{Text: "🏆 总榜", CallbackData: CallbackData("points", "private_rank", chatResource, "all")},
+			{Text: "📈 今日榜", CallbackData: CallbackData("points", "private_rank", chatResource, "day")},
 		},
 		{
-			{Text: "本周榜", CallbackData: CallbackData("points", "private_rank", chatResource, "week")},
-			{Text: "积分配置", CallbackData: CallbackData("points", "private_config", chatResource)},
+			{Text: "📊 本周榜", CallbackData: CallbackData("points", "private_rank", chatResource, "week")},
+			{Text: "⚙️ 积分配置", CallbackData: CallbackData("points", "private_config", chatResource)},
 		},
 		{
-			{Text: "今日统计", CallbackData: CallbackData("points", "private_stats", chatResource, "today")},
-			{Text: "本周统计", CallbackData: CallbackData("points", "private_stats", chatResource, "week")},
+			{Text: "📈 今日统计", CallbackData: CallbackData("points", "private_stats", chatResource, "today")},
+			{Text: "📊 本周统计", CallbackData: CallbackData("points", "private_stats", chatResource, "week")},
 		},
 		{
-			{Text: "返回工作台", CallbackData: CallbackData("private", "console")},
+			{Text: "🔙 返回工作台", CallbackData: CallbackData("private", "console")},
 		},
 	}}}
 }
@@ -435,30 +437,30 @@ func privatePostsMarkup(chatID int64, posts []ScheduledPostItem) *gotgbot.SendMe
 	chatResource := strconv.FormatInt(chatID, 10)
 	rows := [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "新建任务", CallbackData: CallbackData("publish", "private_create", chatResource)},
-			{Text: "刷新列表", CallbackData: CallbackData("private", "posts")},
+			{Text: "➕ 新建任务", CallbackData: CallbackData("publish", "private_create", chatResource)},
+			{Text: "🔄 刷新列表", CallbackData: CallbackData("private", "posts")},
 		},
 	}
 	for _, post := range posts {
 		id := strconv.FormatUint(post.ID, 10)
 		rows = append(rows, []gotgbot.InlineKeyboardButton{
-			{Text: fmt.Sprintf("#%d 开关", post.ID), CallbackData: CallbackData("publish", "private_toggle", chatResource, id)},
-			{Text: "删除", CallbackData: CallbackData("publish", "private_delete_confirm", chatResource, id)},
+			{Text: fmt.Sprintf("🔧 #%d 开关", post.ID), CallbackData: CallbackData("publish", "private_toggle", chatResource, id)},
+			{Text: "🗑 删除", CallbackData: CallbackData("publish", "private_delete_confirm", chatResource, id)},
 		})
 	}
-	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "返回工作台", CallbackData: CallbackData("private", "console")}})
+	rows = append(rows, []gotgbot.InlineKeyboardButton{{Text: "🔙 返回工作台", CallbackData: CallbackData("private", "console")}})
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: rows}}
 }
 
 func lotteryCreateTypePrivateMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "按钮抽奖", CallbackData: CallbackData("private", "lottery_button_create")},
-			{Text: "口令抽奖", CallbackData: CallbackData("private", "lottery_keyword_create")},
+			{Text: "🔘 按钮抽奖", CallbackData: CallbackData("private", "lottery_button_create")},
+			{Text: "🔤 口令抽奖", CallbackData: CallbackData("private", "lottery_keyword_create")},
 		},
 		{
-			{Text: "双模式", CallbackData: CallbackData("private", "lottery_both_create")},
-			{Text: "返回工作台", CallbackData: CallbackData("private", "console")},
+			{Text: "🔀 双模式", CallbackData: CallbackData("private", "lottery_both_create")},
+			{Text: "🔙 返回工作台", CallbackData: CallbackData("private", "console")},
 		},
 	}}}
 }

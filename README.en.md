@@ -17,9 +17,14 @@ It includes a real Telegram bot, a web admin panel, and background workers for l
 - Group and supergroup operations
 - Points system with configurable scoring and cooldowns
 - Rankings and point logs
-- Group moderation tools: ban, mute, kick, warn, join verification
-- Scheduled posts with worker execution and optional auto-delete
+- **Group moderation**: ban, mute, kick, warn, keyword filter, spam scoring, link domain whitelist/blacklist
+- **Join verification**: 5 modes (button / captcha / multi-choice / Telegram Poll / math), difficulty levels, whitelist, unverified user restrictions
+- **Scheduled posts**: text / photo / video / document + HTML formatting + Inline Keyboard buttons, worker execution + optional auto-delete
+- **Instant publish**: `/publish` with HTML rich text + Inline Keyboard buttons
+- **Chinese natural-language commands**: send check-in, points, rank, lottery, add-points in plain Chinese
 - Lottery system with button and keyword participation flows
+- **AI spam detection**: optional LLM-based secondary check via DeepSeek/OpenAI/custom proxy
+- **Audit logging**: all moderation actions auto-recorded, with admin panel query page
 - Vue 3 + Element Plus admin panel
 - Task-oriented admin navigation for multi-group operators
 - Docker Compose deployment
@@ -31,6 +36,8 @@ It includes a real Telegram bot, a web admin panel, and background workers for l
 - Explicit SQL migrations for schema and index changes instead of production AutoMigrate reliance
 - Query-shape-oriented index tuning and N+1 cleanup for points, violations, lotteries, and scheduled jobs
 - Route-level lazy loading and dependency chunk splitting for the admin frontend
+- Bot handler panic recovery prevents single-handler crashes from taking down the service
+- Async audit log writes that never block the main business flow
 
 ## Not Included
 
@@ -264,6 +271,47 @@ After identifying the real SQL shape, validate index usage with `EXPLAIN ANALYZE
 - CORS uses an allowlist instead of reflecting arbitrary origins
 - Sensitive chat resources are protected by ownership checks
 - Frontend session token is kept in memory instead of `localStorage`
+- Moderation actions (ban/mute/kick/keyword hit) auto-recorded to `audit_logs`, queryable via admin panel
+
+## Join Verification
+
+Sola provides 5 verification modes configurable via `/set_verify`:
+
+| Type | Command | Description |
+|------|---------|-------------|
+| `button` | `/set_verify type button` | Tap "I'm human" to pass |
+| `captcha` | `/set_verify type captcha` | Enter a random numeric code |
+| `multi_choice` | `/set_verify type multi_choice` | Custom question + multi-choice buttons |
+| `poll` | `/set_verify type poll` | Native Telegram quiz poll |
+| `math` | `/set_verify type math` | Random math problem (e.g. 7+3=?), 4 options |
+
+Additional capabilities:
+- **Difficulty levels**: `/set_verify difficulty easy|medium|hard` (affects timeout and retries)
+- **Verification whitelist**: `/allowuser @user` skips verification
+- **Unverified restrictions**: auto-delete URL and media messages before verification
+- **Stats**: `/verify_stats` shows pass/fail/timeout counts
+
+## Rich Media Announcements
+
+Both scheduled posts and instant publish support:
+
+```text
+Plain text + <b>HTML</b> formatting + Inline Keyboard buttons  ✅
+Photo    + <b>HTML</b> caption  + Inline Keyboard buttons  ✅
+Video    + <b>HTML</b> caption  + Inline Keyboard buttons  ✅
+Document + <b>HTML</b> caption  + Inline Keyboard buttons  ✅
+```
+
+Button JSON example (stored in `inline_keyboard_json` field):
+
+```json
+[
+  [{"text":"Details","url":"https://example.com"}, {"text":"Join","callback_data":"join"}],
+  [{"text":"DM me","url":"tg://user?id=123456"}]
+]
+```
+
+Supported HTML tags: `<b>` `<i>` `<u>` `<s>` `<a href>` `<code>` `<pre>` `<blockquote>` `<tg-spoiler>`
 
 ## Configuration Notes
 
@@ -281,10 +329,17 @@ Important settings:
 
 ## Roadmap
 
-- Add better repository screenshots and demo material
-- Improve modular plugin-style bot features
-- Continue polishing admin UX for multi-group operators
-- Add more automated integration coverage for bot flows
+- ✅ Join verification enhancement (Poll / Math / multi-choice / difficulty / whitelist)
+- ✅ Link domain whitelist/blacklist
+- ✅ Operation audit logging system
+- ✅ Chinese natural-language commands
+- ✅ Rich media announcements (HTML + photo/video + buttons)
+- ✅ Bot menu emoji beautification
+- ✅ AI spam detection (DeepSeek/OpenAI)
+- [ ] Add better repository screenshots and demo material
+- [ ] Multi-language i18n support
+- [ ] Add more automated integration coverage for bot flows
+- [ ] Channel-to-group message sync
 
 ## Contributing
 

@@ -225,20 +225,20 @@ func (a *App) setPointsCooldownFromCallback(b *gotgbot.Bot, ctx *ext.Context, pa
 func pointsMenuMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "总榜", CallbackData: CallbackData("points", "rank", "all")},
-			{Text: "今日榜", CallbackData: CallbackData("points", "rank", "day")},
+			{Text: "🏆 总榜", CallbackData: CallbackData("points", "rank", "all")},
+			{Text: "📈 今日榜", CallbackData: CallbackData("points", "rank", "day")},
 		},
 		{
-			{Text: "本周榜", CallbackData: CallbackData("points", "rank", "week")},
-			{Text: "本月榜", CallbackData: CallbackData("points", "rank", "month")},
+			{Text: "📊 本周榜", CallbackData: CallbackData("points", "rank", "week")},
+			{Text: "📅 本月榜", CallbackData: CallbackData("points", "rank", "month")},
 		},
 		{
-			{Text: "今日统计", CallbackData: CallbackData("points", "stats")},
-			{Text: "本周统计", CallbackData: CallbackData("points", "stats_week")},
+			{Text: "📈 今日统计", CallbackData: CallbackData("points", "stats")},
+			{Text: "📊 本周统计", CallbackData: CallbackData("points", "stats_week")},
 		},
 		{
-			{Text: "积分配置", CallbackData: CallbackData("points", "config")},
-			{Text: "返回群组", CallbackData: CallbackData("menu", "groups")},
+			{Text: "⚙️ 积分配置", CallbackData: CallbackData("points", "config")},
+			{Text: "🔙 返回群组", CallbackData: CallbackData("menu", "groups")},
 		},
 	}}}
 }
@@ -246,13 +246,13 @@ func pointsMenuMarkup() *gotgbot.SendMessageOpts {
 func pointsRankMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "总榜", CallbackData: CallbackData("points", "rank", "all")},
-			{Text: "今日", CallbackData: CallbackData("points", "rank", "day")},
-			{Text: "本周", CallbackData: CallbackData("points", "rank", "week")},
-			{Text: "本月", CallbackData: CallbackData("points", "rank", "month")},
+			{Text: "🏆 总榜", CallbackData: CallbackData("points", "rank", "all")},
+			{Text: "📈 今日", CallbackData: CallbackData("points", "rank", "day")},
+			{Text: "📊 本周", CallbackData: CallbackData("points", "rank", "week")},
+			{Text: "📅 本月", CallbackData: CallbackData("points", "rank", "month")},
 		},
 		{
-			{Text: "返回积分中心", CallbackData: CallbackData("points", "menu")},
+			{Text: "🔙 返回积分中心", CallbackData: CallbackData("points", "menu")},
 		},
 	}}}
 }
@@ -260,8 +260,8 @@ func pointsRankMarkup() *gotgbot.SendMessageOpts {
 func pointsConfigMarkup(cfg ChatPointConfig) *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "开关积分", CallbackData: CallbackData("points", "toggle")},
-			{Text: "返回积分中心", CallbackData: CallbackData("points", "menu")},
+			{Text: "🔧 开关积分", CallbackData: CallbackData("points", "toggle")},
+			{Text: "🔙 返回积分中心", CallbackData: CallbackData("points", "menu")},
 		},
 		pointValueButtons("text", cfg.PointText),
 		pointValueButtons("photo", cfg.PointPhoto),
@@ -293,11 +293,11 @@ func pointValueButtons(field string, current int) []gotgbot.InlineKeyboardButton
 func pointsStatsMarkup() *gotgbot.SendMessageOpts {
 	return &gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.InlineKeyboardMarkup{InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 		{
-			{Text: "今日统计", CallbackData: CallbackData("points", "stats")},
-			{Text: "本周统计", CallbackData: CallbackData("points", "stats_week")},
+			{Text: "📈 今日统计", CallbackData: CallbackData("points", "stats")},
+			{Text: "📊 本周统计", CallbackData: CallbackData("points", "stats_week")},
 		},
 		{
-			{Text: "返回积分中心", CallbackData: CallbackData("points", "menu")},
+			{Text: "🔙 返回积分中心", CallbackData: CallbackData("points", "menu")},
 		},
 	}}}
 }
