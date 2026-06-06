@@ -39,13 +39,6 @@ It includes a real Telegram bot, a web admin panel, and background workers for l
 - Bot handler panic recovery prevents single-handler crashes from taking down the service
 - Async audit log writes that never block the main business flow
 
-## Not Included
-
-The following modules are intentionally not included in this public version:
-
-- USDT payment
-- Membership system
-
 ## Tech Stack
 
 ### Backend
