@@ -7,93 +7,131 @@
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js&logoColor=white)](https://vuejs.org/)
 [![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots)
 
-Sola is an open-source Telegram operations platform focused on group-centric workflows. It includes a real Telegram bot, a web admin panel, Mini App pages, and a dedicated worker process. Rather than being a single-purpose bot script, Sola is intended as an engineering-ready foundation for long-term operations, secondary development, and production deployment.
+Sola is an open-source Telegram operations platform built around real group workflows. It includes a real Telegram bot, a web admin panel, Mini App pages, and a dedicated worker process. Rather than being a single-purpose command bot template, Sola is meant to be a more production-oriented foundation for long-term operations, secondary development, and deployment.
 
 ## Project Positioning
 
-Sola is built for a common gap in the Telegram bot ecosystem: many open-source bots solve one isolated problem well, but do not provide a usable admin backend, task execution layer, data persistence, or multi-group management model. This project brings the bot, API, web admin, Mini App, and worker into one codebase so you can extend it into a real product.
+Many Telegram bot repositories solve one isolated problem well, such as keyword filtering, anti-spam, sign-in, or lotteries, but stop short of providing an admin backend, task execution layer, operational data model, or multi-chat isolation. Sola tries to put those pieces into one codebase so you can continue building an actual product on top of it.
 
-It is a good fit if you want to:
+It is especially suitable if you want to:
 
-- build an operations-focused Telegram bot product
-- manage chats, users, scheduled posts, and lotteries from a web panel
-- keep moderation, engagement, lotteries, and operational data in one system
-- start from a practical codebase instead of assembling the entire stack from scratch
+- build a long-running operations-focused Telegram bot product
+- manage chat settings, users, scheduled posts, and lotteries from a web panel
+- keep moderation, points, risk control, and operational data in one system
+- start from a practical codebase instead of assembling the full stack from scratch
 
 ## Features
 
-### Bot Features
+### Bot Capabilities
 
 - Real Telegram bot integration with both `polling` and `webhook`
+- Core entry and utility commands
+  - `/start`, `/menu`, `/settings`, `/help`, `/info`
+  - `/bind` for chat and channel binding
+  - `/check_admin` for permission checks
 - Group points system
   - points by message type
   - per-chat point configuration
-  - anti-spam cooldown controls
+  - cooldown-based anti-spam controls
   - rankings, point logs, and manual point adjustments
-  - commands such as `/points`, `/rank`, `/points_config`, `/set_points`, `/set_cooldown`, and `/points_toggle`
-- Group moderation
-  - ban and unban
-  - mute and unmute
-  - warnings, warning cleanup, and violation records
-  - welcome flow, whitelist support, and permission checks
+  - `/points`, `/rank`, `/sign`, `/points_config`, `/set_points`, `/set_cooldown`, `/points_toggle`
+- Group moderation and risk control
+  - ban, unban, mute, unmute, kick, and warnings
+  - welcome messages, warning limits, whitelist support, and permission checks
   - join verification with button, multi-choice, and quiz-poll interactions
-  - commands such as `/ban`, `/unban`, `/mute`, `/unmute`, `/warn`, `/warns`, and `/unwarn`
+  - keyword filtering, link restrictions, forward restrictions, and unverified-user restrictions
+  - AI-based secondary spam and advertisement judgement through OpenAI-compatible APIs
+  - violation records, resolution states, and audit traces
+  - `/ban`, `/bans`, `/unban`, `/mute`, `/unmute`, `/kick`, `/warn`, `/warns`, `/unwarn`
+  - `/violations`, `/resolve_violation`, `/ignore_violation`
+  - `/adminconfig`, `/set_welcome`, `/set_warn_limit`, `/verify_toggle`, `/set_verify`, `/verify_stats`
+- Content operations helpers
+  - keyword rules
+  - auto replies
+  - message templates
+  - invite link tracking
+  - level and growth configuration
+  - `/add_keyword`, `/del_keyword`, `/keywords`
+  - `/add_reply`, `/del_reply`, `/replies`
+  - `/add_template`, `/del_template`, `/templates`
+  - `/invite_create`, `/invite_delete`, `/invites`
+  - `/set_level`, `/levels`, `/add_level`, `/del_level`
+- Scheduled posting
+  - one-time tasks
+  - recurring tasks
+  - auto-delete support
+  - failure counting with auto-disable protection
+  - `/posts`, `/publish`, `/post_create`, `/post_toggle`, `/post_delete`
 - Lottery system
   - button-based participation
   - keyword-based participation
   - in-group announcements and result publishing
   - created from the admin panel, joined inside the group, and drawn automatically by the worker
-  - `/lottery`, lottery lobby, and active list flows
-- Scheduled posting
-  - one-time tasks
-  - recurring tasks
-  - auto-delete support
-  - delivery records and repeated-failure auto-disable protection
-  - `/posts` for chat-level task visibility
-- Content operations helpers
-  - keyword rules
-  - auto replies
-  - message templates
-  - invite link management
-  - level and growth configuration
-- Audit and risk-control support
-  - violation records
-  - audit logs
-  - AI filter configuration entry points
+  - `/lottery` and related interaction panels
+- Statistics commands
+  - `/stat`, `/stat_week`, `/stats`
 
 ### Web Admin
 
-- Admin login with JWT session handling
+- Admin login with JWT sessions
 - Chat binding and multi-tenant isolation
-- Dashboard and operational statistics
-- User list, point adjustment, ban, mute, and unmute actions
-- Point configuration, point logs, and ranking queries
-- Group settings, ban records, warning records, and violation records
+- Overview and operations analytics pages
+- Bot list page
+  - shows status, language, bound chat count, and heartbeat time
+  - currently more of an observability page than a full bot lifecycle management surface
+- Chat and channel pages
+- User management
+  - user list
+  - point adjustment
+  - ban, mute, and unmute actions
+- Points pages
+  - point rule configuration
+  - point logs
+  - ranking queries
+- Moderation and risk-control pages
+  - group settings
+  - bans and warnings
+  - violation records
+  - audit logs
+- Operations pages
+  - keywords
+  - auto replies
+  - content templates
+  - invite link tracking
+  - level rules
 - Scheduled post management
   - create, edit, toggle, and delete
-  - support for media, inline buttons, and auto-delete settings
+  - supports media, inline buttons, and auto-delete configuration
 - Lottery management
   - create lotteries
-  - inspect participation and results
-- Operator pages for keywords, auto replies, templates, invite links, and levels
-- Audit logs and admin operation traceability
+  - inspect participants and results
+- Backup and restore
+  - business-config or full-data export
+  - JSON restore
 
 ### Mini App / Lightweight Pages
 
-- Built-in `web/src/mini` structure
-- Lightweight operation views and quick publishing entry points
-- `bot.mini_app_url` configuration ready for Telegram Mini App integration
+The repository already contains a `web/src/mini` surface with:
 
-### Engineering Capabilities
+- dashboard
+- chat settings
+- quick publish
+- lottery page
 
-- Split API, bot, and worker processes
+The `bot.mini_app_url` configuration is also present as an entry point for Telegram Mini App integration. At the current stage, this is best treated as a lightweight operations surface and a base for further extension.
+
+### Worker and Engineering Capabilities
+
+- split API, bot, and worker processes
 - PostgreSQL + Redis
 - SQL migrations for schema management
-- One-command Docker Compose deployment
-- Owner-based access isolation
-- Audit logging and operation traceability
-- Worker startup recovery for enabled scheduled posts
-- Failure counting and auto-disable protection for broken scheduled jobs
+- one-command Docker Compose deployment
+- owner-based access isolation
+- audit logging and operation traceability
+- worker startup recovery for enabled scheduled posts
+- failure counting and auto-disable protection for broken scheduled jobs
+- timeout scanning for join verification
+- scheduled lottery draw and async task execution
 
 ## Architecture Overview
 
@@ -115,8 +153,7 @@ Telegram Users / Groups
           v                    v                   v
 +-----------------------+  +-----------------------+  +-----------------------+
 |  cmd/api              |  |  cmd/worker           |  |  web / web/mini       |
-|  Admin API            |  |  Async and scheduled  |  |  Admin and Mini App   |
-|                       |  |  task execution       |  |  frontend             |
+|  Admin API            |  |  Jobs / async tasks   |  |  Admin + Mini frontend|
 +-----------------------+  +-----------------------+  +-----------------------+
           |                    |                   |
           +---------+----------+-------------------+
@@ -150,24 +187,24 @@ Telegram Users / Groups
 - Docker Compose
 - Nginx
 
-## Project Structure
+## Repository Structure
 
 ```text
 cmd/
-  api/        admin API entrypoint
-  bot/        Telegram bot entrypoint
-  worker/     background worker entrypoint
+  api/        Admin API entry
+  bot/        Telegram bot entry
+  worker/     Background worker entry
 internal/
   api/        HTTP handlers, middleware, auth
-  bot/        Telegram handlers, commands, flows
-  config/     configuration loading
+  bot/        Telegram handlers, commands, interaction flows
+  config/     Configuration loading
   model/      GORM models
-  service/    business logic
-  store/      database and Redis setup
+  service/    Business logic
+  store/      DB and Redis bootstrap
 web/          Vue 3 admin panel
 web/mini/     Telegram Mini App / lightweight frontend
 database/
-  migrations/ SQL migration files
+  migrations/ SQL migrations
 ```
 
 ## Quick Start
@@ -317,6 +354,8 @@ If you plan to deploy Sola in a real environment, at minimum you should:
 
 There are still some clear boundaries in the current version:
 
+- the bot management page is currently more about status visibility than full multi-bot lifecycle management
+- the Mini App already has page structure and integration hooks, but it is still best extended further in real deployments
 - worker scheduling and statistical queries can be optimized further
 - some list and reporting paths may need additional SQL or index tuning at larger scale
 - real Telegram behavior still depends on your bot permissions and deployment network
