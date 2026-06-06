@@ -246,7 +246,7 @@ func (a *App) updateKeywordFilter(b *gotgbot.Bot, ctx *ext.Context, action strin
 
 func (a *App) auditKeywordAction(scope RequestScope, targetID int64, action string, detail string) {
 	if a.services.AuditLog != nil {
-		a.services.AuditLog.Log(bot.AuditLogEntry{
+		a.services.AuditLog.Log(AuditLogEntry{
 			ActorTelegramID:  0,
 			ChatTelegramID:   scope.Chat.ID,
 			Action:           "keyword_filter",
@@ -305,7 +305,7 @@ func (a *App) applyKeywordFilterAction(b *gotgbot.Bot, ctx *ext.Context, match K
 
 func (a *App) auditSpamAction(scope RequestScope, targetID int64, action string, score int, reasons []string) {
 	if a.services.AuditLog != nil {
-		a.services.AuditLog.Log(bot.AuditLogEntry{
+		a.services.AuditLog.Log(AuditLogEntry{
 			ActorTelegramID:  0,
 			ChatTelegramID:   scope.Chat.ID,
 			Action:           "keyword_filter",

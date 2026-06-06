@@ -15,7 +15,7 @@ import (
 
 func (a *App) auditModAction(actorID int64, chatID int64, action string, targetID int64, detail string) {
 	if a.services.AuditLog != nil {
-		a.services.AuditLog.Log(bot.AuditLogEntry{
+		a.services.AuditLog.Log(AuditLogEntry{
 			ActorTelegramID:  actorID,
 			ChatTelegramID:   chatID,
 			Action:           action,
@@ -37,7 +37,7 @@ func (a *App) handleBan(b *gotgbot.Bot, ctx *ext.Context) error {
 			}
 		}
 		if a.services.AuditLog != nil {
-			a.services.AuditLog.Log(bot.AuditLogEntry{ActorTelegramID: scope.Actor.ID, ChatTelegramID: scope.Chat.ID, Action: "ban", EntityType: "user", TargetTelegramID: targetID, Detail: reason})
+			a.services.AuditLog.Log(AuditLogEntry{ActorTelegramID: scope.Actor.ID, ChatTelegramID: scope.Chat.ID, Action: "ban", EntityType: "user", TargetTelegramID: targetID, Detail: reason})
 		}
 		return sendText(b, ctx, fmt.Sprintf("已封禁用户 %d。%s", targetID, reasonSuffix(reason)), nil)
 	})
@@ -1107,10 +1107,15 @@ func (a *App) sendPollChallenge(b *gotgbot.Bot, ctx *ext.Context, cfg ChatAdminC
 	}
 
 	pollQuestion := fmt.Sprintf("%s，%s", name, question)
-	sent, err := b.SendPollWithContext(requestScope(ctx).Context, cfg.ChatID, pollQuestion, options, &gotgbot.SendPollOpts{
+	sent, err := pollOpts := make([]gotgbot.InputPollOption, len(options))
+	for i, opt := range options {
+		pollOpts[i] = gotgbot.InputPollOption{Text: opt}
+	}
+	anonymous := false
+	sent, err := b.SendPollWithContext(requestScope(ctx).Context, cfg.ChatID, pollQuestion, pollOpts, &gotgbot.SendPollOpts{
 		Type:            "quiz",
 		CorrectOptionId: int64(correctAnswerIdx),
-		IsAnonymous:     false,
+		IsAnonymous:     &anonymous,
 		Explanation:     "选择正确答案即可入群",
 	})
 	if err != nil {
