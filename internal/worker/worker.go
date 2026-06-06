@@ -59,6 +59,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.runDueJobs()
+	r.registerEnabledScheduledPosts(ctx)
 	sched.Start()
 	r.log.Info("worker scheduler started")
 

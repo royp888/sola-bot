@@ -370,13 +370,6 @@ func pointAdjustmentTarget(ctx *ext.Context) (int64, int, error) {
 	return targetID, delta, nil
 }
 
-func absInt(v int) int {
-	if v < 0 {
-		return -v
-	}
-	return v
-}
-
 func (a *App) showActivityStats(b *gotgbot.Bot, ctx *ext.Context, window string) error {
 	scope := requestScope(ctx)
 	if a.services.Points == nil {

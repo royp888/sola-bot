@@ -1107,16 +1107,16 @@ func (a *App) sendPollChallenge(b *gotgbot.Bot, ctx *ext.Context, cfg ChatAdminC
 	}
 
 	pollQuestion := fmt.Sprintf("%s，%s", name, question)
-	sent, err := pollOpts := make([]gotgbot.InputPollOption, len(options))
+	pollOpts := make([]gotgbot.InputPollOption, len(options))
 	for i, opt := range options {
 		pollOpts[i] = gotgbot.InputPollOption{Text: opt}
 	}
 	anonymous := false
 	sent, err := b.SendPollWithContext(requestScope(ctx).Context, cfg.ChatID, pollQuestion, pollOpts, &gotgbot.SendPollOpts{
-		Type:            "quiz",
-		CorrectOptionId: int64(correctAnswerIdx),
-		IsAnonymous:     &anonymous,
-		Explanation:     "选择正确答案即可入群",
+		Type:             "quiz",
+		CorrectOptionIds: []int64{int64(correctAnswerIdx)},
+		IsAnonymous:      &anonymous,
+		Explanation:      "选择正确答案即可入群",
 	})
 	if err != nil {
 		return err
@@ -1451,6 +1451,7 @@ func (a *App) showInvitesPanel(b *gotgbot.Bot, ctx *ext.Context) error {
 	}, "\n")
 	return respondText(b, ctx, panel, moderationAssetsMarkup())
 }
+
 // Whitelist helpers
 
 func isInWhitelist(whitelist string, userID int64) bool {

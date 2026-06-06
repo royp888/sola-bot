@@ -11,8 +11,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/dabowin/sola/internal/bot"
-	"github.com/dabowin/sola/internal/model"
 	"github.com/dabowin/sola/internal/config"
+	"github.com/dabowin/sola/internal/model"
 	"github.com/dabowin/sola/internal/store"
 )
 
@@ -56,7 +56,7 @@ func NewBundleWithBotToken(st *store.Store, redisClient *redis.Client, botToken 
 		MessageTemplate: NewMessageTemplateService(st),
 		InviteLink:      NewInviteLinkService(st, botToken),
 		AuditLog:        NewAuditService(st),
-		AiFilter:        NewAiFilterService(cfg),
+		AiFilter:        NewAiFilterService(cfg.AiFilter),
 	}
 }
 

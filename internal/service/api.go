@@ -32,7 +32,7 @@ func NewAPIDependencies(cfg config.Config, st *store.Store) api.Dependencies {
 		Chats:            &chatBindingService{store: st},
 		ChatPointConfigs: &chatPointConfigService{points: NewPointsService(st)},
 		Points:           &pointsAPIService{points: NewPointsService(st)},
-		Admin:            &adminAPIService{admin: NewAdminService(st, nil)},
+		Admin:            &adminAPIService{admin: NewAdminService(st, st.Redis), botToken: cfg.Bot.Token},
 		Lotteries:        &lotteryAPIService{lotteries: NewLotteryService(st), store: st},
 		Levels:           &levelAPIService{levels: levels},
 		AdminViolations:  &adminViolationAPIService{moderation: moderation},
@@ -1880,9 +1880,9 @@ func (s *auditLogAPIService) List(ctx context.Context, query api.AuditLogListQue
 		}
 	}
 	if query.Cursor != "" {
-		parsed, err := decodeUUIDCursor(query.Cursor)
+		cursorTime, cursorID, err := decodeUUIDCursor(query.Cursor)
 		if err == nil {
-			db = db.Where("(occurred_at, id) < (?, ?)", parsed.CreatedAt, parsed.ID)
+			db = db.Where("(occurred_at, id) < (?, ?)", cursorTime, cursorID)
 		}
 	}
 	total := query.Limit + 1
