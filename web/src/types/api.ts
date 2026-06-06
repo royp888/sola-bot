@@ -146,8 +146,9 @@ export interface UserRecord {
 export interface BatchUserPayload {
   chat_id: ChatID;
   user_ids: ChatID[];
-  action: "ban" | "adjust_points";
+  action: "ban" | "mute" | "adjust_points";
   delta?: number;
+  duration_seconds?: number;
   reason?: string;
 }
 
@@ -229,6 +230,13 @@ export interface BanPayload {
   chat_id: ChatID;
   user_id: ChatID;
   reason: string;
+}
+
+export interface MutePayload {
+  chat_id: ChatID;
+  user_id: ChatID;
+  duration_seconds: number;
+  reason?: string;
 }
 
 export interface InlineMediaPayload {

@@ -116,7 +116,8 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="ban">封禁</el-dropdown-item>
-                  <el-dropdown-item command="mute">禁言提示</el-dropdown-item>
+                  <el-dropdown-item command="mute">禁言</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status === 'muted'" command="unmute">解除禁言</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -154,7 +155,8 @@
           <div class="detail-actions">
             <el-button type="primary" :icon="Coin" @click="openAdjust(currentUser)">调分</el-button>
             <el-button type="danger" @click="openBan(currentUser)">封禁</el-button>
-            <el-button @click="openMute(currentUser)">禁言提示</el-button>
+            <el-button @click="openMute(currentUser)">禁言</el-button>
+            <el-button v-if="currentUser?.status === 'muted'" @click="openUnmute(currentUser)">解除禁言</el-button>
           </div>
           <div class="detail-note">
             详情抽屉用于先确认成员状态，再决定是否调分、提示或封禁，减少在表格里来回找信息。
@@ -209,7 +211,7 @@ import { Coin, MoreFilled, Refresh, Search } from "@element-plus/icons-vue";
 import ChatSelect from "@/components/ChatSelect.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
-import { createBan } from "@/api/admin";
+import { createBan, createMute, createUnmute } from "@/api/admin";
 import { updateUserPoints } from "@/api/points";
 import { batchUsers, exportUsersCsv, fetchUsers } from "@/api/users";
 import type { ChatRecord, UserRecord } from "@/types/api";
@@ -449,14 +451,62 @@ async function openBan(user: UserRecord): Promise<void> {
 }
 
 function openMute(user: UserRecord): void {
-  ElMessageBox.alert(
-    `后台暂未开放真实禁言接口。请在群内回复该用户消息后使用 /mute 30m，或使用 /mute ${user.id} 30m。`,
-    "禁言入口",
-    {
-      confirmButtonText: "知道了",
+  void submitMute(user);
+}
+
+async function submitMute(user: UserRecord): Promise<void> {
+  if (!selectedChatId.value) return;
+  try {
+    const { value } = await ElMessageBox.prompt("请输入禁言时长（分钟）", `禁言用户 ${user.display_name || user.id}`, {
+      confirmButtonText: "确认禁言",
+      cancelButtonText: "取消",
+      inputValue: "30",
+      inputPattern: /^\d+$/,
+      inputErrorMessage: "请输入正整数分钟",
       type: "warning",
-    },
-  );
+    });
+    const minutes = Number(value);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      ElMessage.warning("禁言时长必须大于 0");
+      return;
+    }
+    saving.value = true;
+    await createMute({
+      chat_id: selectedChatId.value,
+      user_id: user.id,
+      duration_seconds: minutes * 60,
+      reason: "mute_from_users_view",
+    });
+    ElMessage.success(`已禁言 ${minutes} 分钟`);
+    await loadUsers();
+  } catch {
+    return;
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function openUnmute(user: UserRecord): Promise<void> {
+  if (!selectedChatId.value) return;
+  try {
+    await ElMessageBox.confirm(`确认解除用户 ${user.display_name || user.id} 的禁言？`, "解除禁言", {
+      type: "warning",
+      confirmButtonText: "确认解除",
+      cancelButtonText: "取消",
+    });
+  } catch {
+    return;
+  }
+  saving.value = true;
+  try {
+    await createUnmute(selectedChatId.value, user.id);
+    ElMessage.success("已解除禁言");
+    await loadUsers();
+  } catch {
+    ElMessage.error("解除禁言失败");
+  } finally {
+    saving.value = false;
+  }
 }
 
 function handleUserCommand(command: string, user: UserRecord): void {
@@ -466,6 +516,10 @@ function handleUserCommand(command: string, user: UserRecord): void {
   }
   if (command === "mute") {
     openMute(user);
+    return;
+  }
+  if (command === "unmute") {
+    void openUnmute(user);
   }
 }
 

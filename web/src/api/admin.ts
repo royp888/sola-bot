@@ -5,6 +5,7 @@ import type {
   ChatAdminConfig,
   ChatAdminConfigPayload,
   ChatID,
+  MutePayload,
   WarnRecord,
 } from "@/types/api";
 
@@ -45,4 +46,18 @@ export function deleteBan(chatId: ChatID, userId: ChatID): Promise<void> {
 
 export function fetchWarns(chatId: ChatID, userId: ChatID): Promise<WarnRecord[]> {
   return request<WarnRecord[]>(`/admin/warns/${encodeId(chatId)}/${encodeId(userId)}`);
+}
+
+export function createMute(payload: MutePayload): Promise<void> {
+  return request<void>("/admin/mute", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function createUnmute(chatId: ChatID, userId: ChatID, reason = "unmute_from_admin"): Promise<void> {
+  return request<void>("/admin/unmute", {
+    method: "POST",
+    body: { chat_id: chatId, user_id: userId, reason },
+  });
 }
