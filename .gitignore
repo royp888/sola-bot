@@ -38,3 +38,7 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
+
+.env
+web/.env.production
+web/.env.local
