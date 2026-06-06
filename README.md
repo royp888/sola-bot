@@ -146,28 +146,6 @@ Sola 是一个面向 Telegram 群组运营的开源 Bot 平台，集成真实 Bo
 
 同时预留了 `bot.mini_app_url` 配置，可作为 Telegram Mini App 的接入基础。当前更适合作为轻量运营入口和后续二开的基座。
 
-## 页面预览建议
-
-你可以在这里补自己的后台截图，GitHub 首页观感会明显更好。建议至少放这几类：
-
-- 仪表盘 / 运营统计页
-- 积分配置页
-- 定时发帖页
-- 抽奖管理页
-- 违规记录或风控页
-- Mini App 页面
-
-示例结构：
-
-```md
-## 界面预览
-
-![Dashboard](./docs/screenshots/dashboard.png)
-![Posts](./docs/screenshots/posts.png)
-![Lottery](./docs/screenshots/lottery.png)
-```
-
-如果你后面把截图放进 `docs/screenshots/`，这里可以直接替换成真实图片链接。
 
 ## 架构概览
 
