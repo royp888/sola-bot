@@ -7,71 +7,97 @@
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js&logoColor=white)](https://vuejs.org/)
 [![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots)
 
-Sola 是一个面向 Telegram 群组运营的开源 Bot 平台，包含真实 Bot、Web 管理后台、Mini App 页面和独立 Worker。它不是单一功能的命令机器人模板，而是一套更适合长期运营、二次开发和上线部署的工程化基础仓库。
+Sola 是一个面向 Telegram 群组运营的开源 Bot 平台，集成真实 Bot、Web 管理后台、Mini App 页面和独立 Worker，适合继续二开成长期运营产品，而不是只停留在单一命令机器人阶段。
 
-## 项目定位
+## 一句话看项目
 
-很多 Telegram Bot 开源仓库只解决一个点，比如关键词过滤、反垃圾、签到或者抽奖，但缺少后台、任务系统、数据沉淀、多群隔离和运营视角。Sola 的目标是把这些能力放进同一个工程里，让你可以直接在现有基础上继续做产品。
+如果你想做的不是“一个会回指令的 Telegram Bot”，而是一套能真正运营群组、沉淀数据、跑任务、做风控、配后台的系统，Sola 就是为这个场景准备的基础仓库。
 
-它更适合这几类场景：
+## 适合谁
 
-- 想做长期运营型 Telegram Bot 产品
-- 需要用后台集中管理群配置、用户、发帖任务和抽奖活动
-- 希望把群管、积分、风控、运营数据放进统一系统
-- 想基于现成代码二开，而不是从零拼装整套栈
+- 想做长期运营型 Telegram Bot 产品的人
+- 需要用后台集中管理群配置、用户、发帖任务和抽奖活动的人
+- 希望把群管、积分、风控、运营数据放进统一系统的人
+- 想基于现成代码二开，而不是从零拼装整套栈的人
 
-## 功能概览
+## 核心卖点
 
-### Bot 能力
+- 真正的 `Bot + API + Web Admin + Worker + Mini App` 一体化结构
+- 支持群积分、群管风控、抽奖、定时发帖、内容模板、自动回复等完整运营链路
+- 已接入 AI 垃圾广告二次判定能力，可对接 OpenAI 兼容接口
+- 后台按群组归属隔离，适合多群、多 owner 的运营场景
+- 使用 PostgreSQL + Redis + SQL migrations，方便持续迭代和正式部署
+- 自带 Docker Compose，适合直接拉起本地或服务器环境
 
-- 真实 Telegram Bot 接入，支持 `polling` 和 `webhook`
-- 基础交互与入口命令
-  - `/start`、`/menu`、`/settings`、`/help`、`/info`
-  - `/bind` 绑定群组 / 频道
-  - `/check_admin` 检查机器人权限
-- 群组积分系统
-  - 按消息类型计分
-  - 每群独立积分配置
-  - 冷却时间防刷
-  - 排行榜、积分流水、手动调分
-  - `/points`、`/rank`、`/sign`、`/points_config`、`/set_points`、`/set_cooldown`、`/points_toggle`
-- 群组管理与风控
-  - 封禁、解封、禁言、解除禁言、踢出、警告
-  - 欢迎语、警告上限、白名单、权限检查
-  - 入群验证，支持按钮、多选和 quiz poll 交互
-  - 关键词过滤、链接限制、转发限制、未验证用户限制
-  - AI 垃圾广告二次判定，可接 OpenAI 兼容接口
-  - 违规记录、处理状态与审计留痕
-  - `/ban`、`/bans`、`/unban`、`/mute`、`/unmute`、`/kick`、`/warn`、`/warns`、`/unwarn`
-  - `/violations`、`/resolve_violation`、`/ignore_violation`
-  - `/adminconfig`、`/set_welcome`、`/set_warn_limit`、`/verify_toggle`、`/set_verify`、`/verify_stats`
-- 内容运营辅助
-  - 关键词规则
-  - 自动回复
-  - 消息模板
-  - 邀请链接追踪
-  - 等级与成长体系
-  - `/add_keyword`、`/del_keyword`、`/keywords`
-  - `/add_reply`、`/del_reply`、`/replies`
-  - `/add_template`、`/del_template`、`/templates`
-  - `/invite_create`、`/invite_delete`、`/invites`
-  - `/set_level`、`/levels`、`/add_level`、`/del_level`
-- 定时发帖
-  - 一次性任务
-  - 循环任务
-  - 自动删除
-  - 发送失败计数与自动禁用保护
-  - `/posts`、`/publish`、`/post_create`、`/post_toggle`、`/post_delete`
-- 抽奖系统
-  - 按钮参与
-  - 口令参与
-  - 群内公告与开奖结果发布
-  - 后台创建，群内参与，Worker 自动开奖
-  - `/lottery` 及配套交互面板
-- 统计命令
-  - `/stat`、`/stat_week`、`/stats`
+## 功能总览
 
-### Web 管理后台
+| 模块 | 已实现能力 |
+| --- | --- |
+| Bot 接入 | `polling`、`webhook`、群组 / 频道绑定、权限检查 |
+| 积分系统 | 按消息类型计分、冷却防刷、排行榜、流水、手动调分、签到 |
+| 群组管理 | 封禁、解封、禁言、解除禁言、踢出、警告、欢迎语、验证开关 |
+| 风控审核 | 关键词过滤、链接限制、转发限制、未验证用户限制、AI 广告判定、违规记录 |
+| 内容运营 | 自动回复、消息模板、邀请链接追踪、等级成长体系 |
+| 定时发帖 | 一次性任务、循环任务、自动删除、失败自动禁用 |
+| 抽奖系统 | 按钮参与、口令参与、后台创建、群内参与、自动开奖 |
+| 后台系统 | 登录、概览、统计、群组管理、用户管理、备份恢复、审计日志 |
+| Mini App | 仪表盘、群设置、快捷发布、抽奖页面 |
+| 工程基础 | Docker Compose、Owner 隔离、SQL migrations、审计留痕、Worker 恢复机制 |
+
+## Bot 能力
+
+### 基础交互与入口命令
+
+- `/start`、`/menu`、`/settings`、`/help`、`/info`
+- `/bind` 绑定群组 / 频道
+- `/check_admin` 检查机器人权限
+
+### 群组积分系统
+
+- 按消息类型计分
+- 每群独立积分配置
+- 冷却时间防刷
+- 排行榜、积分流水、手动调分
+- `/points`、`/rank`、`/sign`
+- `/points_config`、`/set_points`、`/set_cooldown`、`/points_toggle`
+
+### 群组管理与风控
+
+- 封禁、解封、禁言、解除禁言、踢出、警告
+- 欢迎语、警告上限、白名单、权限检查
+- 入群验证，支持按钮、多选和 quiz poll 交互
+- 关键词过滤、链接限制、转发限制、未验证用户限制
+- AI 垃圾广告二次判定，可接 OpenAI 兼容接口
+- 违规记录、处理状态与审计留痕
+- `/ban`、`/bans`、`/unban`、`/mute`、`/unmute`、`/kick`
+- `/warn`、`/warns`、`/unwarn`
+- `/violations`、`/resolve_violation`、`/ignore_violation`
+- `/adminconfig`、`/set_welcome`、`/set_warn_limit`、`/verify_toggle`、`/set_verify`、`/verify_stats`
+
+### 内容运营辅助
+
+- 关键词规则
+- 自动回复
+- 消息模板
+- 邀请链接追踪
+- 等级与成长体系
+- `/add_keyword`、`/del_keyword`、`/keywords`
+- `/add_reply`、`/del_reply`、`/replies`
+- `/add_template`、`/del_template`、`/templates`
+- `/invite_create`、`/invite_delete`、`/invites`
+- `/set_level`、`/levels`、`/add_level`、`/del_level`
+
+### 定时发帖与抽奖
+
+- 定时发帖支持一次性任务、循环任务、自动删除和失败自动禁用
+- 抽奖支持按钮参与、口令参与、群内公告和开奖结果发布
+- `/posts`、`/publish`、`/post_create`、`/post_toggle`、`/post_delete`
+- `/lottery` 及配套交互面板
+- `/stat`、`/stat_week`、`/stats`
+
+## Web 管理后台
+
+后台当前已经有完整页面骨架和主要运营页面：
 
 - 管理员登录与 JWT 会话
 - 群组绑定与多租户隔离
@@ -109,9 +135,9 @@ Sola 是一个面向 Telegram 群组运营的开源 Bot 平台，包含真实 Bo
   - 配置或全量数据导出
   - JSON 文件恢复
 
-### Mini App / 轻量页面
+## Mini App
 
-仓库内已经包含 `web/src/mini`：
+仓库内已经包含 `web/src/mini` 页面结构：
 
 - 仪表盘
 - 群设置
@@ -120,45 +146,44 @@ Sola 是一个面向 Telegram 群组运营的开源 Bot 平台，包含真实 Bo
 
 同时预留了 `bot.mini_app_url` 配置，可作为 Telegram Mini App 的接入基础。当前更适合作为轻量运营入口和后续二开的基座。
 
-### Worker 与工程能力
+## 页面预览建议
 
-- API / Bot / Worker 三进程拆分
-- PostgreSQL + Redis
-- SQL migrations 管理表结构
-- Docker Compose 一键编排
-- Owner 归属校验和后台隔离
-- 审计日志与操作留痕
-- Worker 启动自动恢复已启用的定时发帖任务
-- 定时任务失败计数与自动禁用保护
-- 入群验证超时扫描处理
-- 定时开奖与异步任务调度
+你可以在这里补自己的后台截图，GitHub 首页观感会明显更好。建议至少放这几类：
+
+- 仪表盘 / 运营统计页
+- 积分配置页
+- 定时发帖页
+- 抽奖管理页
+- 违规记录或风控页
+- Mini App 页面
+
+示例结构：
+
+```md
+## 界面预览
+
+![Dashboard](./docs/screenshots/dashboard.png)
+![Posts](./docs/screenshots/posts.png)
+![Lottery](./docs/screenshots/lottery.png)
+```
+
+如果你后面把截图放进 `docs/screenshots/`，这里可以直接替换成真实图片链接。
 
 ## 架构概览
 
-```text
-Telegram Users / Groups
-          |
-          v
-      Telegram Bot
-          |
-          v
-+-----------------------+
-|  cmd/bot              |
-|  消息处理 / 群内动作   |
-+-----------------------+
-          |
-          +--------------------+-------------------+
-          |                    |                   |
-          v                    v                   v
-+-----------------------+  +-----------------------+  +-----------------------+
-|  cmd/api              |  |  cmd/worker           |  |  web / web/mini       |
-|  管理后台 API         |  |  定时任务 / 异步任务   |  |  后台与 Mini App 前端 |
-+-----------------------+  +-----------------------+  +-----------------------+
-          |                    |                   |
-          +---------+----------+-------------------+
-                    |
-                    v
-          PostgreSQL + Redis
+```mermaid
+flowchart TD
+    TG["Telegram Users / Groups"] --> BOT["Bot Runtime\ncmd/bot"]
+    BOT --> API["Admin API\ncmd/api"]
+    BOT --> WORKER["Worker\ncmd/worker"]
+    API --> WEB["Web Admin\nweb/src"]
+    API --> MINI["Mini App\nweb/src/mini"]
+    API --> PG["PostgreSQL"]
+    API --> REDIS["Redis"]
+    WORKER --> PG
+    WORKER --> REDIS
+    BOT --> PG
+    BOT --> REDIS
 ```
 
 ## 技术栈
@@ -289,6 +314,19 @@ go run ./cmd/worker
 - `ai_filter.*`
 
 `.env.example` 已给出当前项目实际使用的变量名，可直接作为部署起点。
+
+## Worker 与工程能力
+
+- API / Bot / Worker 三进程拆分
+- PostgreSQL + Redis
+- SQL migrations 管理表结构
+- Docker Compose 一键编排
+- Owner 归属校验和后台隔离
+- 审计日志与操作留痕
+- Worker 启动自动恢复已启用的定时发帖任务
+- 定时任务失败计数与自动禁用保护
+- 入群验证超时扫描处理
+- 定时开奖与异步任务调度
 
 ## 安全与隔离
 
