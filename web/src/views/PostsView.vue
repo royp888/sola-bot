@@ -730,11 +730,15 @@ async function submitPost(): Promise<void> {
 }
 
 async function removePost(row: ScheduledPostRecord): Promise<void> {
-  await ElMessageBox.confirm(`确认删除任务「${row.title || row.id}」？`, "删除发布任务", {
-    type: "warning",
-    confirmButtonText: "删除",
-    cancelButtonText: "取消",
-  });
+  try {
+    await ElMessageBox.confirm(`确认删除任务「${row.title || row.id}」？`, "删除发布任务", {
+      type: "warning",
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+    });
+  } catch {
+    return;
+  }
   deletingId.value = row.id;
   try {
     await deleteScheduledPost(row.id);

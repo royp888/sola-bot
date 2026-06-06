@@ -17,6 +17,9 @@ func (s *Server) GetChatAdminConfig(c *gin.Context) {
 		writeError(c, http.StatusBadRequest, "invalid chatID")
 		return
 	}
+	if !s.ensureChatAllowed(c, chatID) {
+		return
+	}
 	config, err := s.deps.Admin.GetConfig(c.Request.Context(), chatID)
 	if err != nil {
 		writeError(c, http.StatusInternalServerError, err.Error())
@@ -33,6 +36,9 @@ func (s *Server) UpdateChatAdminConfig(c *gin.Context) {
 	chatID, err := parseAnyChatID(c)
 	if err != nil {
 		writeError(c, http.StatusBadRequest, "invalid chatID")
+		return
+	}
+	if !s.ensureChatAllowed(c, chatID) {
 		return
 	}
 	var req ChatAdminConfigUpdateRequest
@@ -56,6 +62,9 @@ func (s *Server) ListBanLogs(c *gin.Context) {
 	chatID, err := parseAnyChatID(c)
 	if err != nil {
 		writeError(c, http.StatusBadRequest, "invalid chatID")
+		return
+	}
+	if !s.ensureChatAllowed(c, chatID) {
 		return
 	}
 	var query CommonListQuery
@@ -92,6 +101,46 @@ func (s *Server) AdminBan(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (s *Server) AdminMute(c *gin.Context) {
+	if s.deps.Admin == nil {
+		writeError(c, http.StatusInternalServerError, "chat admin service is not configured")
+		return
+	}
+	var req AdminMuteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !s.ensureChatAllowed(c, req.ChatID) {
+		return
+	}
+	req.OwnerUserID = s.ownerUserID(c)
+	if err := s.deps.Admin.Mute(c.Request.Context(), req); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+func (s *Server) AdminUnmute(c *gin.Context) {
+	if s.deps.Admin == nil {
+		writeError(c, http.StatusInternalServerError, "chat admin service is not configured")
+		return
+	}
+	var req AdminUnmuteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !s.ensureChatAllowed(c, req.ChatID) {
+		return
+	}
+	req.OwnerUserID = s.ownerUserID(c)
+	if err := s.deps.Admin.Unmute(c.Request.Context(), req); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
 func (s *Server) AdminUnban(c *gin.Context) {
 	if s.deps.Admin == nil {
 		writeError(c, http.StatusInternalServerError, "chat admin service is not configured")
@@ -107,8 +156,11 @@ func (s *Server) AdminUnban(c *gin.Context) {
 		writeError(c, http.StatusBadRequest, "invalid userID")
 		return
 	}
-	if err := s.deps.Admin.Unban(c.Request.Context(), chatID, userID); err != nil {
-		writeError(c, http.StatusInternalServerError, err.Error())
+	if !s.ensureChatAllowed(c, chatID) {
+		return
+	}
+	if err := s.deps.Admin.Unban(c.Request.Context(), chatID, userID, s.ownerUserID(c)); err != nil {
+		writeServiceError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -122,6 +174,9 @@ func (s *Server) ListWarnRecords(c *gin.Context) {
 	chatID, err := parseAnyChatID(c)
 	if err != nil {
 		writeError(c, http.StatusBadRequest, "invalid chatID")
+		return
+	}
+	if !s.ensureChatAllowed(c, chatID) {
 		return
 	}
 	userID, err := parseUserID(c)

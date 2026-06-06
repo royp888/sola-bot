@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/dabowin/sola/internal/api"
 	"github.com/dabowin/sola/internal/bot"
 	"github.com/dabowin/sola/internal/model"
@@ -13,7 +15,8 @@ import (
 )
 
 type adminAPIService struct {
-	admin *AdminService
+	admin    *AdminService
+	botToken string
 }
 
 func (s *adminAPIService) GetConfig(ctx context.Context, chatID int64) (*api.ChatAdminConfig, error) {
@@ -71,9 +74,32 @@ func (s *adminAPIService) Ban(ctx context.Context, req api.AdminBanRequest) erro
 	return s.admin.RecordBan(ctx, req.ChatID, req.UserID, req.BannedBy, req.Reason)
 }
 
-func (s *adminAPIService) Unban(ctx context.Context, chatID int64, userID int64) error {
+func (s *adminAPIService) Mute(ctx context.Context, req api.AdminMuteRequest) error {
 	if s == nil || s.admin == nil {
 		return nil
+	}
+	if err := ensureOwnedTelegramChatID(ctx, s.admin.store, req.OwnerUserID, req.ChatID); err != nil {
+		return err
+	}
+	return s.admin.MuteMember(ctx, s.botToken, req.ChatID, req.UserID, time.Duration(req.DurationSeconds)*time.Second, req.Reason)
+}
+
+func (s *adminAPIService) Unmute(ctx context.Context, req api.AdminUnmuteRequest) error {
+	if s == nil || s.admin == nil {
+		return nil
+	}
+	if err := ensureOwnedTelegramChatID(ctx, s.admin.store, req.OwnerUserID, req.ChatID); err != nil {
+		return err
+	}
+	return s.admin.UnmuteMember(ctx, s.botToken, req.ChatID, req.UserID)
+}
+
+func (s *adminAPIService) Unban(ctx context.Context, chatID int64, userID int64, ownerUserID string) error {
+	if s == nil || s.admin == nil {
+		return nil
+	}
+	if err := ensureOwnedTelegramChatID(ctx, s.admin.store, ownerUserID, chatID); err != nil {
+		return err
 	}
 	return s.admin.RecordUnban(ctx, chatID, userID, 0)
 }
@@ -153,10 +179,10 @@ func (s *adminAPIService) BatchUserAction(ctx context.Context, req api.BatchUser
 		return result, nil
 	}
 	if len(req.UserIDs) == 0 {
-		return result, fmt.Errorf("未选择用户")
+		return result, fmt.Errorf("no users selected")
 	}
 	if len(req.UserIDs) > 200 {
-		return result, fmt.Errorf("单次批量操作上限 200 人")
+		return result, fmt.Errorf("single batch limit is 200 users")
 	}
 	if err := ensureOwnedTelegramChatID(ctx, s.admin.store, req.OwnerUserID, req.ChatID); err != nil {
 		return result, err
@@ -170,6 +196,18 @@ func (s *adminAPIService) BatchUserAction(ctx context.Context, req api.BatchUser
 	case "ban":
 		for _, userID := range req.UserIDs {
 			if err := s.admin.RecordBan(ctx, req.ChatID, userID, 0, reason); err != nil {
+				result.Failed = append(result.Failed, fmt.Sprintf("%d: %v", userID, err))
+				continue
+			}
+			result.SuccessCount++
+		}
+	case "mute":
+		duration := time.Duration(req.DurationSeconds) * time.Second
+		if duration <= 0 {
+			duration = 30 * time.Minute
+		}
+		for _, userID := range req.UserIDs {
+			if err := s.admin.MuteMember(ctx, s.botToken, req.ChatID, userID, duration, reason); err != nil {
 				result.Failed = append(result.Failed, fmt.Sprintf("%d: %v", userID, err))
 				continue
 			}
@@ -304,6 +342,64 @@ func adminWarnToAPI(record bot.WarnRecord) api.WarnRecord {
 		WarnedBy:  record.WarnedBy,
 		CreatedAt: record.CreatedAt,
 		Cleared:   record.Cleared,
+	}
+}
+
+func (s *AdminService) MuteMember(ctx context.Context, botToken string, chatID int64, userID int64, duration time.Duration, reason string) error {
+	if s == nil || s.store == nil {
+		return fmt.Errorf("admin service is not configured")
+	}
+	botToken = strings.TrimSpace(botToken)
+	if botToken == "" {
+		return fmt.Errorf("telegram bot token is not configured")
+	}
+	tgBot, err := gotgbot.NewBot(botToken, nil)
+	if err != nil {
+		return err
+	}
+	until := time.Now().Add(duration).Unix()
+	_, err = tgBot.RestrictChatMemberWithContext(ctx, chatID, userID, mutePermissions(), &gotgbot.RestrictChatMemberOpts{UntilDate: until, UseIndependentChatPermissions: true})
+	return err
+}
+
+func (s *AdminService) UnmuteMember(ctx context.Context, botToken string, chatID int64, userID int64) error {
+	if s == nil || s.store == nil {
+		return fmt.Errorf("admin service is not configured")
+	}
+	botToken = strings.TrimSpace(botToken)
+	if botToken == "" {
+		return fmt.Errorf("telegram bot token is not configured")
+	}
+	tgBot, err := gotgbot.NewBot(botToken, nil)
+	if err != nil {
+		return err
+	}
+	_, err = tgBot.RestrictChatMemberWithContext(ctx, chatID, userID, fullPermissions(), &gotgbot.RestrictChatMemberOpts{UseIndependentChatPermissions: true})
+	return err
+}
+
+func mutePermissions() gotgbot.ChatPermissions {
+	return gotgbot.ChatPermissions{}
+}
+
+func fullPermissions() gotgbot.ChatPermissions {
+	yes := true
+	return gotgbot.ChatPermissions{
+		CanSendMessages:       true,
+		CanSendAudios:         true,
+		CanSendDocuments:      true,
+		CanSendPhotos:         true,
+		CanSendVideos:         true,
+		CanSendVideoNotes:     true,
+		CanSendVoiceNotes:     true,
+		CanSendPolls:          true,
+		CanSendOtherMessages:  true,
+		CanAddWebPagePreviews: true,
+		CanReactToMessages:    &yes,
+		CanChangeInfo:         true,
+		CanInviteUsers:        true,
+		CanPinMessages:        true,
+		CanManageTopics:       &yes,
 	}
 }
 

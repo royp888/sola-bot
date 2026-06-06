@@ -145,6 +145,22 @@ func TestTenantIsolationBodyQueryEndpointsReturnForbiddenOrScoped(t *testing.T) 
 		router.ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusForbidden {
+			t.Fatalf("%s status = %d, want %d, body = %s", path, rec.Code, http.StatusForbidden, rec.Body.String())
+		}
+	}
+
+	for _, path := range []string{
+		"/api/v1/admin/config/-1002002",
+		"/api/v1/admin/bans/-1002002",
+		"/api/v1/admin/warns/-1002002/9001",
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
 			t.Fatalf("%s status = %d, want 403, body = %s", path, rec.Code, rec.Body.String())
 		}
 	}

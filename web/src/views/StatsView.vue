@@ -29,7 +29,7 @@
       </el-col>
 
       <el-col :xs="24" :lg="10">
-        <PanelSection title="流量来源" description="命令和入口来源的组成。">
+        <PanelSection title="行为构成" description="基于当前接口返回的积分发放与命令调用统计。">
           <div ref="sourceChartRef" class="chart" />
         </PanelSection>
       </el-col>

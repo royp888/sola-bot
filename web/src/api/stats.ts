@@ -60,8 +60,8 @@ export function fetchStats(range: string): Promise<StatsOverview> {
         share: overview.points_issued > 0 ? Math.round((item.points / overview.points_issued) * 100) : 0,
       })),
       sources: [
-        { label: "消息积分", value: overview.points_issued > 0 ? 100 : 0, color: "#5ecdc3" },
-        { label: "命令操作", value: activity.reduce((sum, item) => sum + item.commands, 0), color: "#f0b35d" },
+        { label: "积分发放量", value: overview.points_issued, color: "#5ecdc3" },
+        { label: "命令调用数", value: activity.reduce((sum, item) => sum + item.commands, 0), color: "#f0b35d" },
       ],
     };
   });

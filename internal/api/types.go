@@ -267,13 +267,31 @@ type AdminBanRequest struct {
 	OwnerUserID string `json:"-"`
 }
 
+type AdminMuteRequest struct {
+	ChatID          int64  `json:"chat_id" binding:"required"`
+	UserID          int64  `json:"user_id" binding:"required"`
+	DurationSeconds int64  `json:"duration_seconds" binding:"required,gte=1,lte=2592000"`
+	Reason          string `json:"reason,omitempty"`
+	MutedBy         int64  `json:"muted_by,omitempty"`
+	OwnerUserID     string `json:"-"`
+}
+
+type AdminUnmuteRequest struct {
+	ChatID      int64  `json:"chat_id" binding:"required"`
+	UserID      int64  `json:"user_id" binding:"required"`
+	Reason      string `json:"reason,omitempty"`
+	UnmutedBy   int64  `json:"unmuted_by,omitempty"`
+	OwnerUserID string `json:"-"`
+}
+
 type BatchUserRequest struct {
-	ChatID      int64   `json:"chat_id" binding:"required"`
-	UserIDs     []int64 `json:"user_ids" binding:"required"`
-	Action      string  `json:"action" binding:"required"`
-	Delta       int     `json:"delta,omitempty"`
-	Reason      string  `json:"reason,omitempty"`
-	OwnerUserID string  `json:"-"`
+	ChatID          int64   `json:"chat_id" binding:"required"`
+	UserIDs         []int64 `json:"user_ids" binding:"required"`
+	Action          string  `json:"action" binding:"required"`
+	Delta           int     `json:"delta,omitempty"`
+	DurationSeconds int64   `json:"duration_seconds,omitempty"`
+	Reason          string  `json:"reason,omitempty"`
+	OwnerUserID     string  `json:"-"`
 }
 
 type BatchUserResult struct {
@@ -777,7 +795,9 @@ type ChatAdminService interface {
 	UpdateConfig(ctx context.Context, chatID int64, req ChatAdminConfigUpdateRequest) (*ChatAdminConfig, error)
 	ListBans(ctx context.Context, chatID int64, query CommonListQuery) ([]BanLog, error)
 	Ban(ctx context.Context, req AdminBanRequest) error
-	Unban(ctx context.Context, chatID int64, userID int64) error
+	Mute(ctx context.Context, req AdminMuteRequest) error
+	Unmute(ctx context.Context, req AdminUnmuteRequest) error
+	Unban(ctx context.Context, chatID int64, userID int64, ownerUserID string) error
 	ListWarns(ctx context.Context, chatID int64, userID int64) ([]WarnRecord, error)
 	ExportUserRows(ctx context.Context, query ExportUserQuery) ([]ExportUserRow, error)
 	BatchUserAction(ctx context.Context, req BatchUserRequest) (*BatchUserResult, error)
@@ -869,15 +889,15 @@ type AuditLogListQuery struct {
 }
 
 type AuditLogEntry struct {
-	ID               string     `json:"id"`
-	ActorTelegramID  *int64     `json:"actor_telegram_id,omitempty"`
-	ChatTelegramID   *int64     `json:"chat_telegram_id,omitempty"`
-	Action           string     `json:"action"`
-	EntityType       string     `json:"entity_type"`
-	TargetTelegramID *int64     `json:"target_telegram_id,omitempty"`
-	Detail           *string    `json:"detail,omitempty"`
-	OccurredAt       time.Time  `json:"occurred_at"`
-	CreatedAt        time.Time  `json:"created_at"`
+	ID               string    `json:"id"`
+	ActorTelegramID  *int64    `json:"actor_telegram_id,omitempty"`
+	ChatTelegramID   *int64    `json:"chat_telegram_id,omitempty"`
+	Action           string    `json:"action"`
+	EntityType       string    `json:"entity_type"`
+	TargetTelegramID *int64    `json:"target_telegram_id,omitempty"`
+	Detail           *string   `json:"detail,omitempty"`
+	OccurredAt       time.Time `json:"occurred_at"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 type AuditLogService interface {

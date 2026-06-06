@@ -295,6 +295,7 @@ function buildPayload(): LotteryPayload | undefined {
 
 function openCreate(): void {
   Object.assign(form, {
+    chat_id: selectedChatId.value ? String(selectedChatId.value) : "",
     title: "",
     prize: "",
     cost_points: 0,
@@ -337,11 +338,15 @@ async function submitLottery(): Promise<void> {
 }
 
 async function cancel(row: LotteryRecord): Promise<void> {
-  await ElMessageBox.confirm(`确认取消抽奖「${row.title}」？`, "取消抽奖", {
-    type: "warning",
-    confirmButtonText: "取消抽奖",
-    cancelButtonText: "返回",
-  });
+  try {
+    await ElMessageBox.confirm(`确认取消抽奖「${row.title}」？`, "取消抽奖", {
+      type: "warning",
+      confirmButtonText: "取消抽奖",
+      cancelButtonText: "返回",
+    });
+  } catch {
+    return;
+  }
   cancellingId.value = row.id;
   try {
     await cancelLottery(row.id);

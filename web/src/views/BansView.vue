@@ -156,6 +156,8 @@ async function submitBan(): Promise<void> {
       reason: banForm.reason,
     });
     ElMessage.success("封禁请求已提交");
+    banForm.user_id = "";
+    banForm.reason = "";
     await loadBans();
   } catch {
     ElMessage.error("服务暂时不可用");
@@ -165,6 +167,19 @@ async function submitBan(): Promise<void> {
 }
 
 async function submitUnban(row: BanRecord): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      `确认解封用户 ${row.username || row.user_id}？`,
+      "确认解封",
+      {
+        type: "warning",
+        confirmButtonText: "确认解封",
+        cancelButtonText: "取消",
+      },
+    );
+  } catch {
+    return;
+  }
   deletingId.value = row.user_id;
   try {
     await deleteBan(row.chat_id, row.user_id);
