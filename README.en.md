@@ -22,6 +22,7 @@ It includes a real Telegram bot, a web admin panel, and background workers for l
 - **Scheduled posts**: text / photo / video / document + HTML formatting + Inline Keyboard buttons, worker execution + optional auto-delete
 - **Instant publish**: `/publish` with HTML rich text + Inline Keyboard buttons
 - **Chinese natural-language commands**: send check-in, points, rank, lottery, add-points in plain Chinese
+- **Mini App console**: Telegram WebApp mobile control panel (dashboard/settings/publish/lottery)
 - Lottery system with button and keyword participation flows
 - **AI spam detection**: optional LLM-based secondary check via DeepSeek/OpenAI/custom proxy
 - **Audit logging**: all moderation actions auto-recorded, with admin panel query page
@@ -328,6 +329,7 @@ Important settings:
 - ✅ Chinese natural-language commands
 - ✅ Rich media announcements (HTML + photo/video + buttons)
 - ✅ Bot menu emoji beautification
+- ✅ Mini App mobile control panel
 - ✅ AI spam detection (DeepSeek/OpenAI)
 - [ ] Add better repository screenshots and demo material
 - [ ] Multi-language i18n support

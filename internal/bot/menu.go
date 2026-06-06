@@ -254,7 +254,7 @@ func (a *App) showGroupMenu(b *gotgbot.Bot, ctx *ext.Context) error {
 		fmt.Sprintf("🆔 Chat ID：%d", scope.Chat.ID),
 		"",
 		"这里是群内成员和管理员共用的快捷入口。",
-		"成员可直接查看积分、排行榜、抽奖活动；管理员可继续进入群管、发帖、验证和关键词管理。",
+		"成员可直接查看积分、排行榜、抽奖活动；管理员可继续进入群管、发帖、验证和关键词管理。\n\n📱 点击下方按钮打开手机控制台（Mini App）。",
 	)
 	return respondText(b, ctx, strings.Join(lines, "\n"), groupMarkup())
 }

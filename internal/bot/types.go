@@ -24,11 +24,13 @@ type HandlerFunc = handlers.Response
 
 type Options struct {
 	DefaultLocale string
+	MiniAppURL    string
 }
 
 type App struct {
 	services Services
 	options  Options
+	miniAppURL string
 	router   *CallbackRouter
 	state    *memoryStateStore
 }

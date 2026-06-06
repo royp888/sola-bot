@@ -25,6 +25,7 @@ type Config struct {
 		Token         string `mapstructure:"token"`
 		Mode          string `mapstructure:"mode"`
 		DefaultLocale string `mapstructure:"default_locale"`
+		MiniAppURL   string `mapstructure:"mini_app_url"`
 	} `mapstructure:"bot"`
 	Database DatabaseConfig `mapstructure:"database"`
 	AiFilter AiFilterConfig `mapstructure:"ai_filter"`
@@ -195,6 +196,7 @@ func bindEnv(v *viper.Viper) error {
 		"bot.token":                  "SOLA_BOT_TOKEN",
 		"bot.mode":                   "SOLA_BOT_MODE",
 		"bot.default_locale":         "SOLA_BOT_DEFAULT_LOCALE",
+		"bot.mini_app_url":           "SOLA_BOT_MINI_APP_URL",
 		"database.dsn":               "SOLA_DATABASE_DSN",
 		"database.auto_migrate":      "SOLA_DATABASE_AUTO_MIGRATE",
 		"database.max_open_conns":    "SOLA_DATABASE_MAX_OPEN_CONNS",

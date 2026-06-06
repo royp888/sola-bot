@@ -19,6 +19,7 @@ func New(services Services, options Options) *App {
 		options:  options,
 		router:   NewCallbackRouter(),
 		state:    newMemoryStateStore(),
+		miniAppURL: options.MiniAppURL,
 	}
 	app.registerCallbackRoutes()
 	return app

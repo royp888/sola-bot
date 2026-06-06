@@ -14,6 +14,7 @@ bot:
   token: ""
   mode: polling
   default_locale: zh-CN
+  mini_app_url: ""  # Telegram Mini App URL, e.g. https://admin.example.com/mini.html
 
 database:
   dsn: postgres://sola:sola@postgres:5432/sola?sslmode=disable

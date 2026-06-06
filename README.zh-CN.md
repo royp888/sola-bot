@@ -22,6 +22,7 @@ Sola 是一个基于 Go + Vue 构建的开源 Telegram 运营平台。
 - **定时发帖**：纯文字 / 图片 / 视频 / 文件 + HTML 格式化 + Inline Keyboard 按钮，Worker 执行 + 可选自动删除
 - **即时发布**：`/publish` 支持 HTML 富文本 + Inline Keyboard 按钮
 - **中文命令**：发送"签到""积分""排行榜""抽奖""加积分 10"即可触发
+- **Mini App 控制台**：Telegram WebApp 移动端运营面板（仪表盘/设置/发布/抽奖）
 - 抽奖系统，支持按钮参与和口令参与
 - 基于 Vue 3 + Element Plus 的管理后台
 - **AI 垃圾广告检测**：可选启用 DeepSeek/OpenAI/中转站，在规则评分基础上做 LLM 二次确认
@@ -327,6 +328,7 @@ Sola 提供 5 种验证类型，可通过 `/set_verify` 命令配置：
 - ✅ 中文自然语言命令
 - ✅ 富媒体公告发布（HTML + 图片/视频 + 按钮）
 - ✅ Bot 菜单 emoji 美化
+- ✅ Mini App 移动端控制台
 - ✅ AI 垃圾广告检测（DeepSeek/OpenAI）
 - [ ] 补充更完整的仓库截图和演示材料
 - [ ] 多语言 i18n 支持
