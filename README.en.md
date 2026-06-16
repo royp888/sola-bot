@@ -1,402 +1,214 @@
 # Sola
 
-[简体中文](./README.md) | English
+[中文（简体）](./README.md) | English
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js&logoColor=white)](https://vuejs.org/)
 [![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots)
 
-Sola is an open-source Telegram operations platform built around real group workflows. It includes a real Telegram bot, a web admin panel, Mini App pages, and a dedicated worker process. Rather than being a single-purpose command bot template, Sola is meant to be a more production-oriented foundation for long-term operations, secondary development, and deployment.
-
-## Project Positioning
-
-Many Telegram bot repositories solve one isolated problem well, such as keyword filtering, anti-spam, sign-in, or lotteries, but stop short of providing an admin backend, task execution layer, operational data model, or multi-chat isolation. Sola tries to put those pieces into one codebase so you can continue building an actual product on top of it.
-
-It is especially suitable if you want to:
-
-- build a long-running operations-focused Telegram bot product
-- manage chat settings, users, scheduled posts, and lotteries from a web panel
-- keep moderation, points, risk control, and operational data in one system
-- start from a practical codebase instead of assembling the full stack from scratch
+Sola is an open-source Telegram group operations platform built around five independent processes: **Bot, Admin API, Web Admin Panel, Mini App, and Worker**. It is designed for teams that want to build and run a real Telegram product over the long term, not just deploy a single-purpose script bot.
 
 ## Features
 
-### Bot Capabilities
+| Module | Capabilities |
+|--------|-------------|
+| **Points** | Score by message type, cooldown anti-spam, leaderboard, history, manual adjustment, daily sign-in |
+| **Moderation** | Ban/unban/mute/kick/warn, bulk delete messages, welcome messages, promote/demote admins, titles, ghost cleanup |
+| **Join Verification** | 6 verification types (button / captcha / multi-choice / Poll / math / Cloudflare Turnstile Mini App) |
+| **Risk Control** | Keyword filtering, link restrictions, unverified-user limits, AI spam detection (OpenAI-compatible), violation records |
+| **Content Ops** | Auto-replies, message templates, invite link tracking, level system, sed inline text correction |
+| **Scheduled Posts** | One-time and recurring tasks, rich media (image/video/file), Inline Keyboard, auto-delete |
+| **Lottery** | Button and keyword participation, group announcements, Worker-driven auto-draw |
+| **Web Admin** | Chat management, user management, points, violations, scheduled posts, lotteries, backup/restore, audit logs |
+| **Mini App** | Telegram WebApp panel: dashboard, chat settings, quick publish, lottery, join verification (Turnstile) |
+| **Engineering** | Docker Compose, SQL migrations, multi-tenant isolation, owner-scoped access, granular admin permissions |
 
-- Real Telegram bot integration with both `polling` and `webhook`
-- Core entry and utility commands
-  - `/start`, `/menu`, `/settings`, `/help`, `/info`
-  - `/bind` for chat and channel binding
-  - `/check_admin` for permission checks
-- Group points system
-  - points by message type
-  - per-chat point configuration
-  - cooldown-based anti-spam controls
-  - rankings, point logs, and manual point adjustments
-  - `/points`, `/rank`, `/sign`, `/points_config`, `/set_points`, `/set_cooldown`, `/points_toggle`
-- Group moderation and risk control
-  - ban, unban, mute, unmute, kick, and warnings
-  - welcome messages, warning limits, whitelist support, and permission checks
-  - join verification with button, multi-choice, quiz-poll, math, and Cloudflare Turnstile (Mini App WebApp) interactions
-  - keyword filtering, link restrictions, forward restrictions, and unverified-user restrictions
-  - AI-based secondary spam and advertisement judgement through OpenAI-compatible APIs
-  - violation records, resolution states, and audit traces
-  - bulk message deletion (from a replied message to latest, or by count)
-  - admin promote/demote and custom title assignment
-  - member report flow that notifies group admins
-  - ghost-user cleanup (ban deleted/cancelled Telegram accounts)
-  - granular admin permissions: verify, keyword, and points can each be granted independently
-  - `/ban`, `/bans`, `/unban`, `/mute`, `/unmute`, `/kick`, `/warn`, `/warns`, `/unwarn`
-  - `/purge`, `/del`
-  - `/promote`, `/demote`, `/set_title`
-  - `/report`, `/ban_ghosts`
-  - `/violations`, `/resolve_violation`, `/ignore_violation`
-  - `/adminconfig`, `/set_welcome`, `/set_warn_limit`, `/verify_toggle`, `/set_verify`, `/verify_stats`
-- Group rules
-  - `/setrules` to set group rules (reply to a message or attach text inline)
-  - `/clearrules` to clear the current rules
-  - `/rules` to display rules (available to all members)
-- Content operations helpers
-  - keyword rules
-  - auto replies
-  - message templates
-  - invite link tracking
-  - level and growth configuration
-  - sed-style inline text correction: reply to a message with `s/old/new` and the bot re-sends it with the corrected text (supports `/`, `|`, `_`, `:` as delimiters; `i` and `g` flags)
-  - `/add_keyword`, `/del_keyword`, `/keywords`
-  - `/add_reply`, `/del_reply`, `/replies`
-  - `/add_template`, `/del_template`, `/templates`
-  - `/invite_create`, `/invite_delete`, `/invites`
-  - `/set_level`, `/levels`, `/add_level`, `/del_level`
-- Scheduled posting
-  - one-time tasks
-  - recurring tasks
-  - auto-delete support
-  - failure counting with auto-disable protection
-  - `/posts`, `/publish`, `/post_create`, `/post_toggle`, `/post_delete`
-- Lottery system
-  - button-based participation
-  - keyword-based participation
-  - in-group announcements and result publishing
-  - created from the admin panel, joined inside the group, and drawn automatically by the worker
-  - `/lottery` and related interaction panels
-- Statistics commands
-  - `/stat`, `/stat_week`, `/stats`
+## Architecture
 
-### Web Admin
-
-- Admin login with JWT sessions
-- Chat binding and multi-tenant isolation
-- Overview and operations analytics pages
-- Bot list page
-  - shows status, language, bound chat count, and heartbeat time
-  - currently more of an observability page than a full bot lifecycle management surface
-- Chat and channel pages
-- User management
-  - user list
-  - point adjustment
-  - ban, mute, and unmute actions
-- Points pages
-  - point rule configuration
-  - point logs
-  - ranking queries
-- Moderation and risk-control pages
-  - group settings
-  - bans and warnings
-  - violation records
-  - audit logs
-- Operations pages
-  - keywords
-  - auto replies
-  - content templates
-  - invite link tracking
-  - level rules
-- Scheduled post management
-  - create, edit, toggle, and delete
-  - supports media, inline buttons, and auto-delete configuration
-- Lottery management
-  - create lotteries
-  - inspect participants and results
-- Backup and restore
-  - business-config or full-data export
-  - JSON restore
-
-### Mini App / Lightweight Pages
-
-The repository already contains a `web/src/mini` surface with:
-
-- dashboard
-- chat settings
-- quick publish
-- lottery page
-
-The `bot.mini_app_url` configuration is also present as an entry point for Telegram Mini App integration. At the current stage, this is best treated as a lightweight operations surface and a base for further extension.
-
-### Worker and Engineering Capabilities
-
-- split API, bot, and worker processes
-- PostgreSQL + Redis
-- SQL migrations for schema management
-- one-command Docker Compose deployment
-- owner-based access isolation
-- audit logging and operation traceability
-- worker startup recovery for enabled scheduled posts
-- failure counting and auto-disable protection for broken scheduled jobs
-- timeout scanning for join verification
-- scheduled lottery draw with `poll_answer` update type for real-time participation
-- in-memory TTL cache for admin member lists to reduce Bot API round-trips
-- graceful shutdown closes DB alongside Redis
-
-## Architecture Overview
-
-```text
-Telegram Users / Groups
-          |
-          v
-      Telegram Bot
-          |
-          v
-+-----------------------+
-|  cmd/bot              |
-|  Message handling     |
-|  Group actions        |
-+-----------------------+
-          |
-          +--------------------+-------------------+
-          |                    |                   |
-          v                    v                   v
-+-----------------------+  +-----------------------+  +-----------------------+
-|  cmd/api              |  |  cmd/worker           |  |  web / web/mini       |
-|  Admin API            |  |  Jobs / async tasks   |  |  Admin + Mini frontend|
-+-----------------------+  +-----------------------+  +-----------------------+
-          |                    |                   |
-          +---------+----------+-------------------+
-                    |
-                    v
-          PostgreSQL + Redis
+```mermaid
+flowchart TD
+    TG["Telegram Users / Groups"] --> BOT["Bot\ncmd/bot"]
+    BOT --> API["Admin API\ncmd/api"]
+    BOT --> WORKER["Worker\ncmd/worker"]
+    API --> WEB["Web Admin\nweb/src"]
+    API --> MINI["Mini App\nweb/src/mini"]
+    API --> PG[("PostgreSQL")]
+    API --> REDIS[("Redis")]
+    WORKER --> PG
+    WORKER --> REDIS
+    BOT --> PG
+    BOT --> REDIS
 ```
 
 ## Tech Stack
 
-### Backend
+| Layer | Technologies |
+|-------|-------------|
+| Backend | Go · gotgbot/v2 · Gin · GORM · gocron · JWT |
+| Storage | PostgreSQL · Redis |
+| Frontend | Vue 3 · Vite · Element Plus · ECharts |
+| Deployment | Docker · Docker Compose · Nginx |
 
-- Go
-- [gotgbot/v2](https://github.com/PaulSonOfLars/gotgbot)
-- [gin](https://github.com/gin-gonic/gin)
-- [gorm](https://gorm.io/) + PostgreSQL
-- Redis
-- gocron
-- JWT
-
-### Frontend
-
-- Vue 3
-- Vite
-- Element Plus
-- ECharts
-
-### Deployment
-
-- Docker
-- Docker Compose
-- Nginx
-
-## Repository Structure
+## Repository Layout
 
 ```text
 cmd/
   api/        Admin API entry
-  bot/        Telegram bot entry
-  worker/     Background worker entry
+  bot/        Telegram Bot entry
+  worker/     Background Worker entry
 internal/
   api/        HTTP handlers, middleware, auth
-  bot/        Telegram handlers, commands, interaction flows
+  bot/        Telegram handlers, commands, flows
   config/     Configuration loading
   model/      GORM models
   service/    Business logic
-  store/      DB and Redis bootstrap
+  store/      DB / Redis initialization
 web/          Vue 3 admin panel
-web/mini/     Telegram Mini App / lightweight frontend
+web/src/mini/ Telegram Mini App frontend
 database/
-  migrations/ SQL migrations
+  migrations/ SQL migration files (applied in filename order)
 ```
 
 ## Quick Start
 
 ### 1. Configure environment variables
 
-Copy the example file and fill in the required values:
-
 ```bash
 cp .env.example .env
 ```
 
-At minimum, configure:
+**Required:**
 
-- `SOLA_BOT_TOKEN`
-- `SOLA_DATABASE_DSN`
-- `SOLA_JWT_SECRET`
-- `SOLA_APP_ADMIN_USERNAME`
-- `SOLA_APP_ADMIN_PASSWORD_HASH` or `SOLA_APP_ADMIN_PASSWORD`
+| Variable | Description |
+|----------|-------------|
+| `SOLA_BOT_TOKEN` | Telegram Bot Token (from @BotFather) |
+| `SOLA_DATABASE_DSN` | PostgreSQL connection string |
+| `SOLA_JWT_SECRET` | JWT secret — use a long random string |
+| `SOLA_APP_ADMIN_USERNAME` | Web admin username |
+| `SOLA_APP_ADMIN_PASSWORD_HASH` | bcrypt hash of the admin password (preferred over plaintext) |
 
-For production, prefer `SOLA_APP_ADMIN_PASSWORD_HASH` and avoid storing plain-text passwords.
+Generate a password hash:
 
-### 2. Start the full stack
+```bash
+htpasswd -bnBC 12 "" your-password | tr -d ":\n"
+```
+
+**Cloudflare Turnstile (optional — required only when using the `turnstile` verification type):**
+
+| Variable | Description |
+|----------|-------------|
+| `SOLA_BOT_MINI_APP_URL` | Mini App URL used to generate verification links |
+| `SOLA_TURNSTILE_SITE_KEY` | From Cloudflare Dashboard → Turnstile |
+| `SOLA_TURNSTILE_SECRET_KEY` | From Cloudflare Dashboard → Turnstile |
+| `SOLA_TURNSTILE_VERIFY_SECRET` | HMAC signing key for join-request links — `openssl rand -base64 32` |
+
+### 2. Start all services
 
 ```bash
 docker compose up -d --build
 ```
 
-The default compose setup starts:
+Compose starts services in order: `postgres` → `redis` → `migrate` (runs pending `*.up.sql` files) → `api` / `bot` / `worker` → `nginx`.
 
-- `postgres`
-- `redis`
-- `migrate`
-- `api`
-- `bot`
-- `worker`
-- `nginx`
-
-Notes:
-
-- `migrate` runs `database/migrations/*.up.sql`
-- `api` is only exposed inside the compose network by default
-- `nginx` serves the external admin entrypoint
-
-If you want to access the API directly for local debugging:
+The API is only reachable inside the Compose network by default; `nginx` handles external access. To expose the API directly for local debugging:
 
 ```bash
 docker compose --profile direct-api up -d api-direct
 ```
 
-### 3. Run the frontend locally
+### 3. Update the frontend
+
+After editing `web/` source files, rebuild and reload nginx:
 
 ```bash
-cd web
-npm install
-npm run dev
+cd web && npm run build && cd ..
+docker compose up -d --force-recreate nginx
 ```
 
-### 4. Run backend services locally
+### 4. Local development
 
 ```bash
-go mod tidy
+# Backend (run each in a separate terminal)
 go run ./cmd/api
 go run ./cmd/bot
 go run ./cmd/worker
+
+# Frontend
+cd web && npm install && npm run dev
 ```
 
-## Configuration
+The dev server proxies `/api` to `http://127.0.0.1:8080` automatically.
 
-`config.yaml` works well as a local default configuration file, while production deployments should primarily rely on environment variables.
+## Join Verification
 
-Common configuration keys include:
+Configure with `/set_verify type <type>`:
 
-- `app.allowed_origins`
-- `app.admin_username`
-- `app.admin_password_hash`
-- `bot.token`
-- `bot.mode`
-- `bot.mini_app_url`
-- `database.dsn`
-- `redis.addr`
-- `jwt.secret`
-- `ai_filter.*`
+| Type | Method |
+|------|--------|
+| `button` | Click an "I am human" button |
+| `captcha` | Enter a random numeric code |
+| `multi_choice` | Custom question with multiple-choice buttons |
+| `poll` | Native Telegram quiz poll |
+| `math` | Random arithmetic — pick 1 of 4 answers |
+| `turnstile` | Cloudflare Turnstile + Mini App: the bot sends the applicant a private WebApp link; the join request is approved automatically after they pass the challenge |
 
-The `.env.example` file reflects the actual variable names used by the project and is the best starting point for deployment.
+> **Turnstile prerequisites**: configure the Turnstile environment variables above and enable "Join Request Approval" in the group settings.
 
-## Security and Isolation
+Additional options:
+- `/set_verify difficulty easy|medium|hard` — adjust timeout and retry limits
+- `/allowuser @user` — whitelist a user to skip verification
+- `/verify_stats` — view today's approved / declined / timed-out counts
 
-The current codebase already includes several important baseline protections:
+## Bot Command Reference
 
-- bcrypt-based admin password verification
-- Redis-backed rate limiting for login
-- CORS allowlist instead of reflecting arbitrary origins
-- ownership checks for sensitive chat-scoped endpoints
-- frontend session handling that avoids `localStorage`
-- audit and violation records for operational traceability
+<details>
+<summary>Show full command list</summary>
 
-That said, this should not be treated as a complete production security program by default. Before going live, you should still harden TLS, domain setup, outbound network access, secret management, logging, alerting, and least-privilege deployment.
+**Core**: `/start` `/menu` `/settings` `/help` `/info` `/bind` `/check_admin`
 
-## Validation Status
+**Points**: `/points` `/rank` `/sign` `/points_config` `/set_points` `/set_cooldown` `/points_toggle`
 
-At this stage, the project is best described as:
+**Moderation**: `/ban` `/bans` `/unban` `/mute` `/unmute` `/kick` `/warn` `/warns` `/unwarn` `/purge` `/del` `/promote` `/demote` `/set_title` `/report` `/ban_ghosts` `/violations` `/resolve_violation` `/ignore_violation`
 
-- buildable
-- deployable
-- functionally connected across its core flows
-- suitable as a secondary-development foundation
+**Verification**: `/adminconfig` `/set_welcome` `/set_warn_limit` `/verify_toggle` `/set_verify` `/verify_stats`
 
-Baseline verification already performed includes:
+**Rules**: `/setrules` `/clearrules` `/rules`
 
-- `go test ./...`
-- `npm --prefix web run build`
-- regression coverage for key multi-tenant isolation paths
+**Content Ops**: `/add_keyword` `/del_keyword` `/keywords` `/add_reply` `/del_reply` `/replies` `/add_template` `/del_template` `/templates` `/invite_create` `/invite_delete` `/invites` `/set_level` `/levels` `/add_level` `/del_level`
 
-You should still validate the following in your own environment:
+**Posts**: `/posts` `/publish` `/post_create` `/post_toggle` `/post_delete`
 
-- whether the bot has the right admin permissions in the target group
-- whether your server can reach Telegram reliably
-- whether scheduled posts execute as expected in your deployment
-- whether lottery, moderation, and join verification flows run correctly in a real group
-- whether restart behavior matches your operational expectations
+**Lottery**: `/lottery`
+
+**Stats**: `/stat` `/stat_week` `/stats`
+
+</details>
+
+## Security
+
+- Admin password verified with bcrypt; login endpoint rate-limited via Redis (5 attempts per 15 minutes)
+- CORS allowlist — no arbitrary origin reflection
+- All chat-scoped admin endpoints enforce owner-based access checks
+- Frontend session tokens are stored in memory, not `localStorage`
+- Moderation actions (ban/mute/kick/keyword match) are written to `audit_logs` and queryable from the admin panel
+
+**Before going live**: configure TLS and a domain, enable PostgreSQL/Redis persistence, and validate all core flows in a test group first.
 
 ## Database and Migrations
 
-Database schema changes are managed through `database/migrations/` rather than relying on runtime `AutoMigrate` behavior.
+All schema changes are managed through `database/migrations/`; the production environment does not rely on runtime `AutoMigrate`. The `migrate` service in Docker Compose automatically applies any pending `*.up.sql` files on startup in filename order.
 
-Recommended practice:
-
-- manage all schema changes with SQL migrations
-- include index and partial-index changes in the same migration workflow
-- migrate before starting API, bot, and worker services
-- include rollback steps in your release process
-
-## Production Recommendations
-
-If you plan to deploy Sola in a real environment, at minimum you should:
-
-1. use a strong random `JWT secret`
-2. use bcrypt for admin password storage
-3. expose the admin surface through Nginx only
-4. configure persistent storage for PostgreSQL and Redis
-5. verify Telegram network reachability from the target server
-6. enable logging, backups, and alerting
-7. validate all moderation flows in a test group before using a production group
-
-## Known Boundaries
-
-There are still some clear boundaries in the current version:
-
-- the bot management page is currently more about status visibility than full multi-bot lifecycle management
-- the Mini App already has page structure and integration hooks, but it is still best extended further in real deployments
-- worker scheduling and statistical queries can be optimized further
-- some list and reporting paths may need additional SQL or index tuning at larger scale
-- real Telegram behavior still depends on your bot permissions and deployment network
+Without Compose, run the SQL files manually in order. When upgrading, only apply the new migration files added since the last deployment.
 
 ## Contributing
 
 Issues and pull requests are welcome.
 
-Please keep these conventions in mind:
-
-1. do not commit real secrets, real runtime data, or local logs
-2. keep changes focused instead of bundling unrelated refactors
-3. update documentation when behavior changes
-4. include migrations when database schema changes are introduced
-
-## Open Source Checklist
-
-Before publishing or sharing the repository, make sure you have not committed:
-
-- a real `.env`
-- a real Telegram bot token
-- local database dumps or exported data
-- local runtime logs
-- frontend build artifacts
-- private test assets
+1. Do not commit real secrets, live data, or local logs
+2. Keep changes small and focused; update documentation when behavior changes
+3. Include paired `*.up.sql` / `*.down.sql` migration files for any schema changes
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](./LICENSE).
+MIT · See [LICENSE](./LICENSE)
