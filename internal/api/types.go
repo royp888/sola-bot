@@ -907,3 +907,18 @@ type AuditLogService interface {
 type UserService interface {
 	List(ctx context.Context, query UserListQuery) ([]UserRecord, error)
 }
+
+// TurnstileVerifyRequest is posted by the Mini App after the user passes CF Turnstile.
+type TurnstileVerifyRequest struct {
+	ChatID  int64  `json:"chat_id"`
+	UserID  int64  `json:"user_id"`
+	Sig     string `json:"sig"`    // HMAC-SHA256(chat_id|user_id|exp, verify_secret), hex
+	Exp     int64  `json:"exp"`    // Unix timestamp the link expires
+	CFToken string `json:"cf_token"`
+}
+
+// TurnstileVerifyResponse is returned to the Mini App.
+type TurnstileVerifyResponse struct {
+	OK      bool   `json:"ok"`
+	Message string `json:"message,omitempty"`
+}
