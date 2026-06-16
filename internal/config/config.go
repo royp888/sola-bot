@@ -22,10 +22,15 @@ type Config struct {
 		EnableSwagger     bool     `mapstructure:"enable_swagger"`
 	} `mapstructure:"app"`
 	Bot struct {
-		Token         string `mapstructure:"token"`
-		Mode          string `mapstructure:"mode"`
-		DefaultLocale string `mapstructure:"default_locale"`
-		MiniAppURL   string `mapstructure:"mini_app_url"`
+		Token            string   `mapstructure:"token"`
+		Mode             string   `mapstructure:"mode"`
+		DefaultLocale    string   `mapstructure:"default_locale"`
+		MiniAppURL       string   `mapstructure:"mini_app_url"`
+		// DisabledFeatures lists module names to skip registering.
+		// Valid values: verify, moderation, admin, points, lottery,
+		//               publish, auto_reply, keywords, templates, invites.
+		// Omit to enable everything (the default).
+		DisabledFeatures []string `mapstructure:"disabled_features"`
 	} `mapstructure:"bot"`
 	Database DatabaseConfig `mapstructure:"database"`
 	AiFilter AiFilterConfig `mapstructure:"ai_filter"`

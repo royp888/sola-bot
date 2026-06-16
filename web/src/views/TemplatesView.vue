@@ -269,9 +269,13 @@ async function removeTemplate(row: MessageTemplateRecord): Promise<void> {
   } catch {
     return;
   }
-  await deleteTemplate(row.id);
-  ElMessage.success("模板已删除");
-  await loadTemplates();
+  try {
+    await deleteTemplate(row.id);
+    ElMessage.success("模板已删除");
+    await loadTemplates();
+  } catch {
+    ElMessage.error("删除失败");
+  }
 }
 
 function mediaTypeLabel(value?: string): string {

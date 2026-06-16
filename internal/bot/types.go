@@ -16,6 +16,9 @@ const (
 	PermissionModerate = "moderate"
 	PermissionPublish  = "publish"
 	PermissionStats    = "stats"
+	PermissionVerify   = "verify"
+	PermissionKeyword  = "keyword"
+	PermissionPoints   = "points"
 
 	CallbackPrefix = "op"
 )
@@ -25,14 +28,40 @@ type HandlerFunc = handlers.Response
 type Options struct {
 	DefaultLocale string
 	MiniAppURL    string
+	Features      Features
+}
+
+// Features controls which functional modules are registered.
+// The zero value enables everything; add names to Disabled to turn modules off.
+type Features struct {
+	disabled map[string]bool
+}
+
+// NewFeatures returns a Features that disables the named modules.
+// Passing an empty slice enables everything (the default).
+func NewFeatures(disabled []string) Features {
+	if len(disabled) == 0 {
+		return Features{}
+	}
+	m := make(map[string]bool, len(disabled))
+	for _, n := range disabled {
+		m[n] = true
+	}
+	return Features{disabled: m}
+}
+
+// Enabled reports whether the named module should be registered.
+// Any name not in the disabled set (including with a nil map) returns true.
+func (f Features) Enabled(name string) bool {
+	return !f.disabled[name]
 }
 
 type App struct {
-	services Services
-	options  Options
+	services   Services
+	options    Options
 	miniAppURL string
-	router   *CallbackRouter
-	state    *memoryStateStore
+	router     *CallbackRouter
+	state      *memoryStateStore
 }
 
 type Services struct {
@@ -188,6 +217,7 @@ type ChatAdminConfig struct {
 	VerifyCorrectIndex int
 	VerifyWhitelist    string
 	VerifyDifficulty   string
+	RulesText          string
 }
 
 type ChatAdminConfigPatch struct {
@@ -201,6 +231,7 @@ type ChatAdminConfigPatch struct {
 	VerifyCorrectIndex *int
 	VerifyWhitelist    *string
 	VerifyDifficulty   *string
+	RulesText          *string
 }
 
 type BanLog struct {
@@ -240,6 +271,8 @@ type AdminService interface {
 	ClearVerifyChallenge(ctx context.Context, chatID int64, userID int64) error
 	RecordVerifyEvent(ctx context.Context, chatID int64, userID int64, eventType string, detail string) error
 	GetVerifyStats(ctx context.Context, chatID int64) (VerifyStats, error)
+	RecordSeenUser(ctx context.Context, chatID int64, userID int64) error
+	ListSeenUsers(ctx context.Context, chatID int64) ([]int64, error)
 }
 
 type VerifyChallenge struct {
@@ -354,6 +387,7 @@ type KeywordFilterMatch struct {
 	Keyword   string
 	MatchType string
 	Action    string
+	ReplyText string
 }
 
 type KeywordViolation struct {

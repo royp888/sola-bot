@@ -231,7 +231,7 @@ onMounted(loadConfig);
   padding: 14px 16px;
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--app-table-header-bg);
 }
 
 .switch-row div {

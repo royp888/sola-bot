@@ -9,9 +9,16 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/dabowin/sola/internal/model"
 	"gorm.io/gorm"
 )
+
+func (a *App) registerTemplateHandlers(d *ext.Dispatcher) {
+	d.AddHandler(handlers.NewCommand("templates", a.wrap(a.handleTemplates, a.RateLimit("cmd:templates", 1))))
+	d.AddHandler(handlers.NewCommand("add_template", a.wrap(a.handleAddTemplate, a.RateLimit("cmd:add_template", 1))))
+	d.AddHandler(handlers.NewCommand("del_template", a.wrap(a.handleDelTemplate, a.RateLimit("cmd:del_template", 1))))
+}
 
 func (a *App) handleBans(b *gotgbot.Bot, ctx *ext.Context) error {
 	scope := requestScope(ctx)

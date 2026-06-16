@@ -210,7 +210,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { fetchPointLogs, fetchPointRank } from "@/api/points";
 import type { ChatRecord, PointLogRecord, PointRankRecord, UserRecord } from "@/types/api";
-import { formatChinaDateTime } from "@/utils/datetime";
+import { formatDateTime } from "@/utils/helpers";
 
 type LogState = "idle" | "loading" | "error" | "empty" | "ready";
 type RankState = "idle" | "loading" | "error" | "ready";
@@ -342,10 +342,6 @@ const resultCards = computed(() => [
     note: logState.value === "ready" ? deltaSummary.value : "查询完成后会显示最近记录时间与本页变化",
   },
 ]);
-
-function formatDateTime(value?: string | null): string {
-  return formatChinaDateTime(value, "-");
-}
 
 const reasonLabelMap: Record<string, string> = {
   "message:text": "文本消息",
@@ -596,9 +592,9 @@ onMounted(() => {
 .result-card,
 .rank-row,
 .log-card {
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--app-tint-medium);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.018);
+  background: var(--app-tint-subtle);
 }
 
 .query-field {
@@ -638,7 +634,7 @@ onMounted(() => {
   flex-wrap: wrap;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--app-table-border);
 }
 
 .scope-note {
@@ -663,9 +659,9 @@ onMounted(() => {
   align-items: center;
   min-height: 28px;
   padding: 0 10px;
-  border: 1px solid rgba(125, 169, 255, 0.14);
+  border: 1px solid var(--app-accent-hover-border);
   border-radius: 999px;
-  background: rgba(125, 169, 255, 0.08);
+  background: var(--app-accent-hover-bg);
   color: var(--app-muted-strong);
   font-size: 12px;
 }
@@ -709,9 +705,9 @@ onMounted(() => {
 
 .log-table-shell {
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--app-table-border);
   border-radius: 12px;
-  background: rgba(8, 13, 19, 0.5);
+  background: var(--app-inset-bg);
 }
 
 .state-block-spacious {
@@ -736,8 +732,8 @@ onMounted(() => {
   gap: 12px;
   flex-wrap: wrap;
   padding: 12px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.018);
+  border-top: 1px solid var(--app-table-border);
+  background: var(--app-tint-subtle);
 }
 
 .table-summary {
@@ -789,8 +785,8 @@ onMounted(() => {
 
 .rank-row:hover,
 .rank-row.is-active {
-  border-color: rgba(125, 169, 255, 0.16);
-  background: rgba(125, 169, 255, 0.08);
+  border-color: var(--app-accent-hover-border);
+  background: var(--app-accent-hover-bg);
   transform: translateY(-1px);
 }
 

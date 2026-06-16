@@ -67,6 +67,9 @@ type ChatAdmin struct {
 	CanPost         bool      `gorm:"not null;default:false" json:"can_post"`
 	CanDelete       bool      `gorm:"not null;default:false" json:"can_delete"`
 	CanBan          bool      `gorm:"not null;default:false" json:"can_ban"`
+	CanVerify       bool      `gorm:"not null;default:false" json:"can_verify"`
+	CanKeyword      bool      `gorm:"not null;default:false" json:"can_keyword"`
+	CanPoints       bool      `gorm:"not null;default:false" json:"can_points"`
 	GrantedByUserID *UUID     `gorm:"type:uuid;index" json:"granted_by_user_id,omitempty"`
 	GrantedAt       time.Time `gorm:"not null" json:"granted_at"`
 	Notes           *string   `gorm:"type:text" json:"notes,omitempty"`

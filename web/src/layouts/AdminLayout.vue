@@ -55,6 +55,7 @@
 
           <div class="topbar-right">
             <el-tag effect="plain" class="user-tag">{{ userRoleLabel }} · {{ userLabel }}</el-tag>
+            <el-button text :icon="isDark ? Sunny : Moon" :aria-label="isDark ? '切换白天模式' : '切换夜间模式'" @click="toggleTheme" />
             <el-dropdown @command="handleCommand">
               <el-button :icon="Setting" circle />
               <template #dropdown>
@@ -92,7 +93,9 @@ import {
   Lock,
   Menu,
   MessageBox,
+  Moon,
   Setting,
+  Sunny,
   Tickets,
   Trophy,
   UserFilled,
@@ -118,6 +121,7 @@ const router = useRouter();
 const collapsed = ref(false);
 const isMobile = ref(false);
 const mobileNavOpen = ref(false);
+const isDark = ref(document.documentElement.classList.contains("dark"));
 
 const appName = "Sola 管理台";
 const appDesc = "社群运营中心";
@@ -245,6 +249,12 @@ function handleMenuNavigate(): void {
   }
 }
 
+function toggleTheme(): void {
+  isDark.value = !isDark.value;
+  document.documentElement.classList.toggle("dark", isDark.value);
+  localStorage.setItem("sola-theme", isDark.value ? "dark" : "light");
+}
+
 function handleCommand(command: string): void {
   if (command === "logout") {
     clearSession();
@@ -276,7 +286,7 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   min-height: 100vh;
-  background: linear-gradient(180deg, rgba(8, 11, 17, 0.98), rgba(10, 13, 19, 0.98));
+  background: var(--app-bg);
 }
 
 .mobile-backdrop {
@@ -284,7 +294,7 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 30;
   border: 0;
-  background: rgba(2, 6, 12, 0.58);
+  background: var(--app-mask);
 }
 
 .sidebar {
@@ -295,8 +305,8 @@ onBeforeUnmount(() => {
   width: 244px;
   height: 100vh;
   padding: 16px 12px 14px;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(9, 13, 20, 0.94);
+  border-right: 1px solid var(--app-border);
+  background: var(--app-surface);
   backdrop-filter: blur(14px);
 }
 
@@ -311,7 +321,7 @@ onBeforeUnmount(() => {
   gap: 10px;
   margin-bottom: 14px;
   padding: 2px 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  border-bottom: 1px solid var(--app-border);
 }
 
 .brand {
@@ -326,10 +336,10 @@ onBeforeUnmount(() => {
   place-items: center;
   width: 34px;
   height: 34px;
-  border: 1px solid rgba(120, 166, 255, 0.14);
+  border: 1px solid var(--app-accent-hover-border);
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(120, 166, 255, 0.17), rgba(120, 166, 255, 0.06));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, var(--app-accent-soft), var(--app-tint-light));
+  box-shadow: inset 0 1px 0 var(--app-tint-light);
   color: var(--app-text);
   font-size: 15px;
   font-weight: 800;
@@ -375,7 +385,7 @@ onBeforeUnmount(() => {
 }
 
 .nav-section.is-active {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--app-nav-section-active);
 }
 
 .nav-section-list {
@@ -387,14 +397,14 @@ onBeforeUnmount(() => {
 .nav-section-label {
   margin: 0;
   padding: 0 0 0 12px;
-  color: rgba(164, 177, 196, 0.42);
+  color: var(--app-nav-label);
   font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
 }
 
 .nav-section.is-active .nav-section-label {
-  color: rgba(214, 224, 238, 0.66);
+  color: var(--app-nav-label-active);
 }
 
 .nav-item {
@@ -425,17 +435,17 @@ onBeforeUnmount(() => {
 }
 
 .nav-item:hover {
-  border-color: rgba(255, 255, 255, 0.04);
-  background: rgba(255, 255, 255, 0.028);
+  border-color: var(--app-nav-hover-border);
+  background: var(--app-nav-hover-bg);
 }
 
 .nav-item.is-active {
-  border-color: rgba(132, 170, 255, 0.08);
-  background: rgba(84, 124, 255, 0.12);
+  border-color: var(--app-nav-active-border);
+  background: var(--app-nav-active-bg);
 }
 
 .nav-item.is-active::before {
-  background: rgba(125, 169, 255, 0.9);
+  background: var(--app-nav-indicator);
 }
 
 .nav-icon {
@@ -447,7 +457,7 @@ onBeforeUnmount(() => {
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: rgba(197, 208, 223, 0.68);
+  color: var(--app-nav-icon);
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 
@@ -456,27 +466,27 @@ onBeforeUnmount(() => {
 }
 
 .nav-item:hover .nav-icon {
-  border-color: rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.036);
-  color: rgba(236, 242, 255, 0.92);
+  border-color: var(--app-tint-light);
+  background: var(--app-tint-light);
+  color: var(--app-nav-icon-hover);
 }
 
 .nav-item.is-active .nav-icon {
-  border-color: rgba(132, 170, 255, 0.09);
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(245, 248, 255, 0.96);
+  border-color: var(--app-nav-active-border);
+  background: var(--app-tint-light);
+  color: var(--app-nav-icon-active);
 }
 
 .nav-copy {
   min-width: 0;
-  color: rgba(213, 222, 236, 0.76);
+  color: var(--app-nav-text);
   font-size: 13px;
   font-weight: 560;
   line-height: 1.2;
 }
 
 .nav-item.is-active .nav-copy {
-  color: rgba(245, 248, 255, 0.96);
+  color: var(--app-nav-text-active);
 }
 
 .sidebar.collapsed .brand-row {
@@ -506,8 +516,8 @@ onBeforeUnmount(() => {
   top: 0;
   z-index: 10;
   min-height: 58px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
-  background: rgba(9, 13, 20, 0.56);
+  border-bottom: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-surface) 80%, transparent);
   backdrop-filter: blur(12px);
 }
 
@@ -539,15 +549,15 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: rgba(213, 222, 236, 0.66);
+  color: var(--app-nav-text);
   font-size: 12px;
   font-weight: 600;
 }
 
 .user-tag {
   color: var(--app-muted-strong);
-  background: rgba(255, 255, 255, 0.02);
-  border-color: rgba(255, 255, 255, 0.045);
+  background: var(--app-surface-2);
+  border-color: var(--app-border);
 }
 
 .viewport {

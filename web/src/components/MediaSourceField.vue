@@ -158,9 +158,9 @@ function readFileAsDataUrl(file: File): Promise<string> {
   gap: 12px;
   flex-wrap: wrap;
   padding: 12px 14px;
-  border: 1px solid rgba(125, 169, 255, 0.14);
+  border: 1px solid var(--app-accent-hover-border);
   border-radius: 14px;
-  background: rgba(125, 169, 255, 0.08);
+  background: var(--app-accent-hover-bg);
 }
 
 .media-meta div {

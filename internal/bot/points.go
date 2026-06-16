@@ -7,7 +7,23 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
 )
+
+func (a *App) registerPointsHandlers(d *ext.Dispatcher) {
+	d.AddHandler(handlers.NewCommand("rank", a.wrap(a.handlePointsRank, a.RateLimit("cmd:rank", 1))))
+	d.AddHandler(handlers.NewCommand("points", a.wrap(a.handlePoints, a.RateLimit("cmd:points", 1))))
+	d.AddHandler(handlers.NewCommand("sign", a.wrap(a.handleSign, a.RateLimit("cmd:sign", 1))))
+	d.AddHandler(handlers.NewCommand("points_config", a.wrap(a.handlePointsConfig, a.RequirePermission(PermissionPoints), a.RateLimit("cmd:points_config", 1))))
+	d.AddHandler(handlers.NewCommand("set_points", a.wrap(a.handleSetPoints, a.RequirePermission(PermissionPoints), a.RateLimit("cmd:set_points", 1))))
+	d.AddHandler(handlers.NewCommand("set_cooldown", a.wrap(a.handleSetCooldown, a.RequirePermission(PermissionPoints), a.RateLimit("cmd:set_cooldown", 1))))
+	d.AddHandler(handlers.NewCommand("points_toggle", a.wrap(a.handlePointsToggle, a.RequirePermission(PermissionPoints), a.RateLimit("cmd:points_toggle", 1))))
+	d.AddHandler(handlers.NewCommand("stat", a.wrap(a.handleTodayStats, a.RequirePermission(PermissionStats), a.RateLimit("cmd:stat", 1))))
+	d.AddHandler(handlers.NewCommand("stat_week", a.wrap(a.handleWeekStats, a.RequirePermission(PermissionStats), a.RateLimit("cmd:stat_week", 1))))
+	d.AddHandler(handlers.NewCommand("stats", a.wrap(a.handleCustomStats, a.RequirePermission(PermissionStats), a.RateLimit("cmd:stats", 1))))
+	d.AddHandler(handlers.NewMessage(message.All, a.handleMessagePoints))
+}
 
 func (a *App) handlePointsRank(b *gotgbot.Bot, ctx *ext.Context) error {
 	period := "all"

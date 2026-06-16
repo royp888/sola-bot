@@ -85,7 +85,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { createBan, deleteBan, fetchBans, fetchWarns } from "@/api/admin";
 import type { BanRecord, ChatID, WarnRecord } from "@/types/api";
-import { formatChinaDateTime } from "@/utils/datetime";
+import { formatDateTime } from "@/utils/helpers";
 
 const selectedChatId = ref("");
 const loading = ref(false);
@@ -96,10 +96,6 @@ const warns = ref<WarnRecord[]>([]);
 const deletingId = ref<ChatID>();
 const warnUserId = ref("");
 const banForm = reactive({ user_id: "", reason: "" });
-
-function formatDateTime(value?: string | null): string {
-  return formatChinaDateTime(value, "-");
-}
 
 async function loadBans(): Promise<void> {
   if (!selectedChatId.value) return;

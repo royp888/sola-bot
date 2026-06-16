@@ -18,6 +18,7 @@ import (
 
 type Bundle struct {
 	store           *store.Store
+	redisClient     *redis.Client
 	Access          bot.AccessService
 	TelegramAccess  bot.TelegramAccessService
 	RateLimit       bot.RateLimitService
@@ -42,6 +43,7 @@ func NewBundle(st *store.Store, redisClient *redis.Client) *Bundle {
 func NewBundleWithBotToken(st *store.Store, redisClient *redis.Client, botToken string, cfg config.Config) *Bundle {
 	return &Bundle{
 		store:           st,
+		redisClient:     redisClient,
 		Access:          NewAccessService(st),
 		TelegramAccess:  NewTelegramAccessService(),
 		RateLimit:       NewRateLimitService(redisClient),
@@ -78,6 +80,7 @@ func (b *Bundle) BotServices() bot.Services {
 		Violations:     b.Moderation,
 		AuditLog:       b.AuditLog,
 		AiFilter:       b.AiFilter,
+		Redis:          b.redisClient,
 	}
 }
 
@@ -127,6 +130,12 @@ func (s *AccessService) HasPermission(ctx context.Context, chatID int64, userID 
 		return admin.CanPost, nil
 	case bot.PermissionModerate:
 		return admin.CanBan || admin.CanDelete, nil
+	case bot.PermissionVerify:
+		return admin.CanVerify, nil
+	case bot.PermissionKeyword:
+		return admin.CanKeyword, nil
+	case bot.PermissionPoints:
+		return admin.CanPoints, nil
 	default:
 		return admin.CanManage, nil
 	}

@@ -7,7 +7,16 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 )
+
+func (a *App) registerPublishHandlers(d *ext.Dispatcher) {
+	d.AddHandler(handlers.NewCommand("posts", a.wrap(a.handlePosts, a.RequirePermission(PermissionPublish), a.RateLimit("cmd:posts", 1))))
+	d.AddHandler(handlers.NewCommand("publish", a.wrap(a.handlePublish, a.RequirePermission(PermissionPublish), a.RateLimit("cmd:publish", 1))))
+	d.AddHandler(handlers.NewCommand("post_create", a.wrap(a.handlePostCreate, a.RequirePermission(PermissionPublish), a.RateLimit("cmd:post_create", 1))))
+	d.AddHandler(handlers.NewCommand("post_toggle", a.wrap(a.handlePostToggle, a.RequirePermission(PermissionPublish), a.RateLimit("cmd:post_toggle", 1))))
+	d.AddHandler(handlers.NewCommand("post_delete", a.wrap(a.handlePostDelete, a.RequirePermission(PermissionPublish), a.RateLimit("cmd:post_delete", 1))))
+}
 
 func (a *App) handlePublish(b *gotgbot.Bot, ctx *ext.Context) error {
 	content := strings.TrimSpace(strings.Join(commandArgs(ctx), " "))

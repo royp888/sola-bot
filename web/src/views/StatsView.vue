@@ -126,12 +126,17 @@ function renderCharts(): void {
   sourceChart = ensureChart(sourceChartRef.value, sourceChart);
   pointsChart = ensureChart(pointsChartRef.value, pointsChart);
 
+  const css = getComputedStyle(document.documentElement);
+  const borderColor = css.getPropertyValue("--app-border").trim();
+  const mutedColor = css.getPropertyValue("--app-muted").trim();
+  const textColor = css.getPropertyValue("--app-text").trim();
+
   const activityOption: ChartOption = {
     color: ["#5ecdc3"],
     grid: { left: 36, right: 18, top: 24, bottom: 28 },
     tooltip: { trigger: "axis" },
-    xAxis: { type: "category", data: summary.series.map((item) => item.label), axisLine: { lineStyle: { color: "#2f3f46" } } },
-    yAxis: { type: "value", max: 100, splitLine: { lineStyle: { color: "rgba(255,255,255,0.07)" } } },
+    xAxis: { type: "category", data: summary.series.map((item) => item.label), axisLine: { lineStyle: { color: borderColor } } },
+    yAxis: { type: "value", max: 100, splitLine: { lineStyle: { color: borderColor } } },
     series: [
       {
         name: "活跃指数",
@@ -152,7 +157,7 @@ function renderCharts(): void {
         name: "来源",
         type: "pie",
         radius: ["48%", "72%"],
-        label: { color: "#d7e3e5" },
+        label: { color: textColor },
         data: summary.sources.map((item) => ({ name: item.label, value: item.value })),
       },
     ],
@@ -166,9 +171,9 @@ function renderCharts(): void {
       type: "category",
       data: summary.topPointsUsers.map((item) => item.label),
       axisLabel: { interval: 0, rotate: 20 },
-      axisLine: { lineStyle: { color: "#2f3f46" } },
+      axisLine: { lineStyle: { color: borderColor } },
     },
-    yAxis: { type: "value", splitLine: { lineStyle: { color: "rgba(255,255,255,0.07)" } } },
+    yAxis: { type: "value", splitLine: { lineStyle: { color: borderColor } } },
     series: [{ name: "积分", type: "bar", barMaxWidth: 28, data: summary.topPointsUsers.map((item) => item.points) }],
   };
 
@@ -177,9 +182,16 @@ function renderCharts(): void {
   pointsChart?.setOption(pointsOption);
 }
 
+function currentTheme(): string {
+  return document.documentElement.classList.contains("dark") ? "dark" : "";
+}
+
 function ensureChart(el: HTMLDivElement | undefined, current: ECharts | undefined): ECharts | undefined {
   if (!el) return current;
-  return current ?? init(el, "dark");
+  if (current) {
+    current.dispose();
+  }
+  return init(el, currentTheme() || undefined);
 }
 
 function resizeCharts(): void {
@@ -188,13 +200,20 @@ function resizeCharts(): void {
   pointsChart?.resize();
 }
 
+let themeObserver: MutationObserver | undefined;
+
 onMounted(() => {
   void loadStats();
   window.addEventListener("resize", resizeCharts);
+  themeObserver = new MutationObserver(() => {
+    void nextTick(() => renderCharts());
+  });
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", resizeCharts);
+  themeObserver?.disconnect();
   activityChart?.dispose();
   sourceChart?.dispose();
   pointsChart?.dispose();

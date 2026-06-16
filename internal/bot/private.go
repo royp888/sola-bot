@@ -13,6 +13,29 @@ import (
 )
 
 func (a *App) routePrivateCallback(b *gotgbot.Bot, ctx *ext.Context, payload CallbackPayload) error {
+	needsChat := map[string]bool{
+		"posts":                  true,
+		"points":                 true,
+		"admin":                  true,
+		"summary":                true,
+		"lottery_create":         true,
+		"lottery_button_create":  true,
+		"lottery_keyword_create": true,
+		"lottery_both_create":    true,
+		"lottery_active":         true,
+	}
+	var selectedChat *api.ChatBinding
+	if needsChat[payload.Action] {
+		chat, ok, err := a.selectedPrivateChat(ctx)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return a.showPrivateChatList(b, ctx)
+		}
+		selectedChat = &chat
+	}
+
 	switch payload.Action {
 	case "home":
 		return a.showPrivateHome(b, ctx)
@@ -31,63 +54,21 @@ func (a *App) routePrivateCallback(b *gotgbot.Bot, ctx *ext.Context, payload Cal
 	case "console":
 		return a.showPrivateConsole(b, ctx)
 	case "posts":
-		chat, ok, err := a.selectedPrivateChat(ctx)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return a.showPrivateChatList(b, ctx)
-		}
-		return a.showScheduledPostsForChat(b, ctx, chat.ChatID, privateConsoleMarkup(chat))
+		return a.showScheduledPostsForChat(b, ctx, selectedChat.ChatID, privateConsoleMarkup(*selectedChat))
 	case "points":
-		chat, ok, err := a.selectedPrivateChat(ctx)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return a.showPrivateChatList(b, ctx)
-		}
-		return a.showPointsMenuForChat(b, ctx, chat.ChatID, privateConsoleMarkup(chat))
+		return a.showPointsMenuForChat(b, ctx, selectedChat.ChatID, privateConsoleMarkup(*selectedChat))
 	case "admin":
-		chat, ok, err := a.selectedPrivateChat(ctx)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return a.showPrivateChatList(b, ctx)
-		}
-		return a.showPrivateAdminCenter(b, ctx, chat)
+		return a.showPrivateAdminCenter(b, ctx, *selectedChat)
 	case "summary":
-		chat, ok, err := a.selectedPrivateChat(ctx)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return a.showPrivateChatList(b, ctx)
-		}
-		return a.showPrivateSummary(b, ctx, chat)
+		return a.showPrivateSummary(b, ctx, *selectedChat)
 	case "lottery_create":
-		chat, ok, err := a.selectedPrivateChat(ctx)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return a.showPrivateChatList(b, ctx)
-		}
-		if !isGroupChatType(chat.ChatType) {
-			return respondText(b, ctx, "抽奖只能创建到群组或超级群。", privateConsoleMarkup(chat))
+		if !isGroupChatType(selectedChat.ChatType) {
+			return respondText(b, ctx, "抽奖只能创建到群组或超级群。", privateConsoleMarkup(*selectedChat))
 		}
 		return respondText(b, ctx, "请选择抽奖类型：\n\n按钮抽奖：群成员点击公告按钮参与。\n口令抽奖：群成员发送指定口令参与。\n双模式：按钮和口令都能参与。", lotteryCreateTypePrivateMarkup())
 	case "lottery_button_create", "lottery_keyword_create", "lottery_both_create":
-		chat, ok, err := a.selectedPrivateChat(ctx)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return a.showPrivateChatList(b, ctx)
-		}
-		if !isGroupChatType(chat.ChatType) {
-			return respondText(b, ctx, "抽奖只能创建到群组或超级群。", privateConsoleMarkup(chat))
+		if !isGroupChatType(selectedChat.ChatType) {
+			return respondText(b, ctx, "抽奖只能创建到群组或超级群。", privateConsoleMarkup(*selectedChat))
 		}
 		joinType := "button"
 		if payload.Action == "lottery_keyword_create" {
@@ -96,16 +77,9 @@ func (a *App) routePrivateCallback(b *gotgbot.Bot, ctx *ext.Context, payload Cal
 		if payload.Action == "lottery_both_create" {
 			joinType = "both"
 		}
-		return a.startCreateLotteryWizardWithJoinType(b, ctx, chat.ChatID, joinType)
+		return a.startCreateLotteryWizardWithJoinType(b, ctx, selectedChat.ChatID, joinType)
 	case "lottery_active":
-		chat, ok, err := a.selectedPrivateChat(ctx)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return a.showPrivateChatList(b, ctx)
-		}
-		return a.showPrivateLotteryCenter(b, ctx, chat)
+		return a.showPrivateLotteryCenter(b, ctx, *selectedChat)
 	default:
 		return answerCallback(b, ctx, "未知操作")
 	}

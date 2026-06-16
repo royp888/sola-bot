@@ -31,9 +31,6 @@ func (a *App) handleSetCooldown(b *gotgbot.Bot, ctx *ext.Context) error {
 	if a.services.Points == nil {
 		return sendText(b, ctx, "积分配置服务尚未接入。", nil)
 	}
-	if err := a.requireTelegramManager(b, ctx); err != nil {
-		return err
-	}
 
 	args := commandArgs(ctx)
 	if len(args) < 1 {
@@ -56,10 +53,6 @@ func (a *App) handlePointsToggle(b *gotgbot.Bot, ctx *ext.Context) error {
 	if a.services.Points == nil {
 		return sendText(b, ctx, "积分配置服务尚未接入。", nil)
 	}
-	if err := a.requireTelegramManager(b, ctx); err != nil {
-		return err
-	}
-
 	cfg, err := a.services.Points.ToggleConfig(scope.Context, scope.Chat.ID)
 	if err != nil {
 		return err
@@ -76,10 +69,6 @@ func (a *App) updatePointConfigField(b *gotgbot.Bot, ctx *ext.Context, prefix st
 	if a.services.Points == nil {
 		return sendText(b, ctx, "积分配置服务尚未接入。", nil)
 	}
-	if err := a.requireTelegramManager(b, ctx); err != nil {
-		return err
-	}
-
 	args := commandArgs(ctx)
 	if len(args) < 2 {
 		return sendText(b, ctx, "用法：/set_points text 2", nil)
@@ -179,12 +168,12 @@ func (a *App) requireTelegramManager(b *gotgbot.Bot, ctx *ext.Context) error {
 
 func (a *App) isTelegramManager(b *gotgbot.Bot, ctx *ext.Context) (bool, error) {
 	scope := requestScope(ctx)
-	if scope.Chat.Type == "" || scope.Chat.Type == "private" || scope.Actor.ID == 0 || a.services.TelegramAccess == nil {
+	if scope.Chat.Type == "" || scope.Chat.Type == "private" || scope.Actor.ID == 0 {
 		return false, nil
 	}
-	status, err := a.services.TelegramAccess.CheckUserAdmin(scope.Context, b, scope.Chat.ID, scope.Actor.ID)
+	admins, err := a.getCachedAdmins(scope.Context, b, scope.Chat.ID)
 	if err != nil {
 		return false, err
 	}
-	return status.IsAdmin || status.Status == "creator", nil
+	return a.isAdminInCache(admins, scope.Actor.ID), nil
 }

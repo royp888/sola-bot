@@ -11,7 +11,14 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 )
+
+func (a *App) registerKeywordHandlers(d *ext.Dispatcher) {
+	d.AddHandler(handlers.NewCommand("add_keyword", a.wrap(a.handleAddKeyword, a.RequirePermission(PermissionKeyword), a.RateLimit("cmd:add_keyword", 1))))
+	d.AddHandler(handlers.NewCommand("del_keyword", a.wrap(a.handleDelKeyword, a.RequirePermission(PermissionKeyword), a.RateLimit("cmd:del_keyword", 1))))
+	d.AddHandler(handlers.NewCommand("keywords", a.wrap(a.handleKeywords, a.RequirePermission(PermissionKeyword), a.RateLimit("cmd:keywords", 1))))
+}
 
 const keywordMuteDuration = time.Hour
 const spamMuteDuration = 10 * time.Minute
@@ -155,7 +162,7 @@ func keywordPanelMarkup() *gotgbot.SendMessageOpts {
 			{Text: "返回群管", CallbackData: CallbackData("admin", "moderation")},
 		},
 		{
-			{Text: "返回群组", CallbackData: CallbackData("menu", "group")},
+			{Text: "返回群组", CallbackData: CallbackData("menu", "groups")},
 		},
 	}}}
 }
@@ -179,9 +186,6 @@ func formatKeywordPanel(body string) string {
 
 func (a *App) handleKeywords(b *gotgbot.Bot, ctx *ext.Context) error {
 	scope := requestScope(ctx)
-	if err := a.requireTelegramManager(b, ctx); err != nil {
-		return err
-	}
 	if a.services.KeywordFilter == nil {
 		return sendText(b, ctx, "关键词过滤服务尚未接入。", nil)
 	}
@@ -206,9 +210,6 @@ func (a *App) handleDelKeyword(b *gotgbot.Bot, ctx *ext.Context) error {
 
 func (a *App) updateKeywordFilter(b *gotgbot.Bot, ctx *ext.Context, action string) error {
 	scope := requestScope(ctx)
-	if err := a.requireTelegramManager(b, ctx); err != nil {
-		return err
-	}
 	if a.services.KeywordFilter == nil {
 		return sendText(b, ctx, "关键词过滤服务尚未接入。", nil)
 	}
@@ -266,6 +267,11 @@ func (a *App) applyKeywordFilterAction(b *gotgbot.Bot, ctx *ext.Context, match K
 
 	reason := fmt.Sprintf("关键词命中：%s", match.Keyword)
 	a.auditKeywordAction(scope, msg.From.Id, action, match.Keyword)
+	if strings.TrimSpace(match.ReplyText) != "" {
+		_, _ = b.SendMessageWithContext(scope.Context, msg.Chat.Id, match.ReplyText, &gotgbot.SendMessageOpts{
+			ReplyParameters: &gotgbot.ReplyParameters{MessageId: msg.MessageId},
+		})
+	}
 	_, deleteErr := b.DeleteMessageWithContext(scope.Context, msg.Chat.Id, msg.MessageId, nil)
 	switch action {
 	case "warn":

@@ -78,6 +78,9 @@ func (r *Resources) Close(ctx context.Context) {
 	if r == nil {
 		return
 	}
+	if r.DB != nil {
+		_ = r.DB.Close()
+	}
 	if r.Redis != nil {
 		_ = r.Redis.Close()
 	}

@@ -215,7 +215,7 @@ import { createBan, createMute, createUnmute } from "@/api/admin";
 import { updateUserPoints } from "@/api/points";
 import { batchUsers, exportUsersCsv, fetchUsers } from "@/api/users";
 import type { ChatRecord, UserRecord } from "@/types/api";
-import { formatChinaDateTime } from "@/utils/datetime";
+import { formatDateTime } from "@/utils/helpers";
 
 const route = useRoute();
 const router = useRouter();
@@ -241,10 +241,6 @@ const selectedRows = ref<UserRecord[]>([]);
 const currentUser = ref<UserRecord>();
 const adjustForm = reactive({ delta: 10, reason: "manual_adjust" });
 const batchForm = reactive({ delta: 10, reason: "batch_adjust" });
-
-function formatDateTime(value?: string | null, fallback = "-"): string {
-  return formatChinaDateTime(value, fallback);
-}
 
 const filteredUsers = computed(() => {
   const term = keyword.value.trim().toLowerCase();

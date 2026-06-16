@@ -50,5 +50,6 @@ func (s *Store) AutoMigrate(ctx context.Context) error {
 		&model.ViolationRecord{},
 		&model.InviteLink{},
 		&model.AuditLog{},
+		&model.SeenUser{},
 	)
 }

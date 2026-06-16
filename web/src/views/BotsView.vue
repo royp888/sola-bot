@@ -62,7 +62,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { fetchBots } from "@/api/bots";
 import type { BotRecord } from "@/types/api";
-import { formatChinaDateTime } from "@/utils/datetime";
+import { formatDateTime } from "@/utils/helpers";
 
 const keyword = ref("");
 const bots = ref<BotRecord[]>([]);
@@ -89,10 +89,6 @@ async function loadBots(): Promise<void> {
     bots.value = [];
     ElMessage.error("机器人列表暂时不可用");
   }
-}
-
-function formatDateTime(value?: string | null): string {
-  return formatChinaDateTime(value, "-");
 }
 
 function botTag(status: BotRecord["status"]): "success" | "warning" | "danger" {

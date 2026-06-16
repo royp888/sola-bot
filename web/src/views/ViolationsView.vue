@@ -128,7 +128,7 @@ import PanelSection from "@/components/PanelSection.vue";
 import UserSelect from "@/components/UserSelect.vue";
 import { fetchAdminViolations, updateAdminViolation } from "@/api/violations";
 import type { AdminViolationRecord, ChatID } from "@/types/api";
-import { formatChinaDateTime } from "@/utils/datetime";
+import { formatDateTime } from "@/utils/helpers";
 
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -140,10 +140,6 @@ const currentViolation = ref<AdminViolationRecord>();
 const nextCursor = ref("");
 const filters = reactive({ chatId: "", userId: "", type: "", status: "" });
 const resolveForm = reactive({ status: "resolved", resolution: "" });
-
-function formatDateTime(value?: string | null): string {
-  return formatChinaDateTime(value, "-");
-}
 
 const statusCounts = computed(() => {
   return violations.value.reduce(

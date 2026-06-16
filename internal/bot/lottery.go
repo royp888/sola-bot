@@ -8,8 +8,13 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/dabowin/sola/internal/api"
 )
+
+func (a *App) registerLotteryHandlers(d *ext.Dispatcher) {
+	d.AddHandler(handlers.NewCommand("lottery", a.wrap(a.handleLottery, a.RateLimit("cmd:lottery", 1))))
+}
 
 func (a *App) handleLottery(b *gotgbot.Bot, ctx *ext.Context) error {
 	args := commandArgs(ctx)
@@ -401,7 +406,11 @@ func sendLotteryAnnouncement(b *gotgbot.Bot, ctx *ext.Context, lottery api.Lotte
 
 func lotteryAnnouncementText(lottery api.Lottery) string {
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("🎁 %s\n", lotteryJoinTypeLabel(lottery.JoinType)))
+	title := lotteryJoinTypeLabel(lottery.JoinType)
+	if lottery.ID > 0 {
+		title = fmt.Sprintf("%s #%d", title, lottery.ID)
+	}
+	builder.WriteString(fmt.Sprintf("🎁 %s\n", title))
 	builder.WriteString("━━━━━━━━━━\n")
 	builder.WriteString(fmt.Sprintf("活动：%s\n", lotteryTextFallback(lottery.Title, "未命名抽奖")))
 	builder.WriteString(fmt.Sprintf("奖品：%s\n", lotteryTextFallback(lottery.Prize, "未填写")))

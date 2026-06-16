@@ -176,6 +176,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { bindChat, fetchChats } from "@/api/chats";
 import type { ChatRecord } from "@/types/api";
+import { errorMessage } from "@/utils/helpers";
 
 const router = useRouter();
 const kind = ref<"all" | ChatRecord["kind"] | ChatRecord["chat_type"]>("all");
@@ -305,11 +306,6 @@ function goConfig(chat: ChatRecord): void {
 
 function goLogs(chat: ChatRecord): void {
   void router.push({ path: "/points/logs", query: { chat_id: chatValue(chat) } });
-}
-
-function errorMessage(error: unknown): string {
-  const payload = (error as { payload?: { error?: string } })?.payload;
-  return payload?.error || "接口不可用";
 }
 
 onMounted(loadChats);

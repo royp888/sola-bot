@@ -34,5 +34,12 @@ type ChatAdminConfig struct {
 	VerifyWhitelist    string    `gorm:"type:text;not null;default:''" json:"verify_whitelist"`
 	VerifyDifficulty   string    `gorm:"type:text;not null;default:'medium'" json:"verify_difficulty"`
 	WarnLimit          int       `gorm:"not null;default:3" json:"warn_limit"`
+	RulesText          string    `gorm:"type:text;not null;default:''" json:"rules_text"`
 	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+type SeenUser struct {
+	ChatID int64     `gorm:"primaryKey;autoIncrement:false" json:"chat_id"`
+	UserID int64     `gorm:"primaryKey;autoIncrement:false" json:"user_id"`
+	SeenAt time.Time `gorm:"not null;default:now()" json:"seen_at"`
 }

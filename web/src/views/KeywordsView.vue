@@ -102,6 +102,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { createKeyword, deleteKeyword, fetchKeywords, updateKeyword } from "@/api/keywords";
 import type { ChatID, KeywordPayload, KeywordRecord } from "@/types/api";
+import { parseNumericId } from "@/utils/helpers";
 
 const loading = ref(false);
 const saving = ref(false);
@@ -121,11 +122,6 @@ const form = reactive({
   reply_text: "",
   enabled: true,
 });
-
-function parseNumericId(value: ChatID): number | undefined {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
 
 function resetForm(): void {
   Object.assign(form, {
@@ -225,11 +221,15 @@ async function toggleKeyword(row: KeywordRecord): Promise<void> {
 }
 
 async function removeKeyword(row: KeywordRecord): Promise<void> {
-  await ElMessageBox.confirm(`确认删除关键词「${row.pattern}」？`, "删除关键词", {
-    type: "warning",
-    confirmButtonText: "删除",
-    cancelButtonText: "取消",
-  });
+  try {
+    await ElMessageBox.confirm(`确认删除关键词「${row.pattern}」？`, "删除关键词", {
+      type: "warning",
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+    });
+  } catch {
+    return;
+  }
   deletingId.value = row.id;
   try {
     await deleteKeyword(row.id);

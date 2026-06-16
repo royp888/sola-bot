@@ -192,7 +192,8 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { cancelLottery, createLottery, fetchLotteries, fetchLotteryEntries, fetchLotteryWinners } from "@/api/lottery";
 import type { ChatID, LotteryEntryRecord, LotteryPayload, LotteryRecord } from "@/types/api";
-import { formatChinaDateTime, parseChinaLocalDateTimeToISO } from "@/utils/datetime";
+import { parseChinaLocalDateTimeToISO } from "@/utils/datetime";
+import { parseNumericId, formatDateTime, errorMessage } from "@/utils/helpers";
 
 const loading = ref(false);
 const saving = ref(false);
@@ -244,15 +245,6 @@ const statusCounts = computed(() => {
 });
 
 const totalEntries = computed(() => filteredLotteries.value.reduce((sum, item) => sum + Number(item.entry_count ?? item.participants ?? 0), 0));
-
-function formatDateTime(value?: string | null): string {
-  return formatChinaDateTime(value, "-");
-}
-
-function parseNumericId(value?: ChatID): number | undefined {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
 
 function optionalText(value?: string | null): string | undefined {
   const text = value?.trim();
@@ -411,12 +403,6 @@ function joinTypeTag(joinType?: LotteryRecord["join_type"]): "success" | "warnin
   return "success";
 }
 
-function errorMessage(error: unknown): string {
-  const payload = (error as { payload?: { error?: string } })?.payload;
-  const status = (error as { status?: number })?.status;
-  return payload?.error || (status ? `接口返回 ${status}` : "接口不可用");
-}
-
 onMounted(loadLotteries);
 </script>
 
@@ -428,7 +414,7 @@ onMounted(loadLotteries);
   padding: 5px 10px;
   border: 1px solid var(--app-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--app-tint-light);
 }
 .panel-toolbar {
   display: flex;

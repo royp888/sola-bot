@@ -1,0 +1,16 @@
+ALTER TABLE chat_admin_configs
+DROP COLUMN IF EXISTS verify_second_enabled,
+DROP COLUMN IF EXISTS goodbye_enabled,
+DROP COLUMN IF EXISTS goodbye_text,
+DROP COLUMN IF EXISTS auto_delete_bot_msg_sec,
+DROP COLUMN IF EXISTS rules_text,
+DROP COLUMN IF EXISTS lock_links,
+DROP COLUMN IF EXISTS lock_media,
+DROP COLUMN IF EXISTS lock_forward,
+DROP COLUMN IF EXISTS lock_sticker,
+DROP COLUMN IF EXISTS lock_voice,
+DROP COLUMN IF EXISTS lock_gif,
+DROP COLUMN IF EXISTS antiflood_enabled,
+DROP COLUMN IF EXISTS antiflood_window_sec,
+DROP COLUMN IF EXISTS antiflood_max_messages,
+DROP COLUMN IF EXISTS antiflood_action;

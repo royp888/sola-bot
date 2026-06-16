@@ -55,7 +55,11 @@ func (r *CallbackRouter) Handle(b *gotgbot.Bot, ctx *ext.Context) error {
 
 func CallbackData(parts ...string) string {
 	all := append([]string{CallbackPrefix}, parts...)
-	return strings.Join(all, ":")
+	data := strings.Join(all, ":")
+	if len(data) > 64 {
+		return CallbackPrefix + ":menu:noop"
+	}
+	return data
 }
 
 func ParseCallbackData(data string) (CallbackPayload, bool) {
@@ -78,9 +82,6 @@ func ParseCallbackData(data string) (CallbackPayload, bool) {
 }
 
 func shouldPreAnswerCallback(payload CallbackPayload) bool {
-	if payload.Domain == "admin" && payload.Action == "verify" {
-		return false
-	}
 	if payload.Domain == "lottery" && payload.Action == "join" {
 		return false
 	}

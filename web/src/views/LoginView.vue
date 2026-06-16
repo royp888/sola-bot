@@ -215,7 +215,7 @@ h1 {
   padding: 16px;
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--app-table-header-bg);
 }
 
 .tile span {
@@ -234,7 +234,7 @@ h1 {
   width: min(440px, 100%);
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: rgba(14, 19, 26, 0.92);
+  background: var(--app-surface);
 }
 
 .card-head {

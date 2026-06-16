@@ -93,6 +93,7 @@ func (s *AdminService) UpdateConfig(ctx context.Context, chatID int64, patch bot
 		"verify_correct_index": current.VerifyCorrectIndex,
 		"verify_whitelist":     current.VerifyWhitelist,
 		"verify_difficulty":    current.VerifyDifficulty,
+		"rules_text":           current.RulesText,
 		"updated_at":           time.Now(),
 	}
 	err = s.store.DB.WithContext(ctx).Model(&model.ChatAdminConfig{}).
@@ -507,6 +508,9 @@ func applyAdminConfigPatch(cfg *bot.ChatAdminConfig, patch bot.ChatAdminConfigPa
 	if patch.VerifyDifficulty != nil {
 		cfg.VerifyDifficulty = strings.TrimSpace(*patch.VerifyDifficulty)
 	}
+	if patch.RulesText != nil {
+		cfg.RulesText = *patch.RulesText
+	}
 }
 
 func modelAdminConfigToBot(cfg model.ChatAdminConfig) bot.ChatAdminConfig {
@@ -522,6 +526,7 @@ func modelAdminConfigToBot(cfg model.ChatAdminConfig) bot.ChatAdminConfig {
 		VerifyCorrectIndex: cfg.VerifyCorrectIndex,
 		VerifyWhitelist:    cfg.VerifyWhitelist,
 		VerifyDifficulty:   cfg.VerifyDifficulty,
+		RulesText:          cfg.RulesText,
 	}
 }
 
@@ -575,6 +580,34 @@ func parseVerifyPendingMember(member string) (int64, int64, bool) {
 		return 0, 0, false
 	}
 	return chatID, userID, true
+}
+
+func (s *AdminService) RecordSeenUser(ctx context.Context, chatID int64, userID int64) error {
+	if s == nil || s.store == nil || s.store.DB == nil {
+		return nil
+	}
+	err := s.store.DB.WithContext(ctx).Exec(
+		"INSERT INTO seen_users(chat_id, user_id, seen_at) VALUES(?, ?, NOW()) ON CONFLICT(chat_id, user_id) DO NOTHING",
+		chatID, userID,
+	).Error
+	if isMissingTableError(err) {
+		return nil
+	}
+	return err
+}
+
+func (s *AdminService) ListSeenUsers(ctx context.Context, chatID int64) ([]int64, error) {
+	if s == nil || s.store == nil || s.store.DB == nil {
+		return nil, nil
+	}
+	var ids []int64
+	err := s.store.DB.WithContext(ctx).Raw(
+		"SELECT user_id FROM seen_users WHERE chat_id = ?", chatID,
+	).Scan(&ids).Error
+	if isMissingTableError(err) {
+		return nil, nil
+	}
+	return ids, err
 }
 
 var _ bot.AdminService = (*AdminService)(nil)

@@ -24,6 +24,7 @@ func main() {
 	}
 	defer resources.Close(context.Background())
 
+	api.WarnIfPlaintextPassword(resources.Config.App.AdminPasswordHash, resources.Config.App.AdminPassword)
 	deps := service.NewAPIDependencies(resources.Config, resources.Store)
 	router := api.NewRouter(deps)
 	server := &http.Server{

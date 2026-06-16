@@ -27,8 +27,8 @@ defineProps<{
   overflow: hidden;
   border: 1px solid var(--app-border);
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(17, 24, 34, 0.96) 0%, rgba(14, 20, 29, 0.96) 100%);
-  box-shadow: 0 10px 28px rgba(4, 9, 16, 0.18);
+  background: var(--app-panel-bg);
+  box-shadow: var(--app-shadow-soft);
 }
 
 .panel-head {
@@ -37,7 +37,7 @@ defineProps<{
   justify-content: space-between;
   gap: 14px;
   padding: 16px 18px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--app-panel-divider);
 }
 
 .panel-copy {

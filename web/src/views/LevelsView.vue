@@ -72,6 +72,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { createLevel, deleteLevel, fetchLevels, updateLevel } from "@/api/levels";
 import type { ChatID, LevelPayload, LevelRecord } from "@/types/api";
+import { parseNumericId } from "@/utils/helpers";
 
 const loading = ref(false);
 const saving = ref(false);
@@ -88,11 +89,6 @@ const form = reactive({
   badge: "",
 });
 const permissionText = ref("");
-
-function parseNumericId(value: ChatID): number | undefined {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
 
 function parsePermissions(): string[] {
   return permissionText.value
@@ -182,11 +178,15 @@ async function submitLevel(): Promise<void> {
 }
 
 async function removeLevel(row: LevelRecord): Promise<void> {
-  await ElMessageBox.confirm(`确认删除等级「${row.name}」？`, "删除等级", {
-    type: "warning",
-    confirmButtonText: "删除",
-    cancelButtonText: "取消",
-  });
+  try {
+    await ElMessageBox.confirm(`确认删除等级「${row.name}」？`, "删除等级", {
+      type: "warning",
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+    });
+  } catch {
+    return;
+  }
   deletingId.value = row.id;
   try {
     await deleteLevel(row.id);

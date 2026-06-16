@@ -263,7 +263,8 @@ import {
 } from "@/api/posts";
 import { fetchTemplates } from "@/api/templates";
 import type { ChatID, MessageTemplateRecord, ScheduledPostPayload, ScheduledPostRecord } from "@/types/api";
-import { formatChinaDateTime, formatChinaInputDateTime, parseChinaLocalDateTimeToISO } from "@/utils/datetime";
+import { formatChinaInputDateTime, parseChinaLocalDateTimeToISO } from "@/utils/datetime";
+import { parseNumericId, formatDateTime, errorMessage } from "@/utils/helpers";
 
 const loading = ref(false);
 const saving = ref(false);
@@ -348,12 +349,6 @@ const onceCount = computed(() => posts.value.filter((item) => Boolean(item.run_o
 const recurringCount = computed(() => posts.value.filter((item) => !item.run_once_at).length);
 const bodyLabel = computed(() => (form.media_type === "text" ? "正文内容" : "配文内容"));
 const bodyPlaceholder = computed(() => (form.media_type === "text" ? "输入要发送的文字内容" : "输入要随媒体一起发送的文字内容"));
-const bodyAssistiveText = computed(() => (form.media_type === "text" ? "纯文字任务会直接发送你填写的标题与内容。" : mediaTypeLabel(form.media_type) + "支持附带一段说明文字，发送时会与媒体一起出现。"));
-
-function parseNumericId(value: ChatID): number | undefined {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
 
 function optionalText(value?: string | null): string | undefined {
   const text = value?.trim();
@@ -751,12 +746,6 @@ async function removePost(row: ScheduledPostRecord): Promise<void> {
   }
 }
 
-function errorMessage(error: unknown): string {
-  const payload = (error as { payload?: { error?: string } })?.payload;
-  const status = (error as { status?: number })?.status;
-  return payload?.error || (status ? `接口返回 ${status}` : "接口不可用");
-}
-
 function scheduleLabel(row: Pick<ScheduledPostRecord, "cron_expr" | "run_once_at">): string {
   if (row.run_once_at) {
     return `一次性 ${formatDateTime(row.run_once_at)}`;
@@ -836,17 +825,6 @@ function applyScheduleFromPost(row: Pick<ScheduledPostRecord, "cron_expr" | "run
   form.cron_expr = expr;
 }
 
-function formatPickerValue(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  const pad = (item: number) => String(item).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
-}
-
-function formatDateTime(value: string): string {
-  return formatChinaDateTime(value, value);
-}
-
 function padTime(value: string): string {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? String(parsed).padStart(2, "0") : value;
@@ -867,7 +845,7 @@ onMounted(loadPosts);
   padding: 5px 10px;
   border: 1px solid var(--app-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--app-tint-light);
 }
 
 .posts-dialog :deep(.el-dialog) {

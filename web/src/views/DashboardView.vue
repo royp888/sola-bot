@@ -521,9 +521,9 @@ onMounted(loadDashboard);
 .action-card,
 .system-chip {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--app-tint-medium);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--app-tint-subtle);
   color: var(--app-text);
   text-align: left;
   transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
@@ -538,8 +538,8 @@ onMounted(loadDashboard);
 .queue-item:hover,
 .action-card:hover,
 .system-chip:hover {
-  border-color: rgba(132, 170, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--app-accent-hover-border);
+  background: var(--app-accent-hover-bg);
   transform: translateY(-1px);
 }
 
@@ -548,15 +548,15 @@ onMounted(loadDashboard);
 }
 
 .queue-item[data-tone="success"] {
-  border-color: rgba(114, 192, 145, 0.12);
+  border-color: var(--app-success-border);
 }
 
 .queue-item[data-tone="warning"] {
-  border-color: rgba(216, 162, 95, 0.14);
+  border-color: var(--app-warning-border);
 }
 
 .queue-item[data-tone="danger"] {
-  border-color: rgba(210, 120, 120, 0.14);
+  border-color: var(--app-danger-border);
 }
 
 .queue-head,
@@ -592,9 +592,9 @@ onMounted(loadDashboard);
 
 .table-shell {
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--app-table-border);
   border-radius: 12px;
-  background: rgba(10, 15, 22, 0.42);
+  background: var(--app-inset-bg);
 }
 
 .job-table {
@@ -626,15 +626,15 @@ onMounted(loadDashboard);
 }
 
 .system-chip[data-tone="success"] {
-  border-color: rgba(114, 192, 145, 0.12);
+  border-color: var(--app-success-border);
 }
 
 .system-chip[data-tone="warning"] {
-  border-color: rgba(216, 162, 95, 0.14);
+  border-color: var(--app-warning-border);
 }
 
 .system-chip[data-tone="danger"] {
-  border-color: rgba(210, 120, 120, 0.14);
+  border-color: var(--app-danger-border);
 }
 
 .health-list {
@@ -665,11 +665,11 @@ onMounted(loadDashboard);
 }
 
 .activity-item[data-tone="warning"] {
-  border-color: rgba(216, 162, 95, 0.14);
+  border-color: var(--app-warning-border);
 }
 
 .activity-item[data-tone="danger"] {
-  border-color: rgba(210, 120, 120, 0.14);
+  border-color: var(--app-danger-border);
 }
 
 .action-list {

@@ -345,14 +345,25 @@ func matchAutoReplyKeyword(lowerText string, rawText string, item autoReplyCache
 	if keyword == "" {
 		return false
 	}
+	// Strip ~ delete-trigger prefix for matching
+	matchKeyword := strings.TrimPrefix(keyword, "~")
+	if matchKeyword == "" {
+		return false
+	}
 	switch normalizeAutoReplyMatchType(item.MatchType) {
 	case "exact":
-		return strings.EqualFold(strings.TrimSpace(rawText), keyword)
+		return strings.EqualFold(strings.TrimSpace(rawText), matchKeyword)
 	case "regex":
-		matched, _ := regexp.MatchString(keyword, rawText)
+		matched, _ := regexp.MatchString(matchKeyword, rawText)
 		return matched
-	default:
-		return strings.Contains(lowerText, strings.ToLower(keyword))
+	default: // "contains" — word-boundary match
+		kw := regexp.QuoteMeta(strings.ToLower(matchKeyword))
+		pattern := `(?i)(^|[\W_])` + kw + `([\W_]|$)`
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return strings.Contains(lowerText, strings.ToLower(matchKeyword))
+		}
+		return re.MatchString(rawText)
 	}
 }
 

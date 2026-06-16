@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -16,6 +17,16 @@ const (
 	loginRateLimitWindow = 15 * time.Minute
 	loginRateLimitMax    = 5
 )
+
+// WarnIfPlaintextPassword logs a startup warning when AdminPasswordHash is empty.
+// Call this once during server initialisation.
+func WarnIfPlaintextPassword(hash string, plain string) {
+	if strings.TrimSpace(hash) == "" && strings.TrimSpace(plain) != "" {
+		log.Print("[SECURITY] admin_password_hash is not set; login uses plaintext comparison. " +
+			"Generate a bcrypt hash with `htpasswd -bnBC 12 '' PASSWORD | tr -d ':\\n' | sed 's/$2y/$2a/'` " +
+			"and set SOLA_APP_ADMIN_PASSWORD_HASH.")
+	}
+}
 
 func VerifyConfiguredPassword(password string, plain string, hash string) bool {
 	hash = strings.TrimSpace(hash)

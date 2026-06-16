@@ -83,6 +83,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { createAutoReply, deleteAutoReply, fetchAutoReplies, updateAutoReply } from "@/api/autoReplies";
 import type { AutoReplyPayload, AutoReplyRecord, ChatID } from "@/types/api";
+import { parseNumericId } from "@/utils/helpers";
 
 const loading = ref(false);
 const saving = ref(false);
@@ -100,11 +101,6 @@ const form = reactive({
   reply_text: "",
   enabled: true,
 });
-
-function parseNumericId(value: ChatID): number | undefined {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
 
 function matchTypeLabel(value: string): string {
   switch (value) {

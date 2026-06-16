@@ -106,7 +106,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { fetchAuditLogs } from "@/api/audit";
 import type { AuditLogEntry, ChatID } from "@/types/api";
-import { formatChinaDateTime } from "@/utils/datetime";
+import { formatDateTime } from "@/utils/helpers";
 
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -114,10 +114,6 @@ const error = ref(false);
 const logs = ref<AuditLogEntry[]>([]);
 const nextCursor = ref("");
 const filters = reactive({ chatId: "", action: "" });
-
-function formatDateTime(value?: string | null): string {
-  return formatChinaDateTime(value, "-");
-}
 
 const actionCounts = computed(() => {
   return logs.value.reduce(

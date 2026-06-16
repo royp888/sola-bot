@@ -152,12 +152,12 @@ func (s *ModerationService) UpdateConfig(ctx context.Context, chatID int64, patc
 			"link_whitelist":         cfg.LinkWhitelist,
 			"link_blacklist":         cfg.LinkBlacklist,
 			"block_forwards":         cfg.BlockForwards,
-		"block_media":            cfg.BlockMedia,
-		"keyword_filter_enabled": cfg.KeywordFilterEnabled,
-		"spam_score_threshold":   cfg.SpamScoreThreshold,
+			"block_media":            cfg.BlockMedia,
+			"keyword_filter_enabled": cfg.KeywordFilterEnabled,
+			"spam_score_threshold":   cfg.SpamScoreThreshold,
 			"ai_filter_enabled":      cfg.AiFilterEnabled,
-		"restrict_unverified":    cfg.RestrictUnverified,
-		"welcome_text":           cfg.WelcomeText,
+			"restrict_unverified":    cfg.RestrictUnverified,
+			"welcome_text":           cfg.WelcomeText,
 			"welcome_delete_seconds": cfg.WelcomeDeleteSeconds,
 			"updated_at":             cfg.UpdatedAt,
 		}).Error
@@ -402,6 +402,7 @@ func (s *ModerationService) MatchKeyword(ctx context.Context, chatID int64, text
 				Keyword:   record.Keyword,
 				MatchType: normalizeKeywordMatchType(record.MatchType),
 				Action:    action,
+				ReplyText: record.ReplyText,
 			}, nil
 		}
 	}

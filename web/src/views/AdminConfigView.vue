@@ -139,7 +139,7 @@ onMounted(() => {
   border: 1px solid var(--app-border);
   border-radius: 8px;
   line-height: 1.6;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--app-table-header-bg);
 }
 
 @media (max-width: 720px) {

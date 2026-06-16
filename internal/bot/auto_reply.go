@@ -7,7 +7,14 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 )
+
+func (a *App) registerAutoReplyHandlers(d *ext.Dispatcher) {
+	d.AddHandler(handlers.NewCommand("add_reply", a.wrap(a.handleAddReply, a.RateLimit("cmd:add_reply", 1))))
+	d.AddHandler(handlers.NewCommand("del_reply", a.wrap(a.handleDelReply, a.RateLimit("cmd:del_reply", 1))))
+	d.AddHandler(handlers.NewCommand("replies", a.wrap(a.handleListReplies, a.RateLimit("cmd:replies", 1))))
+}
 
 func (a *App) handleAutoReply(b *gotgbot.Bot, ctx *ext.Context) error {
 	if a.services.AutoReply == nil || ctx == nil || ctx.Message == nil {
@@ -31,10 +38,17 @@ func (a *App) handleAutoReply(b *gotgbot.Bot, ctx *ext.Context) error {
 		if strings.TrimSpace(match.ReplyText) == "" {
 			continue
 		}
-		_, sendErr := b.SendMessageWithContext(scope.Context, msg.Chat.Id, match.ReplyText, &gotgbot.SendMessageOpts{
-			ReplyParameters: &gotgbot.ReplyParameters{MessageId: msg.MessageId},
-		})
-		if sendErr != nil {
+		deleteTrigger := strings.HasPrefix(match.Keyword, "~")
+		if deleteTrigger {
+			_, _ = b.DeleteMessageWithContext(scope.Context, msg.Chat.Id, msg.MessageId, nil)
+		}
+		var sendOpts *gotgbot.SendMessageOpts
+		if !deleteTrigger {
+			sendOpts = &gotgbot.SendMessageOpts{
+				ReplyParameters: &gotgbot.ReplyParameters{MessageId: msg.MessageId},
+			}
+		}
+		if _, sendErr := b.SendMessageWithContext(scope.Context, msg.Chat.Id, match.ReplyText, sendOpts); sendErr != nil {
 			log.Printf("auto reply send error: %v", sendErr)
 		}
 	}
@@ -81,7 +95,7 @@ func autoReplyMarkup() *gotgbot.SendMessageOpts {
 			{Text: "返回群管", CallbackData: CallbackData("admin", "moderation")},
 		},
 		{
-			{Text: "返回群组", CallbackData: CallbackData("menu", "group")},
+			{Text: "返回群组", CallbackData: CallbackData("menu", "groups")},
 		},
 	}}}
 }

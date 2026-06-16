@@ -104,7 +104,7 @@ func levelPanelMarkup() *gotgbot.SendMessageOpts {
 			{Text: "返回群管", CallbackData: CallbackData("admin", "moderation")},
 		},
 		{
-			{Text: "返回群组", CallbackData: CallbackData("menu", "group")},
+			{Text: "返回群组", CallbackData: CallbackData("menu", "groups")},
 		},
 	}}}
 }

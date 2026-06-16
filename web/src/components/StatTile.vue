@@ -61,9 +61,9 @@ function handleClick(): void {
   gap: 16px;
   min-height: 142px;
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--app-tint-medium);
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(18, 27, 39, 0.94), rgba(14, 21, 31, 0.94));
+  background: var(--app-card-bg);
   box-shadow: var(--app-shadow-soft);
   transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
@@ -74,8 +74,8 @@ function handleClick(): void {
 
 .stat-tile[data-clickable="true"]:hover {
   transform: translateY(-1px);
-  border-color: rgba(132, 170, 255, 0.12);
-  background: linear-gradient(180deg, rgba(20, 29, 42, 0.96), rgba(15, 23, 34, 0.96));
+  border-color: var(--app-accent-hover-border);
+  background: var(--app-card-bg-hover);
   box-shadow: var(--app-shadow);
 }
 
@@ -130,9 +130,9 @@ function handleClick(): void {
   align-items: center;
   min-height: 22px;
   padding: 0 8px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--app-tint-light);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--app-tint-subtle);
   color: var(--app-muted);
   font-size: 11px;
   font-weight: 600;
@@ -157,7 +157,7 @@ function handleClick(): void {
   min-height: 24px;
   padding: 0 9px;
   border-radius: 999px;
-  background: rgba(125, 169, 255, 0.1);
+  background: var(--app-pagination-active-bg);
   color: var(--app-accent);
   font-size: 11px;
   font-weight: 700;
@@ -165,7 +165,7 @@ function handleClick(): void {
 }
 
 .stat-tile[data-tone="success"] .delta {
-  background: rgba(114, 192, 145, 0.12);
+  background: var(--app-tag-success-bg);
   color: var(--app-success);
 }
 
@@ -174,7 +174,7 @@ function handleClick(): void {
 }
 
 .stat-tile[data-tone="warning"] .delta {
-  background: rgba(216, 162, 95, 0.12);
+  background: var(--app-tag-warning-bg);
   color: var(--app-warning);
 }
 
@@ -183,7 +183,7 @@ function handleClick(): void {
 }
 
 .stat-tile[data-tone="danger"] .delta {
-  background: rgba(210, 120, 120, 0.12);
+  background: var(--app-tag-danger-bg);
   color: var(--app-danger);
 }
 
