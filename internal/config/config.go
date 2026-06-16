@@ -33,8 +33,13 @@ type Config struct {
 		DisabledFeatures []string `mapstructure:"disabled_features"`
 	} `mapstructure:"bot"`
 	Database DatabaseConfig `mapstructure:"database"`
-	AiFilter AiFilterConfig `mapstructure:"ai_filter"`
-	Redis    struct {
+	AiFilter  AiFilterConfig `mapstructure:"ai_filter"`
+	Turnstile struct {
+		SiteKey      string `mapstructure:"site_key"`
+		SecretKey    string `mapstructure:"secret_key"`
+		VerifySecret string `mapstructure:"verify_secret"`
+	} `mapstructure:"turnstile"`
+	Redis struct {
 		Addr     string `mapstructure:"addr"`
 		Password string `mapstructure:"password"`
 		DB       int    `mapstructure:"db"`
@@ -212,12 +217,15 @@ func bindEnv(v *viper.Viper) error {
 		"redis.db":                   "SOLA_REDIS_DB",
 		"jwt.secret":                 "SOLA_JWT_SECRET",
 		"jwt.issuer":                 "SOLA_JWT_ISSUER",
-		"ai_filter.enabled":          "SOLA_AI_FILTER_ENABLED",
-		"ai_filter.provider":         "SOLA_AI_FILTER_PROVIDER",
-		"ai_filter.api_key":          "SOLA_AI_FILTER_API_KEY",
-		"ai_filter.model":            "SOLA_AI_FILTER_MODEL",
-		"ai_filter.endpoint":         "SOLA_AI_FILTER_ENDPOINT",
-		"jwt.access_token_ttl":       "SOLA_JWT_ACCESS_TOKEN_TTL",
+		"ai_filter.enabled":            "SOLA_AI_FILTER_ENABLED",
+		"ai_filter.provider":           "SOLA_AI_FILTER_PROVIDER",
+		"ai_filter.api_key":            "SOLA_AI_FILTER_API_KEY",
+		"ai_filter.model":              "SOLA_AI_FILTER_MODEL",
+		"ai_filter.endpoint":           "SOLA_AI_FILTER_ENDPOINT",
+		"turnstile.site_key":           "SOLA_TURNSTILE_SITE_KEY",
+		"turnstile.secret_key":         "SOLA_TURNSTILE_SECRET_KEY",
+		"turnstile.verify_secret":      "SOLA_TURNSTILE_VERIFY_SECRET",
+		"jwt.access_token_ttl":         "SOLA_JWT_ACCESS_TOKEN_TTL",
 	}
 
 	for key, env := range bindings {
