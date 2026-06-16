@@ -85,9 +85,10 @@ func run() error {
 	})
 
 	app := botapp.New(botServices, botapp.Options{
-		DefaultLocale: cfg.Bot.DefaultLocale,
-		MiniAppURL:    cfg.Bot.MiniAppURL,
-		Features:      botapp.NewFeatures(cfg.Bot.DisabledFeatures),
+		DefaultLocale:         cfg.Bot.DefaultLocale,
+		MiniAppURL:            cfg.Bot.MiniAppURL,
+		TurnstileVerifySecret: cfg.Turnstile.VerifySecret,
+		Features:              botapp.NewFeatures(cfg.Bot.DisabledFeatures),
 	})
 	app.Register(dispatcher)
 

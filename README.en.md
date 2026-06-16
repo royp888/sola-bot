@@ -38,7 +38,7 @@ It is especially suitable if you want to:
 - Group moderation and risk control
   - ban, unban, mute, unmute, kick, and warnings
   - welcome messages, warning limits, whitelist support, and permission checks
-  - join verification with button, multi-choice, and quiz-poll interactions
+  - join verification with button, multi-choice, quiz-poll, math, and Cloudflare Turnstile (Mini App WebApp) interactions
   - keyword filtering, link restrictions, forward restrictions, and unverified-user restrictions
   - AI-based secondary spam and advertisement judgement through OpenAI-compatible APIs
   - violation records, resolution states, and audit traces

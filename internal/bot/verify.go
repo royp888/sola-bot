@@ -2,6 +2,9 @@ package bot
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -12,6 +15,7 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/pollanswer"
 )
@@ -23,6 +27,7 @@ func (a *App) registerVerifyHandlers(d *ext.Dispatcher) {
 	d.AddHandler(handlers.NewCommand("allowuser", a.wrap(a.handleAllowUser, a.RequirePermission(PermissionVerify), a.RateLimit("cmd:allowuser", 1))))
 	d.AddHandler(handlers.NewCommand("delallowuser", a.wrap(a.handleDelAllowUser, a.RequirePermission(PermissionVerify), a.RateLimit("cmd:delallowuser", 1))))
 	d.AddHandler(handlers.NewMessage(message.NewChatMembers, a.handleNewChatMembers))
+	d.AddHandler(handlers.NewChatJoinRequest(filters.ChatJoinRequest(func(_ *gotgbot.ChatJoinRequest) bool { return true }), a.handleChatJoinRequest))
 	d.AddHandler(handlers.NewPollAnswer(pollanswer.All, a.handlePollAnswer))
 }
 
@@ -46,13 +51,14 @@ func (a *App) handleSetVerify(b *gotgbot.Bot, ctx *ext.Context) error {
 	args := commandArgs(ctx)
 	if len(args) < 1 {
 		return sendText(b, ctx, "用法：/set_verify <type|question|options|answer|difficulty> [value]\n\n"+
-			"type - 设置验证类型：button, captcha, multi_choice, poll, math\n"+
+			"type - 设置验证类型：button, captcha, multi_choice, poll, math, turnstile\n"+
 			"question - 设置验证问题\n"+
 			"options - 设置选项（JSON数组，如 [\"A\",\"B\",\"C\"]）\n"+
 			"answer - 设置正确答案索引（0开始）\n"+
 			"difficulty - 设置验证难度：easy, medium, hard\n\n"+
 			"示例：\n"+
 			"/set_verify type multi_choice\n"+
+			"/set_verify type turnstile  （需配置 SOLA_BOT_MINI_APP_URL 和 SOLA_TURNSTILE_VERIFY_SECRET）\n"+
 			"/set_verify question 群规第一条是什么？\n"+
 			"/set_verify options [\"尊重他人\",\"禁止广告\",\"禁止NSFW\",\"以上都是\"]\n"+
 			"/set_verify answer 3\n"+
@@ -67,8 +73,8 @@ func (a *App) handleSetVerify(b *gotgbot.Bot, ctx *ext.Context) error {
 	switch sub {
 	case "type":
 		val = strings.TrimSpace(val)
-		if val != "button" && val != "captcha" && val != "multi_choice" && val != "poll" && val != "math" {
-			return sendText(b, ctx, "验证类型只能是 button、captcha、multi_choice、poll 或 math。", nil)
+		if val != "button" && val != "captcha" && val != "multi_choice" && val != "poll" && val != "math" && val != "turnstile" {
+			return sendText(b, ctx, "验证类型只能是 button、captcha、multi_choice、poll、math 或 turnstile。", nil)
 		}
 		patch.VerifyType = &val
 	case "question":
@@ -799,6 +805,60 @@ func (a *App) handleDelAllowUser(b *gotgbot.Bot, ctx *ext.Context) error {
 
 func defaultNumOptions() int {
 	return 4
+}
+
+// handleChatJoinRequest handles chat_join_request updates.
+// When verify type is "turnstile", sends a private message with a Mini App WebApp button.
+func (a *App) handleChatJoinRequest(b *gotgbot.Bot, ctx *ext.Context) error {
+	if ctx == nil || ctx.ChatJoinRequest == nil || a.services.Admin == nil {
+		return nil
+	}
+	chatID := ctx.ChatJoinRequest.Chat.Id
+	userID := ctx.ChatJoinRequest.From.Id
+
+	cfg, err := a.services.Admin.GetConfig(context.Background(), chatID)
+	if err != nil || !cfg.VerifyEnabled || cfg.VerifyType != "turnstile" {
+		return nil
+	}
+
+	link := a.generateTurnstileLink(chatID, userID)
+	if link == "" {
+		return nil
+	}
+
+	name := strings.TrimSpace(ctx.ChatJoinRequest.From.FirstName + " " + ctx.ChatJoinRequest.From.LastName)
+	if name == "" {
+		name = strconv.FormatInt(userID, 10)
+	}
+
+	text := fmt.Sprintf("👋 你好 %s！\n请点击下方按钮完成人机验证后即可入群。", name)
+	_, err = b.SendMessageWithContext(context.Background(), userID, text, &gotgbot.SendMessageOpts{
+		ReplyMarkup: gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+				{{Text: "🔒 完成验证", WebApp: &gotgbot.WebAppInfo{Url: link}}},
+			},
+		},
+	})
+	return err
+}
+
+// generateTurnstileLink builds a signed Mini App URL for Turnstile verification.
+func (a *App) generateTurnstileLink(chatID, userID int64) string {
+	if a.miniAppURL == "" || a.options.TurnstileVerifySecret == "" {
+		return ""
+	}
+	exp := time.Now().Add(10 * time.Minute).Unix()
+	sig := turnstileBotHMAC(a.options.TurnstileVerifySecret, chatID, userID, exp)
+	return fmt.Sprintf("%s/#/verify?chat=%d&user=%d&sig=%s&exp=%d",
+		strings.TrimRight(a.miniAppURL, "/"), chatID, userID, sig, exp)
+}
+
+// turnstileBotHMAC signs "chatID|userID|exp" using HMAC-SHA256.
+// Must match the identical function in internal/api/verify_handler.go.
+func turnstileBotHMAC(secret string, chatID, userID, exp int64) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = fmt.Fprintf(mac, "%d|%d|%d", chatID, userID, exp)
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // buildMathOptions builds a slice of unique integer options with the correct answer included

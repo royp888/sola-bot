@@ -51,10 +51,14 @@ type Dependencies struct {
 	Stats            StatsService
 	Users            UserService
 	AuditLogs        AuditLogService
-	JWT              JWTConfig
-	Redis            LoginRateLimiter
-	AllowedOriginSet []string
-	EnableSwagger    bool
+	JWT                   JWTConfig
+	Redis                 LoginRateLimiter
+	AllowedOriginSet      []string
+	EnableSwagger         bool
+	BotToken              string
+	TurnstileSiteKey      string
+	TurnstileSecretKey    string
+	TurnstileVerifySecret string
 }
 
 func (d Dependencies) AllowedOrigins() []string {

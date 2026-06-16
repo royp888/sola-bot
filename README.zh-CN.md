@@ -270,7 +270,7 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 ## 入群验证
 
-Sola 提供 5 种验证类型，可通过 `/set_verify` 命令配置：
+Sola 提供 6 种验证类型，可通过 `/set_verify` 命令配置：
 
 | 类型 | 命令 | 说明 |
 |------|------|------|
@@ -279,6 +279,9 @@ Sola 提供 5 种验证类型，可通过 `/set_verify` 命令配置：
 | `multi_choice` | `/set_verify type multi_choice` | 自定义问题 + 多选按钮 |
 | `poll` | `/set_verify type poll` | Telegram 原生测验投票，更自然的交互 |
 | `math` | `/set_verify type math` | 随机算式（如 7+3=?），4 选 1 |
+| `turnstile` | `/set_verify type turnstile` | Cloudflare Turnstile + Mini App，申请入群时发送带 WebApp 按钮的私信，用户完成人机验证后自动批准 |
+
+> **turnstile 模式前置条件**：需配置 `SOLA_BOT_MINI_APP_URL`、`SOLA_TURNSTILE_SITE_KEY`、`SOLA_TURNSTILE_SECRET_KEY`、`SOLA_TURNSTILE_VERIFY_SECRET`，群组须开启"加入前需批准"（join request）。
 
 附加能力：
 - **难度分级**：`/set_verify difficulty easy\|medium\|hard`（影响超时和重试次数）
@@ -324,7 +327,7 @@ Sola 提供 5 种验证类型，可通过 `/set_verify` 命令配置：
 
 ## 路线图
 
-- ✅ 入群验证增强（Poll / Math / 多选 / 难度 / 白名单）
+- ✅ 入群验证增强（Poll / Math / 多选 / 难度 / 白名单 / Turnstile）
 - ✅ 链接域名白名单/黑名单
 - ✅ 操作审计日志系统
 - ✅ 中文自然语言命令

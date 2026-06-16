@@ -4,6 +4,7 @@ const Dashboard = () => import("@/mini/views/Dashboard.vue");
 const ChatSettings = () => import("@/mini/views/ChatSettings.vue");
 const QuickPublish = () => import("@/mini/views/QuickPublish.vue");
 const Lottery = () => import("@/mini/views/Lottery.vue");
+const Verify = () => import("@/mini/views/Verify.vue");
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -31,6 +32,12 @@ const router = createRouter({
       name: "lottery",
       component: Lottery,
       meta: { title: "抽奖" },
+    },
+    {
+      path: "/verify",
+      name: "verify",
+      component: Verify,
+      meta: { title: "入群验证" },
     },
   ],
 });

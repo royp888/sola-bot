@@ -25,6 +25,11 @@ func NewRouter(deps Dependencies) *gin.Engine {
 	server := NewServer(deps)
 
 	r.GET("/healthz", server.Health)
+
+	// Public Turnstile verification endpoints — no JWT required.
+	r.POST("/api/verify/turnstile", server.VerifyTurnstile)
+	r.GET("/api/verify/turnstile/config", server.TurnstileConfig)
+
 	if deps.EnableSwagger {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}

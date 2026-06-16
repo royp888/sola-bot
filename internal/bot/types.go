@@ -26,9 +26,10 @@ const (
 type HandlerFunc = handlers.Response
 
 type Options struct {
-	DefaultLocale string
-	MiniAppURL    string
-	Features      Features
+	DefaultLocale         string
+	MiniAppURL            string
+	TurnstileVerifySecret string
+	Features              Features
 }
 
 // Features controls which functional modules are registered.
