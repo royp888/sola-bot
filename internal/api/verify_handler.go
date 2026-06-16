@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -14,12 +15,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var cfHTTPClient = &http.Client{Timeout: 10 * time.Second}
+
 // VerifyTurnstile handles POST /api/verify/turnstile.
 // Called by the Mini App after the user passes the CF Turnstile challenge.
 func (s *Server) VerifyTurnstile(c *gin.Context) {
 	var req TurnstileVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		writeError(c, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.ChatID == 0 || req.UserID == 0 || req.Sig == "" || req.CFToken == "" {
+		writeError(c, http.StatusBadRequest, "missing required fields")
 		return
 	}
 
@@ -82,7 +90,17 @@ func verifyCFToken(secretKey, token, remoteIP string) (bool, error) {
 	if remoteIP != "" {
 		vals.Set("remoteip", remoteIP)
 	}
-	resp, err := http.PostForm("https://challenges.cloudflare.com/turnstile/v0/siteverify", vals)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://challenges.cloudflare.com/turnstile/v0/siteverify", strings.NewReader(vals.Encode()))
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := cfHTTPClient.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -97,13 +115,26 @@ func verifyCFToken(secretKey, token, remoteIP string) (bool, error) {
 
 // telegramJoinAction approves or declines a chat join request via the Bot API.
 func telegramJoinAction(botToken string, chatID, userID int64, approve bool) error {
+	if botToken == "" {
+		return fmt.Errorf("bot token not configured")
+	}
 	method := "declineChatJoinRequest"
 	if approve {
 		method = "approveChatJoinRequest"
 	}
 	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/%s", botToken, method)
 	body := fmt.Sprintf(`{"chat_id":%d,"user_id":%d}`, chatID, userID)
-	resp, err := http.Post(apiURL, "application/json", strings.NewReader(body)) //nolint:noctx
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := cfHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
