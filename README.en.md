@@ -42,15 +42,28 @@ It is especially suitable if you want to:
   - keyword filtering, link restrictions, forward restrictions, and unverified-user restrictions
   - AI-based secondary spam and advertisement judgement through OpenAI-compatible APIs
   - violation records, resolution states, and audit traces
+  - bulk message deletion (from a replied message to latest, or by count)
+  - admin promote/demote and custom title assignment
+  - member report flow that notifies group admins
+  - ghost-user cleanup (ban deleted/cancelled Telegram accounts)
+  - granular admin permissions: verify, keyword, and points can each be granted independently
   - `/ban`, `/bans`, `/unban`, `/mute`, `/unmute`, `/kick`, `/warn`, `/warns`, `/unwarn`
+  - `/purge`, `/del`
+  - `/promote`, `/demote`, `/set_title`
+  - `/report`, `/ban_ghosts`
   - `/violations`, `/resolve_violation`, `/ignore_violation`
   - `/adminconfig`, `/set_welcome`, `/set_warn_limit`, `/verify_toggle`, `/set_verify`, `/verify_stats`
+- Group rules
+  - `/setrules` to set group rules (reply to a message or attach text inline)
+  - `/clearrules` to clear the current rules
+  - `/rules` to display rules (available to all members)
 - Content operations helpers
   - keyword rules
   - auto replies
   - message templates
   - invite link tracking
   - level and growth configuration
+  - sed-style inline text correction: reply to a message with `s/old/new` and the bot re-sends it with the corrected text (supports `/`, `|`, `_`, `:` as delimiters; `i` and `g` flags)
   - `/add_keyword`, `/del_keyword`, `/keywords`
   - `/add_reply`, `/del_reply`, `/replies`
   - `/add_template`, `/del_template`, `/templates`
@@ -131,7 +144,9 @@ The `bot.mini_app_url` configuration is also present as an entry point for Teleg
 - worker startup recovery for enabled scheduled posts
 - failure counting and auto-disable protection for broken scheduled jobs
 - timeout scanning for join verification
-- scheduled lottery draw and async task execution
+- scheduled lottery draw with `poll_answer` update type for real-time participation
+- in-memory TTL cache for admin member lists to reduce Bot API round-trips
+- graceful shutdown closes DB alongside Redis
 
 ## Architecture Overview
 
