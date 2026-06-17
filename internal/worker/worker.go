@@ -58,10 +58,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.runDueJobs()
 	r.registerEnabledScheduledPosts(ctx)
 	sched.Start()
 	r.log.Info("worker scheduler started")
+	// Kick off the first due-jobs scan asynchronously so startup
+	// is never blocked by a slow Telegram API call.
+	go r.runDueJobs()
 
 	go r.scanVerifyTimeoutsLoop(ctx)
 
