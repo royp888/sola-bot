@@ -207,6 +207,7 @@ Without Compose, run the SQL files manually in order. When upgrading, only apply
 
 ## Changelog
 
+- **2026-06-17** v1.0.1 — Fix worker startup blocking when initial runDueJobs Telegram API call is slow; add migration 000022 (missing verify_type column in chat_admin_configs)
 - **2026-06-17** v1.0.0 — Web-based system settings page (Turnstile keys and admin password configurable from the admin panel); fix server crash when config.yaml is absent; fix bot info display; fix Mini App build and Docker volume mounts
 
 ## Contributing
