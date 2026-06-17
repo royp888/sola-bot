@@ -87,6 +87,9 @@ export async function request<T>(
     if (response.status === 401) {
       clearSession();
       window.location.href = "/login";
+      // Suspend until the navigation completes so no catch block fires and
+      // shows a misleading "service unavailable" toast before the redirect.
+      return new Promise<T>(() => {});
     }
     throw new ApiError(response.status, payload);
   }
