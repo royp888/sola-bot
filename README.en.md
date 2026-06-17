@@ -205,6 +205,10 @@ All schema changes are managed through `database/migrations/`; the production en
 
 Without Compose, run the SQL files manually in order. When upgrading, only apply the new migration files added since the last deployment.
 
+## Changelog
+
+- **2026-06-17** v1.0.0 — Web-based system settings page (Turnstile keys and admin password configurable from the admin panel); fix server crash when config.yaml is absent; fix bot info display; fix Mini App build and Docker volume mounts
+
 ## Contributing
 
 Issues and pull requests are welcome.

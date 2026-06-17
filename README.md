@@ -205,6 +205,10 @@ cd web && npm install && npm run dev
 
 不使用 Compose 时，需手动按顺序执行 `database/migrations/` 下的 SQL 文件，升级时只执行新增的迁移。
 
+## 更新日志
+
+- **2026-06-17** v1.0.0 — 新增网页端系统设置（Turnstile 密钥、管理员密码可在后台修改）；修复 config.yaml 缺失导致启动崩溃；修复机器人信息显示；修复 Mini App 构建与 Docker volume 挂载
+
 ## 贡献方式
 
 欢迎提交 Issue 和 Pull Request。
