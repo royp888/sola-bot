@@ -1,8 +1,10 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -28,17 +30,47 @@ func (s *Server) Me(c *gin.Context) {
 }
 
 func (s *Server) ListBots(c *gin.Context) {
-	c.JSON(http.StatusOK, []gin.H{
-		{
-			"id":            "primary",
-			"name":          "Lumanman Bot",
-			"username":      "@lumanmanbot",
-			"status":        "online",
-			"boundChats":    0,
-			"lastHeartbeat": time.Now().UTC().Format(time.RFC3339),
-			"language":      "zh-CN",
-		},
-	})
+	if s.deps.BotToken != "" {
+		type getMeResult struct {
+			OK     bool `json:"ok"`
+			Result struct {
+				ID        int64  `json:"id"`
+				FirstName string `json:"first_name"`
+				Username  string `json:"username"`
+			} `json:"result"`
+		}
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Get("https://api.telegram.org/bot" + s.deps.BotToken + "/getMe")
+		if err == nil {
+			defer resp.Body.Close()
+			var result getMeResult
+			if json.NewDecoder(resp.Body).Decode(&result) == nil && result.OK {
+				username := result.Result.Username
+				if username != "" && !strings.HasPrefix(username, "@") {
+					username = "@" + username
+				}
+				c.JSON(http.StatusOK, []gin.H{{
+					"id":            "primary",
+					"name":          result.Result.FirstName,
+					"username":      username,
+					"status":        "online",
+					"boundChats":    0,
+					"lastHeartbeat": time.Now().UTC().Format(time.RFC3339),
+					"language":      "zh-CN",
+				}})
+				return
+			}
+		}
+	}
+	c.JSON(http.StatusOK, []gin.H{{
+		"id":            "primary",
+		"name":          "未配置",
+		"username":      "@-",
+		"status":        "offline",
+		"boundChats":    0,
+		"lastHeartbeat": time.Now().UTC().Format(time.RFC3339),
+		"language":      "zh-CN",
+	}})
 }
 
 func (s *Server) DashboardSummary(c *gin.Context) {

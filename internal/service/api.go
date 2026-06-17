@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	robfigcron "github.com/robfig/cron/v3"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	"github.com/dabowin/sola/internal/api"
@@ -46,6 +47,7 @@ func NewAPIDependencies(cfg config.Config, st *store.Store) api.Dependencies {
 		Stats:            &statsAPIService{store: st},
 		Users:            &userAPIService{store: st},
 		AuditLogs:        &auditLogAPIService{store: st},
+		SystemSettings:   &systemSettingsService{store: st, cfg: cfg},
 		Redis:                 st.Redis,
 		AllowedOriginSet:      cfg.App.AllowedOrigins,
 		EnableSwagger:         cfg.App.EnableSwagger,
@@ -74,7 +76,7 @@ func (s *adminAuthService) Authenticate(ctx context.Context, req api.AdminLoginR
 	if subtleUsernameMismatch(username, s.cfg.App.AdminUsername) {
 		return api.AdminIdentity{}, errors.New("invalid credentials")
 	}
-	if !verifyAdminPassword(req.Password, s.cfg.App.AdminPassword, s.cfg.App.AdminPasswordHash) {
+	if !s.verifyPassword(ctx, req.Password) {
 		return api.AdminIdentity{}, errors.New("invalid credentials")
 	}
 	return api.AdminIdentity{
@@ -85,6 +87,16 @@ func (s *adminAuthService) Authenticate(ctx context.Context, req api.AdminLoginR
 		Name:     "Administrator",
 		Language: "zh-CN",
 	}, nil
+}
+
+func (s *adminAuthService) verifyPassword(ctx context.Context, password string) bool {
+	// DB override takes precedence over static config.
+	if s.store != nil {
+		if dbHash, found, _ := s.store.GetSystemSetting(ctx, "admin.password_hash"); found && dbHash != "" {
+			return api.VerifyConfiguredPassword(password, "", dbHash)
+		}
+	}
+	return verifyAdminPassword(password, s.cfg.App.AdminPassword, s.cfg.App.AdminPasswordHash)
 }
 
 func subtleUsernameMismatch(provided string, expected string) bool {
@@ -2731,4 +2743,95 @@ func decodeInlineMediaData(dataBase64 string) ([]byte, error) {
 		return nil, nil
 	}
 	return decoded, nil
+}
+
+type systemSettingsService struct {
+	store *store.Store
+	cfg   config.Config
+}
+
+func (s *systemSettingsService) Get(ctx context.Context) (*api.SystemSettings, error) {
+	settings, err := s.store.GetAllSystemSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := &api.SystemSettings{
+		AdminUsername: s.cfg.App.AdminUsername,
+	}
+	if v, ok := settings["turnstile.site_key"]; ok && v != "" {
+		result.TurnstileSiteKey = v
+	} else {
+		result.TurnstileSiteKey = s.cfg.Turnstile.SiteKey
+	}
+	secretKey := settings["turnstile.secret_key"]
+	if secretKey == "" {
+		secretKey = s.cfg.Turnstile.SecretKey
+	}
+	result.TurnstileSecretKeySet = secretKey != ""
+	verifySecret := settings["turnstile.verify_secret"]
+	if verifySecret == "" {
+		verifySecret = s.cfg.Turnstile.VerifySecret
+	}
+	result.TurnstileVerifySecretSet = verifySecret != ""
+	_, hasOverride := settings["admin.password_hash"]
+	result.AdminPasswordOverride = hasOverride
+	if s.cfg.Bot.Token != "" {
+		visible := s.cfg.Bot.Token
+		if len(visible) > 8 {
+			visible = visible[:8] + "***"
+		}
+		result.BotTokenMasked = visible
+	}
+	return result, nil
+}
+
+func (s *systemSettingsService) Update(ctx context.Context, req api.SystemSettingsUpdateRequest) (*api.SystemSettings, error) {
+	if req.TurnstileSiteKey != nil {
+		if err := s.store.SetSystemSetting(ctx, "turnstile.site_key", *req.TurnstileSiteKey); err != nil {
+			return nil, err
+		}
+	}
+	if req.TurnstileSecretKey != nil {
+		if err := s.store.SetSystemSetting(ctx, "turnstile.secret_key", *req.TurnstileSecretKey); err != nil {
+			return nil, err
+		}
+	}
+	if req.TurnstileVerifySecret != nil {
+		if err := s.store.SetSystemSetting(ctx, "turnstile.verify_secret", *req.TurnstileVerifySecret); err != nil {
+			return nil, err
+		}
+	}
+	if req.NewAdminPassword != nil {
+		if req.CurrentAdminPassword == nil || *req.CurrentAdminPassword == "" {
+			return nil, errors.New("current_admin_password is required to change password")
+		}
+		if !s.verifyCurrentPassword(ctx, *req.CurrentAdminPassword) {
+			return nil, errors.New("current password is incorrect")
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(*req.NewAdminPassword), 12)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.store.SetSystemSetting(ctx, "admin.password_hash", string(hash)); err != nil {
+			return nil, err
+		}
+	}
+	return s.Get(ctx)
+}
+
+func (s *systemSettingsService) ResolveKey(ctx context.Context, key string) string {
+	if s.store == nil {
+		return ""
+	}
+	v, _, _ := s.store.GetSystemSetting(ctx, key)
+	return v
+}
+
+func (s *systemSettingsService) verifyCurrentPassword(ctx context.Context, password string) bool {
+	if s.store != nil {
+		if dbHash, found, _ := s.store.GetSystemSetting(ctx, "admin.password_hash"); found && dbHash != "" {
+			return api.VerifyConfiguredPassword(password, "", dbHash)
+		}
+	}
+	return api.VerifyConfiguredPassword(password, s.cfg.App.AdminPassword, s.cfg.App.AdminPasswordHash)
 }

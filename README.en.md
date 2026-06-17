@@ -20,7 +20,7 @@ Sola is an open-source Telegram group operations platform built around five inde
 | **Content Ops** | Auto-replies, message templates, invite link tracking, level system, sed inline text correction |
 | **Scheduled Posts** | One-time and recurring tasks, rich media (image/video/file), Inline Keyboard, auto-delete |
 | **Lottery** | Button and keyword participation, group announcements, Worker-driven auto-draw |
-| **Web Admin** | Chat management, user management, points, violations, scheduled posts, lotteries, backup/restore, audit logs |
+| **Web Admin** | Chat management, user management, points, violations, scheduled posts, lotteries, backup/restore, audit logs, system settings |
 | **Mini App** | Telegram WebApp panel: dashboard, chat settings, quick publish, lottery, join verification (Turnstile) |
 | **Engineering** | Docker Compose, SQL migrations, multi-tenant isolation, owner-scoped access, granular admin permissions |
 
@@ -78,6 +78,8 @@ database/
 cp .env.example .env
 ```
 
+> **Note**: `config.yaml` is not required. All settings can be provided via environment variables. `config.yaml` is only used for local development; production deployments use `.env` only.
+
 **Required:**
 
 | Variable | Description |
@@ -122,9 +124,11 @@ docker compose --profile direct-api up -d api-direct
 After editing `web/` source files, rebuild and reload nginx:
 
 ```bash
-cd web && npm run build && cd ..
+cd web && npm run build && npm run build:mini && cd ..
 docker compose up -d --force-recreate nginx
 ```
+
+> `build:mini` builds the Telegram Mini App (join-verification page) and merges it into `dist/` — no extra Docker volume mount needed.
 
 ### 4. Local development
 

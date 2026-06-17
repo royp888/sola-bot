@@ -168,8 +168,6 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./web/dist:/usr/share/nginx/html:ro
-      - ./web/dist-mini/mini.html:/usr/share/nginx/html/mini.html:ro
-      - ./web/dist-mini/assets:/usr/share/nginx/html/assets-mini:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/healthz >/dev/null"]
       interval: 10s

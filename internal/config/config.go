@@ -111,9 +111,11 @@ func Load(path string) (Config, error) {
 	v.AutomaticEnv()
 
 	if err := v.ReadInConfig(); err != nil {
-		if _, statErr := os.Stat(path); statErr != nil {
+		if _, statErr := os.Stat(path); statErr == nil {
+			// File exists but couldn't be parsed — surface the error.
 			return Config{}, fmt.Errorf("load config: %w", err)
 		}
+		// File absent: continue with env-only config.
 	}
 
 	var cfg Config

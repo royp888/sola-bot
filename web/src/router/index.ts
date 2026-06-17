@@ -22,6 +22,7 @@ const TemplatesView = () => import("@/views/TemplatesView.vue");
 const UsersView = () => import("@/views/UsersView.vue");
 const AuditLogsView = () => import("@/views/AuditLogsView.vue");
 const ViolationsView = () => import("@/views/ViolationsView.vue");
+const SystemSettingsView = () => import("@/views/SystemSettingsView.vue");
 
 const appName = import.meta.env.VITE_APP_NAME?.trim() || "Sola 管理台";
 
@@ -194,6 +195,14 @@ const router = createRouter({
           component: BackupView,
           meta: {
             title: "备份恢复",
+          },
+        },
+        {
+          path: "settings",
+          name: "settings",
+          component: SystemSettingsView,
+          meta: {
+            title: "系统设置",
           },
         },
         {

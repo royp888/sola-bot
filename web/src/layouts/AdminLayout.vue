@@ -97,6 +97,7 @@ import {
   Setting,
   Sunny,
   Tickets,
+  Tools,
   Trophy,
   UserFilled,
 } from "@element-plus/icons-vue";
@@ -180,6 +181,7 @@ const navSections: NavSection[] = [
     label: "系统",
     items: [
       { path: "/backup", label: "备份恢复", description: "管理备份策略与恢复操作", icon: Files },
+      { path: "/settings", label: "系统设置", description: "Turnstile、管理员密码等全局配置", icon: Tools },
     ],
   },
 ];

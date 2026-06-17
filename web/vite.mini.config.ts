@@ -10,7 +10,8 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "dist-mini",
+    outDir: "dist",
+    emptyOutDir: false,
     rollupOptions: {
       input: {
         mini: fileURLToPath(new URL("./mini.html", import.meta.url)),

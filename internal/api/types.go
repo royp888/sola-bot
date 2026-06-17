@@ -51,6 +51,7 @@ type Dependencies struct {
 	Stats            StatsService
 	Users            UserService
 	AuditLogs        AuditLogService
+	SystemSettings   SystemSettingsService
 	JWT                   JWTConfig
 	Redis                 LoginRateLimiter
 	AllowedOriginSet      []string
@@ -910,6 +911,32 @@ type AuditLogService interface {
 
 type UserService interface {
 	List(ctx context.Context, query UserListQuery) ([]UserRecord, error)
+}
+
+// SystemSettings holds runtime-configurable settings returned by the settings API.
+type SystemSettings struct {
+	TurnstileSiteKey         string `json:"turnstile_site_key"`
+	TurnstileSecretKeySet    bool   `json:"turnstile_secret_key_set"`
+	TurnstileVerifySecretSet bool   `json:"turnstile_verify_secret_set"`
+	AdminUsername            string `json:"admin_username"`
+	AdminPasswordOverride    bool   `json:"admin_password_override"`
+	BotTokenMasked           string `json:"bot_token_masked"`
+}
+
+// SystemSettingsUpdateRequest allows updating individual settings.
+type SystemSettingsUpdateRequest struct {
+	TurnstileSiteKey      *string `json:"turnstile_site_key,omitempty"`
+	TurnstileSecretKey    *string `json:"turnstile_secret_key,omitempty"`
+	TurnstileVerifySecret *string `json:"turnstile_verify_secret,omitempty"`
+	NewAdminPassword      *string `json:"new_admin_password,omitempty"`
+	CurrentAdminPassword  *string `json:"current_admin_password,omitempty"`
+}
+
+type SystemSettingsService interface {
+	Get(ctx context.Context) (*SystemSettings, error)
+	Update(ctx context.Context, req SystemSettingsUpdateRequest) (*SystemSettings, error)
+	// ResolveKey returns the effective value for key, preferring DB over static config.
+	ResolveKey(ctx context.Context, key string) string
 }
 
 // TurnstileVerifyRequest is posted by the Mini App after the user passes CF Turnstile.

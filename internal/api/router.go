@@ -98,6 +98,8 @@ func NewRouter(deps Dependencies) *gin.Engine {
 			compatSecured.PUT("/auto-replies/:auto_reply_id", server.UpdateAutoReply)
 			compatSecured.PATCH("/auto-replies/:auto_reply_id", server.UpdateAutoReply)
 			compatSecured.DELETE("/auto-replies/:auto_reply_id", server.DeleteAutoReply)
+			compatSecured.GET("/system/settings", server.GetSystemSettings)
+			compatSecured.PUT("/system/settings", server.UpdateSystemSettings)
 			compatSecured.GET("/backup/export", server.ExportBackup)
 			compatSecured.POST("/backup/import", server.ImportBackup)
 			compatSecured.GET("/templates", server.ListTemplates)
@@ -227,6 +229,12 @@ func NewRouter(deps Dependencies) *gin.Engine {
 				autoReplies.PUT("/:auto_reply_id", server.UpdateAutoReply)
 				autoReplies.PATCH("/:auto_reply_id", server.UpdateAutoReply)
 				autoReplies.DELETE("/:auto_reply_id", server.DeleteAutoReply)
+			}
+
+			systemSettings := secured.Group("/system")
+			{
+				systemSettings.GET("/settings", server.GetSystemSettings)
+				systemSettings.PUT("/settings", server.UpdateSystemSettings)
 			}
 
 			backup := secured.Group("/backup")

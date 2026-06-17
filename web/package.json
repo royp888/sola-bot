@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
+    "build:mini": "vite build --config vite.mini.config.ts",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit"
   },

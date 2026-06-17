@@ -20,7 +20,7 @@ Sola 是一套面向 Telegram 群组运营的开源平台，由 **Bot、Admin AP
 | **内容运营** | 自动回复、消息模板、邀请链接追踪、等级成长体系、sed 行内文本修正 |
 | **定时发帖** | 一次性/循环任务、富媒体（图文/视频/文件）、Inline Keyboard、自动删除 |
 | **抽奖** | 按钮/口令参与、群内公告、Worker 自动开奖（`poll_answer` 实时接收） |
-| **Web 后台** | 群组管理、用户管理、积分、违规、定时任务、抽奖管理、备份恢复、审计日志 |
+| **Web 后台** | 群组管理、用户管理、积分、违规、定时任务、抽奖管理、备份恢复、审计日志、系统设置 |
 | **Mini App** | Telegram WebApp 面板：仪表盘、群设置、快捷发布、抽奖、入群验证（Turnstile） |
 | **工程基础** | Docker Compose、SQL migrations、多租户隔离、Owner 归属校验、细粒度管理员权限 |
 
@@ -78,6 +78,8 @@ database/
 cp .env.example .env
 ```
 
+> **注意**：服务器不需要 `config.yaml`，所有配置均可通过环境变量设置。`config.yaml` 仅在本地开发时使用，生产环境使用 `.env` 即可。
+
 **必填项：**
 
 | 变量 | 说明 |
@@ -122,9 +124,11 @@ docker compose --profile direct-api up -d api-direct
 修改 `web/` 源码后重新构建并热更新 nginx：
 
 ```bash
-cd web && npm run build && cd ..
+cd web && npm run build && npm run build:mini && cd ..
 docker compose up -d --force-recreate nginx
 ```
+
+> `build:mini` 构建 Telegram Mini App（入群验证页）并合并到 `dist/` 目录，无需额外挂载。
 
 ### 4. 本地开发
 

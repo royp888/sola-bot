@@ -31,7 +31,8 @@ func (s *Server) VerifyTurnstile(c *gin.Context) {
 		return
 	}
 
-	if s.deps.TurnstileVerifySecret == "" {
+	verifySecret := s.resolveSystemKey(c.Request.Context(), "turnstile.verify_secret", s.deps.TurnstileVerifySecret)
+	if verifySecret == "" {
 		writeError(c, http.StatusServiceUnavailable, "turnstile not configured")
 		return
 	}
@@ -47,14 +48,15 @@ func (s *Server) VerifyTurnstile(c *gin.Context) {
 		return
 	}
 
-	expected := turnstileHMAC(s.deps.TurnstileVerifySecret, req.ChatID, req.UserID, req.Exp)
+	expected := turnstileHMAC(verifySecret, req.ChatID, req.UserID, req.Exp)
 	if !hmac.Equal([]byte(expected), []byte(req.Sig)) {
 		_ = telegramJoinAction(s.deps.BotToken, req.ChatID, req.UserID, false)
 		writeError(c, http.StatusUnauthorized, "invalid signature")
 		return
 	}
 
-	ok, err := verifyCFToken(s.deps.TurnstileSecretKey, req.CFToken, c.ClientIP())
+	secretKey := s.resolveSystemKey(c.Request.Context(), "turnstile.secret_key", s.deps.TurnstileSecretKey)
+	ok, err := verifyCFToken(secretKey, req.CFToken, c.ClientIP())
 	if err != nil || !ok {
 		_ = telegramJoinAction(s.deps.BotToken, req.ChatID, req.UserID, false)
 		writeError(c, http.StatusUnauthorized, "turnstile verification failed")
@@ -72,7 +74,8 @@ func (s *Server) VerifyTurnstile(c *gin.Context) {
 // TurnstileConfig handles GET /api/verify/turnstile/config.
 // Returns the site key so the Mini App can render the widget without hardcoding.
 func (s *Server) TurnstileConfig(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"site_key": s.deps.TurnstileSiteKey})
+	siteKey := s.resolveSystemKey(c.Request.Context(), "turnstile.site_key", s.deps.TurnstileSiteKey)
+	c.JSON(http.StatusOK, gin.H{"site_key": siteKey})
 }
 
 // turnstileHMAC signs "chatID|userID|exp" with the verify secret using HMAC-SHA256.
