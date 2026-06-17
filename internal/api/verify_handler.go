@@ -36,7 +36,12 @@ func (s *Server) VerifyTurnstile(c *gin.Context) {
 		return
 	}
 
-	if time.Now().Unix() > req.Exp {
+	now := time.Now().Unix()
+	if req.Exp > now+int64(2*time.Hour/time.Second) {
+		writeError(c, http.StatusBadRequest, "invalid expiry")
+		return
+	}
+	if now > req.Exp {
 		_ = telegramJoinAction(s.deps.BotToken, req.ChatID, req.UserID, false)
 		writeError(c, http.StatusUnauthorized, "link expired")
 		return

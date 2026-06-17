@@ -82,7 +82,7 @@ const botUsername = (import.meta.env.VITE_BOT_USERNAME as string | undefined)?.r
 
 const form = reactive({
   email: "admin",
-  password: "change-me",
+  password: "",
 });
 
 const rules: FormRules<typeof form> = {
@@ -101,7 +101,8 @@ function telegramLoginErrorMessage(error: unknown): string {
 }
 
 function redirectPath(): string {
-  return typeof route.query.redirect === "string" ? route.query.redirect : "/";
+  const raw = typeof route.query.redirect === "string" ? route.query.redirect : "/";
+  return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
 }
 
 async function finishLogin(response: { accessToken: string; user: Parameters<typeof setSession>[1] }): Promise<void> {

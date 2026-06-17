@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+web/node_modules
+web/dist
+web/dist-mini
+docs
+*.log
+.git
+.gitignore
+README*.md
+LICENSE

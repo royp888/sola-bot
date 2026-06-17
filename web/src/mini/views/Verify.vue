@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 
 type State = "loading" | "invalid" | "pending" | "verifying" | "success" | "failed";
@@ -136,6 +136,13 @@ async function onTurnstileToken(token: string): Promise<void> {
   }
 }
 
+onUnmounted(() => {
+  const ts = (window as any).turnstile;
+  if (ts && widgetId !== undefined) {
+    ts.remove(widgetId);
+  }
+});
+
 onMounted(async () => {
   if (!isParamsValid()) {
     state.value = "invalid";
@@ -145,7 +152,8 @@ onMounted(async () => {
   await fetchSiteKey();
 
   if (!siteKey) {
-    state.value = "invalid";
+    state.value = "failed";
+    errorMessage.value = "验证服务未配置，请联系管理员。";
     return;
   }
 
