@@ -1,4 +1,4 @@
-import { getStoredToken } from "@/api/session";
+import { clearSession, getStoredToken } from "@/api/session";
 
 export class ApiError extends Error {
   status: number;
@@ -84,6 +84,10 @@ export async function request<T>(
   const payload = parsePayload(raw);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearSession();
+      window.location.href = "/login";
+    }
     throw new ApiError(response.status, payload);
   }
 
