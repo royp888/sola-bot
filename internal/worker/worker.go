@@ -28,6 +28,7 @@ type Runner struct {
 	sched            gocron.Scheduler
 	tgBot            *gotgbot.Bot
 	mu               sync.Mutex
+	muPost           sync.Mutex // separate mutex for postFailureCount to avoid deadlock when called from within r.mu
 	postFailureCount map[uint64]int
 }
 
@@ -156,15 +157,15 @@ func (r *Runner) runScheduledPost(postID uint64) {
 }
 
 func (r *Runner) incrementScheduledPostFailure(postID uint64) int {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.muPost.Lock()
+	defer r.muPost.Unlock()
 	r.postFailureCount[postID]++
 	return r.postFailureCount[postID]
 }
 
 func (r *Runner) resetScheduledPostFailure(postID uint64) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.muPost.Lock()
+	defer r.muPost.Unlock()
 	delete(r.postFailureCount, postID)
 }
 

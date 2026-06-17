@@ -354,8 +354,8 @@ async function submitBatchAdjust(): Promise<void> {
   saving.value = true;
   try {
     const result = await batchUsers({
-      chat_id: selectedChatId.value,
-      user_ids: selectedRows.value.map((user) => user.id),
+      chat_id: Number(selectedChatId.value),
+      user_ids: selectedRows.value.map((user) => Number(user.id)),
       action: "adjust_points",
       delta: batchForm.delta,
       reason: batchForm.reason,
@@ -384,8 +384,8 @@ async function submitBatchBan(): Promise<void> {
   saving.value = true;
   try {
     const result = await batchUsers({
-      chat_id: selectedChatId.value,
-      user_ids: selectedRows.value.map((user) => user.id),
+      chat_id: Number(selectedChatId.value),
+      user_ids: selectedRows.value.map((user) => Number(user.id)),
       action: "ban",
       reason: "batch_ban_from_users_view",
     });
@@ -408,11 +408,16 @@ function openAdjust(user: UserRecord): void {
 async function submitAdjust(): Promise<void> {
   if (!currentUser.value) return;
   saving.value = true;
+  const prevId = currentUser.value.id;
   try {
     await updateUserPoints(currentUser.value.chat_id, currentUser.value.id, { ...adjustForm });
     ElMessage.success("积分已更新");
     adjustVisible.value = false;
     await loadUsers();
+    if (detailVisible.value) {
+      const refreshed = users.value.find((u) => u.id === prevId);
+      if (refreshed) currentUser.value = refreshed;
+    }
   } catch {
     ElMessage.error("服务暂时不可用");
   } finally {
@@ -433,8 +438,8 @@ async function openBan(user: UserRecord): Promise<void> {
   saving.value = true;
   try {
     await createBan({
-      chat_id: user.chat_id,
-      user_id: user.id,
+      chat_id: Number(user.chat_id),
+      user_id: Number(user.id),
       reason: "ban_from_users_view",
     });
     ElMessage.success("封禁请求已提交");
@@ -468,15 +473,18 @@ async function submitMute(user: UserRecord): Promise<void> {
     }
     saving.value = true;
     await createMute({
-      chat_id: selectedChatId.value,
-      user_id: user.id,
+      chat_id: Number(selectedChatId.value),
+      user_id: Number(user.id),
       duration_seconds: minutes * 60,
       reason: "mute_from_users_view",
     });
     ElMessage.success(`已禁言 ${minutes} 分钟`);
     await loadUsers();
-  } catch {
-    return;
+  } catch (err) {
+    if (err !== "cancel" && err) {
+      const msg = (err as any)?.payload?.error || "禁言失败";
+      ElMessage.error(msg);
+    }
   } finally {
     saving.value = false;
   }
@@ -495,7 +503,7 @@ async function openUnmute(user: UserRecord): Promise<void> {
   }
   saving.value = true;
   try {
-    await createUnmute(selectedChatId.value, user.id);
+    await createUnmute(Number(selectedChatId.value), Number(user.id));
     ElMessage.success("已解除禁言");
     await loadUsers();
   } catch {
