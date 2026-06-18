@@ -62,11 +62,6 @@
         <el-table-column label="发送形式" min-width="130">
           <template #default="{ row }">{{ mediaTypeLabel(row.media_type) }}</template>
         </el-table-column>
-        <el-table-column label="状态" width="110">
-          <template #default="{ row }">
-            <el-tag :type="row.enabled ? 'success' : 'info'" effect="dark">{{ row.enabled ? "启用" : "停用" }}</el-tag>
-          </template>
-        </el-table-column>
         <el-table-column label="计划" min-width="160">
           <template #default="{ row }">{{ scheduleLabel(row) }}</template>
         </el-table-column>
