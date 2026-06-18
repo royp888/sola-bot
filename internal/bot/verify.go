@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -266,7 +267,9 @@ func (a *App) handleVerifyCheck(b *gotgbot.Bot, ctx *ext.Context, payload Callba
 		return answerCallback(b, ctx, fmt.Sprintf("答案不对，还剩 %d 次", result.RemainingAttempts))
 	}
 	if _, err := b.RestrictChatMemberWithContext(requestScope(ctx).Context, chatID, userID, fullPermissions(), &gotgbot.RestrictChatMemberOpts{UseIndependentChatPermissions: true}); err != nil {
-		return err
+		// Regular groups don't support restrictChatMember — log and continue so
+		// the user still gets the "验证通过" popup and the challenge message is cleaned up.
+		log.Printf("restrictChatMember after verify (chat=%d user=%d): %v", chatID, userID, err)
 	}
 	if ctx.CallbackQuery.Message != nil {
 		_, _ = ctx.CallbackQuery.Message.Delete(b, nil)
@@ -321,7 +324,7 @@ func (a *App) handleVerifyAnswer(b *gotgbot.Bot, ctx *ext.Context, payload Callb
 	}
 	// Correct answer
 	if _, err := b.RestrictChatMemberWithContext(requestScope(ctx).Context, chatID, userID, fullPermissions(), &gotgbot.RestrictChatMemberOpts{UseIndependentChatPermissions: true}); err != nil {
-		return err
+		log.Printf("restrictChatMember after verify answer (chat=%d user=%d): %v", chatID, userID, err)
 	}
 	if ctx.CallbackQuery.Message != nil {
 		_, _ = ctx.CallbackQuery.Message.Delete(b, nil)

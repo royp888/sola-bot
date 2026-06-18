@@ -1,10 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -548,6 +550,14 @@ func (s *Server) CreateLottery(c *gin.Context) {
 	if err != nil {
 		writeError(c, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	if s.deps.BotToken != "" {
+		go func() {
+			if err := sendTelegramLotteryAnnouncement(s.deps.BotToken, item); err != nil {
+				log.Printf("lottery announcement (id=%d chat=%d): %v", item.ID, item.ChatID, err)
+			}
+		}()
 	}
 
 	c.JSON(http.StatusOK, item)
@@ -1981,4 +1991,123 @@ func parseChatAndUserID(c *gin.Context) (int64, int64, bool) {
 		return 0, 0, false
 	}
 	return chatID, userID, true
+}
+
+func buildLotteryAnnouncementText(lottery *Lottery) string {
+	textFallback := func(val, fallback string) string {
+		if strings.TrimSpace(val) == "" {
+			return fallback
+		}
+		return val
+	}
+	joinTypeLabel := func(joinType string) string {
+		switch strings.ToLower(strings.TrimSpace(joinType)) {
+		case "keyword":
+			return "口令抽奖活动"
+		case "both":
+			return "按钮 + 口令抽奖活动"
+		default:
+			return "按钮抽奖活动"
+		}
+	}
+	joinModeHint := func(joinType, keyword string) string {
+		switch strings.ToLower(strings.TrimSpace(joinType)) {
+		case "keyword":
+			return "口令参与"
+		case "both":
+			if strings.TrimSpace(keyword) == "" {
+				return "按钮 + 口令"
+			}
+			return fmt.Sprintf("按钮 + 口令（%s）", strings.TrimSpace(keyword))
+		default:
+			return "按钮参与"
+		}
+	}
+
+	var builder strings.Builder
+	label := joinTypeLabel(lottery.JoinType)
+	if lottery.ID > 0 {
+		label = fmt.Sprintf("%s #%d", label, lottery.ID)
+	}
+	builder.WriteString(fmt.Sprintf("🎁 %s\n", label))
+	builder.WriteString("━━━━━━━━━━\n")
+	builder.WriteString(fmt.Sprintf("活动：%s\n", textFallback(lottery.Title, "未命名抽奖")))
+	builder.WriteString(fmt.Sprintf("奖品：%s\n", textFallback(lottery.Prize, "未填写")))
+	builder.WriteString(fmt.Sprintf("参与方式：%s\n", joinModeHint(lottery.JoinType, lottery.JoinKeyword)))
+	costPoints := lottery.CostPoints
+	if costPoints < 0 {
+		costPoints = 0
+	}
+	builder.WriteString(fmt.Sprintf("所需积分：%d\n", costPoints))
+	builder.WriteString(fmt.Sprintf("中奖人数：%d\n", lottery.WinnerCount))
+	if lottery.MaxParticipants > 0 {
+		builder.WriteString(fmt.Sprintf("开奖条件：满 %d 人自动开奖\n", lottery.MaxParticipants))
+	} else {
+		builder.WriteString("开奖条件：按设定时间开奖\n")
+	}
+	if lottery.EndAt != nil {
+		loc, err := time.LoadLocation("Asia/Shanghai")
+		if err != nil {
+			loc = time.FixedZone("CST", 8*60*60)
+		}
+		builder.WriteString(fmt.Sprintf("开奖时间：%s\n", lottery.EndAt.In(loc).Format("2006-01-02 15:04")))
+	}
+	builder.WriteString("━━━━━━━━━━\n")
+	switch strings.ToLower(strings.TrimSpace(lottery.JoinType)) {
+	case "keyword":
+		kw := textFallback(strings.TrimSpace(lottery.JoinKeyword), "未设置")
+		builder.WriteString(fmt.Sprintf("口令：%s\n", kw))
+		builder.WriteString(fmt.Sprintf("发送口令「%s」参与抽奖。", kw))
+	case "both":
+		kw := textFallback(strings.TrimSpace(lottery.JoinKeyword), "未设置")
+		builder.WriteString(fmt.Sprintf("口令：%s\n", kw))
+		builder.WriteString(fmt.Sprintf("发送口令「%s」或点击下方按钮参与抽奖。", kw))
+	default:
+		builder.WriteString("点击下方按钮参与抽奖。")
+	}
+	return builder.String()
+}
+
+func sendTelegramLotteryAnnouncement(token string, lottery *Lottery) error {
+	type inlineButton struct {
+		Text         string `json:"text"`
+		CallbackData string `json:"callback_data"`
+	}
+	type inlineKeyboardMarkup struct {
+		InlineKeyboard [][]inlineButton `json:"inline_keyboard"`
+	}
+	type sendMessageReq struct {
+		ChatID      int64                 `json:"chat_id"`
+		Text        string                `json:"text"`
+		ReplyMarkup *inlineKeyboardMarkup `json:"reply_markup,omitempty"`
+	}
+
+	req := sendMessageReq{ChatID: lottery.ChatID, Text: buildLotteryAnnouncementText(lottery)}
+
+	joinType := strings.ToLower(strings.TrimSpace(lottery.JoinType))
+	if joinType == "" || joinType == "button" || joinType == "both" {
+		id := strconv.FormatInt(lottery.ID, 10)
+		req.ReplyMarkup = &inlineKeyboardMarkup{
+			InlineKeyboard: [][]inlineButton{{
+				{Text: "🎯 立即参与", CallbackData: "op:lottery:join:" + id},
+				{Text: "📋 查看详情", CallbackData: "op:lottery:info:" + id},
+			}},
+		}
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	apiURL := "https://api.telegram.org/bot" + token + "/sendMessage"
+	resp, err := http.Post(apiURL, "application/json", bytes.NewReader(body)) //nolint:noctx
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("telegram sendMessage returned status %d", resp.StatusCode)
+	}
+	return nil
 }

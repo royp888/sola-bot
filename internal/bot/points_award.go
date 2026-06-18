@@ -20,7 +20,7 @@ func (a *App) handleMessagePoints(b *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 	if ctx == nil || ctx.Message == nil {
-		return nil
+		return ext.ContinueGroups
 	}
 	if moderationBlockedPoints(ctx) {
 		return nil
@@ -28,13 +28,13 @@ func (a *App) handleMessagePoints(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	msg := ctx.Message
 	if msg.Chat.Type != "group" && msg.Chat.Type != "supergroup" {
-		return nil
+		return ext.ContinueGroups
 	}
 	if msg.From == nil {
-		return nil
+		return ext.ContinueGroups
 	}
 	if msg.From.IsBot {
-		return nil
+		return ext.ContinueGroups
 	}
 
 	if handled, err := a.handleKeywordLottery(b, ctx); err != nil {
@@ -48,7 +48,7 @@ func (a *App) handleMessagePoints(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	if a.services.Points == nil {
-		return nil
+		return ext.ContinueGroups
 	}
 
 	switch normalizedMessageText(msg) {
@@ -68,7 +68,7 @@ func (a *App) handleMessagePoints(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	messageType := pointMessageType(msg)
 	if messageType == "" {
-		return nil
+		return ext.ContinueGroups
 	}
 	log.Printf("telegram group message received: chat=%d user=%d type=%s command=%t", msg.Chat.Id, msg.From.Id, messageType, isCommandMessage(msg))
 
@@ -88,7 +88,7 @@ func (a *App) handleMessagePoints(b *gotgbot.Bot, ctx *ext.Context) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return ext.ContinueGroups
 }
 
 func (a *App) handleKeywordLottery(b *gotgbot.Bot, ctx *ext.Context) (bool, error) {

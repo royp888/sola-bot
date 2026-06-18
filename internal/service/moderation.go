@@ -91,7 +91,7 @@ func (s *ModerationService) GetConfig(ctx context.Context, chatID int64) (model.
 		return cfg, nil
 	}
 	db := s.store.DB.WithContext(ctx)
-	err := db.Clauses(clause.OnConflict{
+	err := db.Select("*").Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "chat_id"}},
 		DoNothing: true,
 	}).Create(&cfg).Error

@@ -48,16 +48,16 @@ func parseSedCommand(text string) (pattern, replacement, flags string, ok bool) 
 
 func (a *App) handleSed(b *gotgbot.Bot, ctx *ext.Context) error {
 	if ctx.Message == nil || ctx.Message.ReplyToMessage == nil {
-		return nil
+		return ext.ContinueGroups
 	}
 	original := strings.TrimSpace(ctx.Message.ReplyToMessage.Text)
 	if original == "" {
-		return nil
+		return ext.ContinueGroups
 	}
 	text := strings.TrimSpace(ctx.Message.Text)
 	pattern, replacement, flags, ok := parseSedCommand(text)
 	if !ok {
-		return nil
+		return ext.ContinueGroups
 	}
 
 	globalReplace := strings.Contains(flags, "g")
@@ -98,10 +98,10 @@ func (a *App) handleSed(b *gotgbot.Bot, ctx *ext.Context) error {
 	defer cancel()
 	select {
 	case <-timeoutCtx.Done():
-		return nil
+		return ext.ContinueGroups
 	case res := <-ch:
 		if res.err != nil || res.out == original {
-			return nil
+			return ext.ContinueGroups
 		}
 		scope := requestScope(ctx)
 		out := res.out
