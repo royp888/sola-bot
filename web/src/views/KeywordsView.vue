@@ -3,7 +3,7 @@
     <PageHeader eyebrow="关键词运营" title="关键词规则" description="维护关键词匹配、处理动作和群组作用范围。">
       <template #actions>
         <ChatSelect v-model="filters.chatId" @update:model-value="loadKeywords" />
-        <el-select v-model="filters.action" class="filter-select" clearable placeholder="动作">
+        <el-select v-model="filters.action" class="filter-select" clearable placeholder="动作" @change="loadKeywords">
           <el-option label="记录" value="log" />
           <el-option label="警告" value="warn" />
           <el-option label="删除" value="delete" />
