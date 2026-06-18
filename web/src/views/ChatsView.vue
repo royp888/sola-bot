@@ -81,11 +81,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="owner" label="负责人" min-width="120" />
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" @click="goUsers(row)">进入成员台</el-button>
             <el-button size="small" @click="goConfig(row)">配置</el-button>
             <el-button size="small" @click="goLogs(row)">日志</el-button>
+            <el-button size="small" type="danger" :loading="unbindingId === (row.chat_id ?? row.id)" @click="submitUnbind(row)">解绑</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -120,6 +121,7 @@
             <el-button type="primary" @click="goUsers(currentChat)">进入成员台</el-button>
             <el-button @click="goConfig(currentChat)">群组设置</el-button>
             <el-button @click="goLogs(currentChat)">积分日志</el-button>
+            <el-button type="danger" :loading="unbindingId === (currentChat.chat_id ?? currentChat.id)" @click="submitUnbind(currentChat)">解绑群组</el-button>
           </div>
           <div class="detail-note">
             {{ currentChat.description || '该资产暂无补充说明，可继续进入成员台或群组设置页完成操作。' }}
@@ -169,12 +171,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { Plus, Refresh } from "@element-plus/icons-vue";
 import { useRouter } from "vue-router";
 import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
-import { bindChat, fetchChats } from "@/api/chats";
+import { bindChat, fetchChats, unbindChat } from "@/api/chats";
 import type { ChatRecord } from "@/types/api";
 import { errorMessage } from "@/utils/helpers";
 
@@ -186,6 +188,7 @@ const saving = ref(false);
 const bindVisible = ref(false);
 const detailVisible = ref(false);
 const currentChat = ref<ChatRecord>();
+const unbindingId = ref<string | number>();
 const bindForm = reactive({
   chat_id: "",
   chat_type: "supergroup",
@@ -293,6 +296,34 @@ async function submitBind(): Promise<void> {
     ElMessage.error(errorMessage(error));
   } finally {
     saving.value = false;
+  }
+}
+
+async function submitUnbind(chat: ChatRecord): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      `确认解绑群组「${chat.title}」？解绑后该群组的所有配置数据将保留，但机器人将停止在该群响应。`,
+      "确认解绑",
+      {
+        type: "warning",
+        confirmButtonText: "确认解绑",
+        cancelButtonText: "取消",
+      },
+    );
+  } catch {
+    return;
+  }
+  const chatId = chat.chat_id ?? chat.id;
+  unbindingId.value = chatId;
+  try {
+    await unbindChat(chatId);
+    ElMessage.success("群组已解绑");
+    detailVisible.value = false;
+    await loadChats();
+  } catch (error) {
+    ElMessage.error(errorMessage(error));
+  } finally {
+    unbindingId.value = undefined;
   }
 }
 

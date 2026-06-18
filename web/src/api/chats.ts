@@ -18,3 +18,7 @@ export function bindChat(payload: {
     body: payload,
   });
 }
+
+export function unbindChat(chatId: number | string): Promise<void> {
+  return request<void>(`/chats/${chatId}/bind`, { method: "DELETE" });
+}
