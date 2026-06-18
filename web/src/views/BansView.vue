@@ -45,6 +45,17 @@
               <el-input v-model="banForm.reason" type="textarea" :rows="3" />
             </el-form-item>
             <el-button type="danger" :loading="saving" @click="submitBan">提交封禁</el-button>
+            <el-divider />
+            <el-form-item label="禁言成员">
+              <UserSelect v-model="muteForm.user_id" :chat-id="selectedChatId" />
+            </el-form-item>
+            <el-form-item label="禁言时长（分钟）">
+              <el-input-number v-model="muteForm.duration_minutes" :min="1" :max="43200" controls-position="right" style="width:100%" />
+            </el-form-item>
+            <el-form-item label="原因">
+              <el-input v-model="muteForm.reason" type="textarea" :rows="2" />
+            </el-form-item>
+            <el-button type="warning" :loading="muteSaving" @click="submitMute">提交禁言</el-button>
           </el-form>
         </PanelSection>
 
@@ -84,7 +95,7 @@ import ChatSelect from "@/components/ChatSelect.vue";
 import UserSelect from "@/components/UserSelect.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
-import { createBan, deleteBan, fetchBans, fetchWarns } from "@/api/admin";
+import { createBan, createMute, createUnmute, deleteBan, fetchBans, fetchWarns } from "@/api/admin";
 import type { BanRecord, ChatID, WarnRecord } from "@/types/api";
 import { formatDateTime } from "@/utils/helpers";
 
@@ -97,6 +108,8 @@ const warns = ref<WarnRecord[]>([]);
 const deletingId = ref<ChatID>();
 const warnUserId = ref("");
 const banForm = reactive({ user_id: "", reason: "" });
+const muteForm = reactive({ user_id: "", duration_minutes: 60, reason: "" });
+const muteSaving = ref(false);
 
 async function loadBans(): Promise<void> {
   if (!selectedChatId.value) return;
@@ -162,6 +175,38 @@ async function submitBan(): Promise<void> {
     ElMessage.error("服务暂时不可用");
   } finally {
     saving.value = false;
+  }
+}
+
+async function submitMute(): Promise<void> {
+  if (!selectedChatId.value || !muteForm.user_id) {
+    ElMessage.warning("请先选择群组和成员");
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确认禁言用户 ${muteForm.user_id} ${muteForm.duration_minutes} 分钟？`,
+      "确认禁言",
+      { type: "warning", confirmButtonText: "确认禁言", cancelButtonText: "取消" },
+    );
+  } catch {
+    return;
+  }
+  muteSaving.value = true;
+  try {
+    await createMute({
+      chat_id: selectedChatId.value,
+      user_id: muteForm.user_id,
+      duration_seconds: muteForm.duration_minutes * 60,
+      reason: muteForm.reason,
+    });
+    ElMessage.success("禁言已生效");
+    muteForm.user_id = "";
+    muteForm.reason = "";
+  } catch {
+    ElMessage.error("服务暂时不可用");
+  } finally {
+    muteSaving.value = false;
   }
 }
 
