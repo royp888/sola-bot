@@ -119,7 +119,7 @@ interface NavSection {
 
 const route = useRoute();
 const router = useRouter();
-const collapsed = ref(false);
+const collapsed = ref(localStorage.getItem("sola-sidebar-collapsed") === "1");
 const isMobile = ref(false);
 const mobileNavOpen = ref(false);
 const isDark = ref(document.documentElement.classList.contains("dark"));
@@ -239,6 +239,7 @@ function toggleNavigation(): void {
     return;
   }
   collapsed.value = !collapsed.value;
+  localStorage.setItem("sola-sidebar-collapsed", collapsed.value ? "1" : "0");
 }
 
 function closeMobileNav(): void {
