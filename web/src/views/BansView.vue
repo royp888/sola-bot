@@ -11,7 +11,8 @@
       <el-col :xs="24" :lg="16">
         <PanelSection title="封禁记录" description="对应 /api/admin/bans/:chatID 与 /api/admin/ban。">
           <div class="table-wrap">
-          <el-table :data="bans" stripe>
+          <el-empty v-if="!selectedChatId" description="请先在右上角选择群组" :image-size="80" />
+          <el-table v-else :data="bans" stripe v-loading="loading">
             <el-table-column label="用户" min-width="140">
               <template #default="{ row }">{{ row.username || row.user_id }}</template>
             </el-table-column>
@@ -99,6 +100,8 @@ const banForm = reactive({ user_id: "", reason: "" });
 
 async function loadBans(): Promise<void> {
   if (!selectedChatId.value) return;
+  warns.value = [];
+  warnUserId.value = "";
   loading.value = true;
   try {
     bans.value = await fetchBans(selectedChatId.value);
