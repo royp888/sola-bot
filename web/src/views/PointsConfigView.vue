@@ -193,7 +193,12 @@ async function submitConfig(): Promise<void> {
     return;
   }
 
-  await formRef.value?.validate();
+  try {
+    await formRef.value?.validate();
+  } catch {
+    ElMessage.warning("请检查表单填写是否正确");
+    return;
+  }
 
   saving.value = true;
   try {
