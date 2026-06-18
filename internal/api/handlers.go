@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -554,7 +555,9 @@ func (s *Server) CreateLottery(c *gin.Context) {
 
 	if s.deps.BotToken != "" {
 		go func() {
-			if err := sendTelegramLotteryAnnouncement(s.deps.BotToken, item); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if err := sendTelegramLotteryAnnouncement(ctx, s.deps.BotToken, item); err != nil {
 				log.Printf("lottery announcement (id=%d chat=%d): %v", item.ID, item.ChatID, err)
 			}
 		}()
@@ -2068,7 +2071,7 @@ func buildLotteryAnnouncementText(lottery *Lottery) string {
 	return builder.String()
 }
 
-func sendTelegramLotteryAnnouncement(token string, lottery *Lottery) error {
+func sendTelegramLotteryAnnouncement(ctx context.Context, token string, lottery *Lottery) error {
 	type inlineButton struct {
 		Text         string `json:"text"`
 		CallbackData string `json:"callback_data"`
@@ -2101,7 +2104,12 @@ func sendTelegramLotteryAnnouncement(token string, lottery *Lottery) error {
 	}
 
 	apiURL := "https://api.telegram.org/bot" + token + "/sendMessage"
-	resp, err := http.Post(apiURL, "application/json", bytes.NewReader(body)) //nolint:noctx
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		return err
 	}
