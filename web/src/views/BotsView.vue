@@ -41,6 +41,62 @@
       </div>
     </PanelSection>
 
+    <PanelSection title="Bot 全局配置" description="接口：GET/PUT /api/v1/bot/config。修改后立即生效。">
+      <template #actions>
+        <el-button :icon="Refresh" :loading="configLoading" @click="loadBotConfig">刷新</el-button>
+        <el-button type="primary" :loading="configSaving" @click="saveBotConfig">保存</el-button>
+      </template>
+      <el-form v-loading="configLoading" label-position="top" class="config-form">
+        <div class="switch-row">
+          <div>
+            <strong>Bot 总开关</strong>
+            <span>关闭后机器人停止响应所有群组消息</span>
+          </div>
+          <el-switch v-model="config.enabled" />
+        </div>
+        <div class="switch-row">
+          <div>
+            <strong>积分系统</strong>
+            <span>全局开关，关闭后所有群组积分功能停用</span>
+          </div>
+          <el-switch v-model="config.enable_points" />
+        </div>
+        <div class="switch-row">
+          <div>
+            <strong>统计追踪</strong>
+            <span>开启后记录消息量、活跃度等统计数据</span>
+          </div>
+          <el-switch v-model="config.enable_stats_tracking" />
+        </div>
+        <div class="switch-row">
+          <div>
+            <strong>允许转发消息计分</strong>
+            <span>关闭后转发的消息不计入积分</span>
+          </div>
+          <el-switch v-model="config.allow_forwarded_posts" />
+        </div>
+        <div class="switch-row">
+          <div>
+            <strong>自动删除消息</strong>
+            <span>开启后 Bot 发送的消息会在指定时间后自动删除</span>
+          </div>
+          <el-switch v-model="config.auto_delete_enabled" />
+        </div>
+        <el-form-item v-if="config.auto_delete_enabled" label="自动删除延迟（秒）">
+          <el-input-number v-model="config.auto_delete_after_secs" :min="10" :max="86400" controls-position="right" style="width:200px" />
+        </el-form-item>
+        <el-form-item label="默认语言">
+          <el-select v-model="config.default_language" style="width:200px">
+            <el-option label="中文" value="zh" />
+            <el-option label="English" value="en" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="时区">
+          <el-input v-model="config.time_zone" placeholder="Asia/Shanghai" style="width:200px" />
+        </el-form-item>
+      </el-form>
+    </PanelSection>
+
     <el-dialog v-model="detailVisible" title="机器人详情" width="520px">
       <el-descriptions v-if="currentBot" :column="1" border>
         <el-descriptions-item label="名称">{{ currentBot.name }}</el-descriptions-item>
@@ -55,12 +111,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { Plus, Refresh, Search } from "@element-plus/icons-vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PanelSection from "@/components/PanelSection.vue";
 import { fetchBots } from "@/api/bots";
+import { fetchBotConfig, updateBotConfig } from "@/api/botConfig";
+import type { BotConfig } from "@/api/botConfig";
 import type { BotRecord } from "@/types/api";
 import { formatDateTime } from "@/utils/helpers";
 
@@ -68,6 +126,18 @@ const keyword = ref("");
 const bots = ref<BotRecord[]>([]);
 const detailVisible = ref(false);
 const currentBot = ref<BotRecord>();
+const configLoading = ref(false);
+const configSaving = ref(false);
+const config = reactive<BotConfig>({
+  enabled: true,
+  default_language: "zh",
+  time_zone: "Asia/Shanghai",
+  auto_delete_enabled: false,
+  auto_delete_after_secs: 0,
+  allow_forwarded_posts: true,
+  enable_stats_tracking: true,
+  enable_points: true,
+});
 
 const filteredBots = computed(() => {
   const value = keyword.value.trim().toLowerCase();
@@ -108,7 +178,33 @@ function showDetail(bot: BotRecord): void {
   detailVisible.value = true;
 }
 
+async function loadBotConfig(): Promise<void> {
+  configLoading.value = true;
+  try {
+    const result = await fetchBotConfig();
+    Object.assign(config, result);
+  } catch {
+    ElMessage.error("获取 Bot 配置失败");
+  } finally {
+    configLoading.value = false;
+  }
+}
+
+async function saveBotConfig(): Promise<void> {
+  configSaving.value = true;
+  try {
+    const result = await updateBotConfig({ ...config });
+    Object.assign(config, result);
+    ElMessage.success("Bot 全局配置已保存");
+  } catch {
+    ElMessage.error("保存失败，请重试");
+  } finally {
+    configSaving.value = false;
+  }
+}
+
 onMounted(loadBots);
+onMounted(loadBotConfig);
 </script>
 
 <style scoped>
@@ -122,9 +218,39 @@ onMounted(loadBots);
   width: 220px;
 }
 
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.switch-row strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.switch-row span {
+  color: var(--app-muted);
+  font-size: 13px;
+}
+
 @media (max-width: 720px) {
   .search {
     width: 100%;
+  }
+
+  .switch-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>
