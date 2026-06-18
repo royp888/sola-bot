@@ -201,6 +201,7 @@ const dialogVisible = ref(false);
 const entriesVisible = ref(false);
 const lotteries = ref<LotteryRecord[]>([]);
 const entries = ref<LotteryEntryRecord[]>([]);
+const entriesSeq = ref(0);
 const entriesTitle = ref("参与者");
 const cancellingId = ref<ChatID>();
 const selectedChatId = ref<ChatID | "">("");
@@ -352,22 +353,26 @@ async function cancel(row: LotteryRecord): Promise<void> {
 }
 
 async function showEntries(row: LotteryRecord): Promise<void> {
+  const seq = ++entriesSeq.value;
   entriesTitle.value = `抽奖「${row.title || row.id}」参与者`;
+  entriesVisible.value = true;
   try {
-    entries.value = await fetchLotteryEntries(row.id);
-    entriesVisible.value = true;
+    const result = await fetchLotteryEntries(row.id);
+    if (seq === entriesSeq.value) entries.value = result;
   } catch (error) {
-    ElMessage.error(errorMessage(error));
+    if (seq === entriesSeq.value) ElMessage.error(errorMessage(error));
   }
 }
 
 async function showWinners(row: LotteryRecord): Promise<void> {
+  const seq = ++entriesSeq.value;
   entriesTitle.value = `抽奖「${row.title || row.id}」中奖名单`;
+  entriesVisible.value = true;
   try {
-    entries.value = await fetchLotteryWinners(row.id);
-    entriesVisible.value = true;
+    const result = await fetchLotteryWinners(row.id);
+    if (seq === entriesSeq.value) entries.value = result;
   } catch (error) {
-    ElMessage.error(errorMessage(error));
+    if (seq === entriesSeq.value) ElMessage.error(errorMessage(error));
   }
 }
 
