@@ -6,11 +6,22 @@
       description="把命令、来源和活跃度拆开看，方便判断运营动作是否有效。"
     >
       <template #actions>
-        <el-select v-model="range" class="select" @change="loadStats">
+        <el-select v-model="range" class="select" @change="handleRangeChange">
           <el-option label="近 7 天" value="7d" />
           <el-option label="近 30 天" value="30d" />
           <el-option label="近 90 天" value="90d" />
+          <el-option label="自定义" value="custom" />
         </el-select>
+        <el-date-picker
+          v-if="range === 'custom'"
+          v-model="customRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          @change="loadStats"
+        />
         <el-button :icon="Refresh" @click="loadStats">刷新</el-button>
       </template>
     </PageHeader>
@@ -94,6 +105,7 @@ type ChartOption = ComposeOption<
 >;
 
 const range = ref("7d");
+const customRange = ref<[string, string] | null>(null);
 const activityChartRef = ref<HTMLDivElement>();
 const sourceChartRef = ref<HTMLDivElement>();
 const pointsChartRef = ref<HTMLDivElement>();
@@ -109,7 +121,11 @@ let pointsChart: ECharts | undefined;
 
 async function loadStats(): Promise<void> {
   try {
-    const response = await fetchStats(range.value);
+    const response = await fetchStats(
+      range.value,
+      customRange.value?.[0],
+      customRange.value?.[1],
+    );
     Object.assign(summary, response);
     await nextTick();
     renderCharts();
@@ -119,6 +135,13 @@ async function loadStats(): Promise<void> {
     renderCharts();
     ElMessage.error("统计接口不可用");
   }
+}
+
+function handleRangeChange(): void {
+  if (range.value !== "custom") {
+    customRange.value = null;
+  }
+  void loadStats();
 }
 
 function renderCharts(): void {

@@ -27,8 +27,10 @@ interface PointsResponse {
   points: number;
 }
 
-export function fetchStats(range: string): Promise<StatsOverview> {
-  const { from, to } = resolveRange(range);
+export function fetchStats(range: string, customFrom?: string, customTo?: string): Promise<StatsOverview> {
+  const { from, to } = range === "custom" && customFrom && customTo
+    ? { from: customFrom, to: customTo }
+    : resolveRange(range);
   const query = new URLSearchParams({ from, to }).toString();
 
   return Promise.all([
