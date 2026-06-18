@@ -22,6 +22,7 @@ func (a *App) registerPointsHandlers(d *ext.Dispatcher) {
 	d.AddHandler(handlers.NewCommand("stat", a.wrap(a.handleTodayStats, a.RequirePermission(PermissionStats), a.RateLimit("cmd:stat", 1))))
 	d.AddHandler(handlers.NewCommand("stat_week", a.wrap(a.handleWeekStats, a.RequirePermission(PermissionStats), a.RateLimit("cmd:stat_week", 1))))
 	d.AddHandler(handlers.NewCommand("stats", a.wrap(a.handleCustomStats, a.RequirePermission(PermissionStats), a.RateLimit("cmd:stats", 1))))
+	// IMPORTANT: see above — must return ext.ContinueGroups on non-handled paths.
 	d.AddHandler(handlers.NewMessage(message.All, a.handleMessagePoints))
 }
 

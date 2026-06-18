@@ -14,6 +14,8 @@ import (
 )
 
 func (a *App) registerSedHandlers(d *ext.Dispatcher) {
+	// IMPORTANT: message.All handlers MUST return ext.ContinueGroups (not nil/EndGroups)
+	// on non-handled paths, otherwise all subsequently registered command handlers are silently blocked.
 	d.AddHandler(handlers.NewMessage(message.Text, a.handleSed))
 }
 
