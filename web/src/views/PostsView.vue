@@ -510,13 +510,23 @@ function cronValidationMessage(expr: string): string | undefined {
 
 function cronPartError(part: string, range: { min: number; max: number; name: string }): string | undefined {
   if (part === "*") return undefined;
-  const values = part.split(",");
+  // Support step syntax: */5 or 1-5/2
+  const [base, step] = part.split("/");
+  if (step !== undefined) {
+    const parsedStep = Number(step);
+    if (!Number.isInteger(parsedStep) || parsedStep < 1) {
+      return `${range.name}字段步长必须为正整数`;
+    }
+    if (base === "*") return undefined;
+  }
+  const effectivePart = step !== undefined ? base : part;
+  const values = effectivePart.split(",");
   for (const value of values) {
     const [start, end] = value.split("-");
     const parsedStart = Number(start);
     const parsedEnd = end == null ? parsedStart : Number(end);
     if (!Number.isInteger(parsedStart) || !Number.isInteger(parsedEnd)) {
-      return `${range.name}字段仅支持 *、数字、范围或逗号分隔`;
+      return `${range.name}字段仅支持 *、数字、范围、步长（*/n）或逗号分隔`;
     }
     if (parsedStart < range.min || parsedEnd > range.max || parsedStart > parsedEnd) {
       return `${range.name}字段超出范围`;
