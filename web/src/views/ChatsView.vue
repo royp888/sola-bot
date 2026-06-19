@@ -314,6 +314,10 @@ async function submitUnbind(chat: ChatRecord): Promise<void> {
     return;
   }
   const chatId = chat.chat_id ?? chat.id;
+  if (chatId == null) {
+    ElMessage.error("缺少群组 ID，无法解绑");
+    return;
+  }
   unbindingId.value = chatId;
   try {
     await unbindChat(chatId);
