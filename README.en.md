@@ -208,6 +208,7 @@ Without Compose, run the SQL files manually in order. When upgrading, only apply
 
 ## Changelog
 
+- **2026-06-20** v1.0.5 — Fix silent failure when chat_id is null in the web admin chat-unbind flow
 - **2026-06-18** v1.0.4 — Fix 10 frontend bugs (points config submit hang, cron step syntax, keyword filter change event, ban page empty state & loading, lottery race condition, sidebar state persistence, etc.); add four features: chat unbind, mute/unmute form, custom date range in stats, bot global config form
 - **2026-06-18** v1.0.3 — Fix four bugs: keyword filter not deleting messages, no group announcement when lottery is created, verify button unresponsive in regular groups, /lottery command returning no response
 - **2026-06-17** v1.0.2 — Fix worker scheduler deadlock (self-lock when runDueJobs holds r.mu and calls increment/resetScheduledPostFailure); fix stale points in user detail panel after adjustment; fix chat_id/user_id type coercion and silent error swallowing in UsersView
