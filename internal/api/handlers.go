@@ -1820,6 +1820,73 @@ func (s *Server) DeleteTemplate(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (s *Server) ListButtonTemplates(c *gin.Context) {
+	if s.deps.ButtonTemplates == nil {
+		writeError(c, http.StatusInternalServerError, "button template service is not configured")
+		return
+	}
+	var query ButtonTemplateListQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	query.OwnerUserID = s.ownerUserID(c)
+	items, err := s.deps.ButtonTemplates.List(c.Request.Context(), query)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
+func (s *Server) CreateButtonTemplate(c *gin.Context) {
+	if s.deps.ButtonTemplates == nil {
+		writeError(c, http.StatusInternalServerError, "button template service is not configured")
+		return
+	}
+	var req ButtonTemplateCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	item, err := s.deps.ButtonTemplates.Create(c.Request.Context(), req, s.ownerUserID(c))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (s *Server) UpdateButtonTemplate(c *gin.Context) {
+	if s.deps.ButtonTemplates == nil {
+		writeError(c, http.StatusInternalServerError, "button template service is not configured")
+		return
+	}
+	var req ButtonTemplateUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	item, err := s.deps.ButtonTemplates.Update(c.Request.Context(), c.Param("template_id"), req, s.ownerUserID(c))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (s *Server) DeleteButtonTemplate(c *gin.Context) {
+	if s.deps.ButtonTemplates == nil {
+		writeError(c, http.StatusInternalServerError, "button template service is not configured")
+		return
+	}
+	if err := s.deps.ButtonTemplates.Delete(c.Request.Context(), c.Param("template_id"), s.ownerUserID(c)); err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (s *Server) ListInviteLinks(c *gin.Context) {
 	if s.deps.InviteLinks == nil {
 		writeError(c, http.StatusInternalServerError, "invite link service is not configured")

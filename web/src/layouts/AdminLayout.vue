@@ -94,6 +94,7 @@ import {
   Menu,
   MessageBox,
   Moon,
+  Operation,
   Setting,
   Sunny,
   Tickets,
@@ -173,6 +174,7 @@ const navSections: NavSection[] = [
     items: [
       { path: "/posts", label: "发布任务", description: "安排图文、视频与定时发布任务", icon: Calendar },
       { path: "/templates", label: "内容模板", description: "沉淀常用发布内容与消息模板", icon: Files },
+      { path: "/button-templates", label: "快捷键盘", description: "自定义内联按钮键盘并复用于帖子", icon: Operation },
       { path: "/lottery", label: "活动抽奖", description: "管理进行中与历史抽奖活动", icon: Tickets },
     ],
   },

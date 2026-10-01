@@ -268,6 +268,8 @@ export interface ScheduledPostRecord {
   auto_delete_seconds?: number;
   clear_inline_media?: boolean;
   media_data_base64?: string;
+  inline_keyboard_json?: string;
+  button_template_id?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -309,6 +311,38 @@ export interface MessageTemplatePayload {
 }
 
 export type MessageTemplateUpdatePayload = Partial<MessageTemplatePayload>;
+
+export interface InlineKeyboardButton {
+  text: string;
+  url?: string;
+  callback_data?: string;
+}
+
+export type InlineKeyboardRows = InlineKeyboardButton[][];
+
+export interface ButtonTemplateRecord {
+  id: string;
+  owner_user_id?: string;
+  name: string;
+  scope: string;
+  inline_keyboard_json?: string;
+  description?: string;
+  is_active: boolean;
+  metadata_json?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ButtonTemplatePayload {
+  name: string;
+  scope?: string;
+  inline_keyboard_json?: string;
+  description?: string;
+  is_active?: boolean;
+  metadata_json?: string;
+}
+
+export type ButtonTemplateUpdatePayload = Partial<ButtonTemplatePayload>;
 
 export interface InviteLinkRecord {
   id: ChatID;

@@ -19,6 +19,7 @@ const PointsConfigView = () => import("@/views/PointsConfigView.vue");
 const PostsView = () => import("@/views/PostsView.vue");
 const StatsView = () => import("@/views/StatsView.vue");
 const TemplatesView = () => import("@/views/TemplatesView.vue");
+const ButtonTemplatesView = () => import("@/views/ButtonTemplatesView.vue");
 const UsersView = () => import("@/views/UsersView.vue");
 const AuditLogsView = () => import("@/views/AuditLogsView.vue");
 const ViolationsView = () => import("@/views/ViolationsView.vue");
@@ -171,6 +172,14 @@ const router = createRouter({
           component: TemplatesView,
           meta: {
             title: "内容模板",
+          },
+        },
+        {
+          path: "button-templates",
+          name: "button-templates",
+          component: ButtonTemplatesView,
+          meta: {
+            title: "快捷键盘",
           },
         },
         {

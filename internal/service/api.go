@@ -27,27 +27,29 @@ func NewAPIDependencies(cfg config.Config, st *store.Store) api.Dependencies {
 	levels := NewLevelService(st)
 	moderation := NewModerationService(st)
 	autoReplies := NewAutoReplyService(st)
+	buttonTemplates := NewButtonTemplateService(st)
 	return api.Dependencies{
-		Auth:             admin,
-		BotConfig:        &botConfigService{},
-		Chats:            &chatBindingService{store: st},
-		ChatPointConfigs: &chatPointConfigService{points: NewPointsService(st)},
-		Points:           &pointsAPIService{points: NewPointsService(st)},
-		Admin:            &adminAPIService{admin: NewAdminService(st, st.Redis), botToken: cfg.Bot.Token},
-		Lotteries:        &lotteryAPIService{lotteries: NewLotteryService(st), store: st},
-		Levels:           &levelAPIService{levels: levels},
-		AdminViolations:  &adminViolationAPIService{moderation: moderation},
-		Keywords:         &keywordAPIService{moderation: moderation},
-		AutoReplies:      &autoReplyAPIService{service: autoReplies},
-		Backups:          &backupAPIService{backup: NewBackupService(st)},
-		Templates:        &templateAPIService{templates: NewMessageTemplateService(st)},
-		InviteLinks:      &inviteLinkAPIService{inviteLinks: NewInviteLinkService(st, cfg.Bot.Token)},
-		Posts:            &postAPIService{store: st},
-		Schedules:        &scheduleAPIService{store: st},
-		Stats:            &statsAPIService{store: st},
-		Users:            &userAPIService{store: st},
-		AuditLogs:        &auditLogAPIService{store: st},
-		SystemSettings:   &systemSettingsService{store: st, cfg: cfg},
+		Auth:                  admin,
+		BotConfig:             &botConfigService{},
+		Chats:                 &chatBindingService{store: st},
+		ChatPointConfigs:      &chatPointConfigService{points: NewPointsService(st)},
+		Points:                &pointsAPIService{points: NewPointsService(st)},
+		Admin:                 &adminAPIService{admin: NewAdminService(st, st.Redis), botToken: cfg.Bot.Token},
+		Lotteries:             &lotteryAPIService{lotteries: NewLotteryService(st), store: st},
+		Levels:                &levelAPIService{levels: levels},
+		AdminViolations:       &adminViolationAPIService{moderation: moderation},
+		Keywords:              &keywordAPIService{moderation: moderation},
+		AutoReplies:           &autoReplyAPIService{service: autoReplies},
+		Backups:               &backupAPIService{backup: NewBackupService(st)},
+		Templates:             &templateAPIService{templates: NewMessageTemplateService(st)},
+		ButtonTemplates:       &buttonTemplateAPIService{buttonTemplates: buttonTemplates},
+		InviteLinks:           &inviteLinkAPIService{inviteLinks: NewInviteLinkService(st, cfg.Bot.Token)},
+		Posts:                 &postAPIService{store: st, buttonTemplates: buttonTemplates},
+		Schedules:             &scheduleAPIService{store: st},
+		Stats:                 &statsAPIService{store: st},
+		Users:                 &userAPIService{store: st},
+		AuditLogs:             &auditLogAPIService{store: st},
+		SystemSettings:        &systemSettingsService{store: st, cfg: cfg},
 		Redis:                 st.Redis,
 		AllowedOriginSet:      cfg.App.AllowedOrigins,
 		EnableSwagger:         cfg.App.EnableSwagger,
@@ -1163,6 +1165,145 @@ func (s *templateAPIService) Delete(ctx context.Context, id string, ownerUserID 
 	return s.templates.Delete(ctx, id)
 }
 
+func buttonTemplateToAPI(record model.ButtonTemplate) api.ButtonTemplate {
+	ownerUserID := ""
+	if record.OwnerUserID != nil {
+		ownerUserID = record.OwnerUserID.String()
+	}
+	description := ""
+	if record.Description != nil {
+		description = *record.Description
+	}
+	return api.ButtonTemplate{
+		ID:                 record.ID.String(),
+		OwnerUserID:        ownerUserID,
+		Name:               record.Name,
+		Scope:              record.Scope,
+		InlineKeyboardJSON: record.InlineKeyboardJSON,
+		Description:        description,
+		IsActive:           record.IsActive,
+		MetadataJSON:       record.MetadataJSON,
+		CreatedAt:          record.CreatedAt,
+		UpdatedAt:          record.UpdatedAt,
+	}
+}
+
+type buttonTemplateAPIService struct {
+	buttonTemplates *ButtonTemplateService
+}
+
+func (s *buttonTemplateAPIService) List(ctx context.Context, query api.ButtonTemplateListQuery) (*api.CursorListResponse[api.ButtonTemplate], error) {
+	if s == nil || s.buttonTemplates == nil {
+		return &api.CursorListResponse[api.ButtonTemplate]{Items: []api.ButtonTemplate{}}, nil
+	}
+	records, err := s.buttonTemplates.List(ctx, ButtonTemplateListFilter{
+		OwnerUserID: query.OwnerUserID,
+		Scope:       query.Scope,
+		Keyword:     query.Keyword,
+		Limit:       query.Limit + 1,
+		Offset:      query.Offset,
+		Cursor:      query.Cursor,
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := records
+	nextCursor := ""
+	if len(records) > query.Limit && query.Limit > 0 {
+		items = records[:query.Limit]
+		last := items[len(items)-1]
+		nextCursor = encodeUUIDCursor(last.CreatedAt, last.ID)
+	}
+	out := make([]api.ButtonTemplate, 0, len(items))
+	for _, record := range items {
+		out = append(out, buttonTemplateToAPI(record))
+	}
+	return &api.CursorListResponse[api.ButtonTemplate]{Items: out, NextCursor: nextCursor}, nil
+}
+
+func (s *buttonTemplateAPIService) Create(ctx context.Context, req api.ButtonTemplateCreateRequest, ownerUserID string) (*api.ButtonTemplate, error) {
+	if s == nil || s.buttonTemplates == nil {
+		return nil, gorm.ErrInvalidDB
+	}
+	var ownerUUID *uuid.UUID
+	if strings.TrimSpace(ownerUserID) != "" {
+		parsed, err := uuid.Parse(strings.TrimSpace(ownerUserID))
+		if err != nil {
+			return nil, err
+		}
+		ownerUUID = &parsed
+	}
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+	record, err := s.buttonTemplates.Create(ctx, ButtonTemplateCreate{
+		OwnerUserID:        ownerUUID,
+		Name:               req.Name,
+		Scope:              req.Scope,
+		InlineKeyboardJSON: req.InlineKeyboardJSON,
+		Description:        req.Description,
+		IsActive:           isActive,
+		MetadataJSON:       req.MetadataJSON,
+	})
+	if err != nil {
+		return nil, err
+	}
+	item := buttonTemplateToAPI(record)
+	return &item, nil
+}
+
+func (s *buttonTemplateAPIService) Update(ctx context.Context, id string, req api.ButtonTemplateUpdateRequest, ownerUserID string) (*api.ButtonTemplate, error) {
+	if s == nil || s.buttonTemplates == nil {
+		return nil, gorm.ErrInvalidDB
+	}
+	if err := s.ensureButtonTemplateOwnership(ctx, id, ownerUserID); err != nil {
+		return nil, err
+	}
+	record, err := s.buttonTemplates.Update(ctx, id, ButtonTemplatePatch{
+		Name:               req.Name,
+		Scope:              req.Scope,
+		InlineKeyboardJSON: req.InlineKeyboardJSON,
+		Description:        req.Description,
+		IsActive:           req.IsActive,
+		MetadataJSON:       req.MetadataJSON,
+	})
+	if err != nil {
+		return nil, err
+	}
+	item := buttonTemplateToAPI(record)
+	return &item, nil
+}
+
+func (s *buttonTemplateAPIService) Delete(ctx context.Context, id string, ownerUserID string) error {
+	if s == nil || s.buttonTemplates == nil {
+		return nil
+	}
+	if err := s.ensureButtonTemplateOwnership(ctx, id, ownerUserID); err != nil {
+		return err
+	}
+	return s.buttonTemplates.Delete(ctx, id)
+}
+
+func (s *buttonTemplateAPIService) ensureButtonTemplateOwnership(ctx context.Context, id string, ownerUserID string) error {
+	// Super admin (empty owner) bypasses ownership checks.
+	if strings.TrimSpace(ownerUserID) == "" {
+		return nil
+	}
+	record, err := s.buttonTemplates.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	// Owner-less (global) templates are editable by any admin.
+	if record.OwnerUserID == nil {
+		return nil
+	}
+	if record.OwnerUserID.String() != strings.TrimSpace(ownerUserID) {
+		return errors.New("forbidden")
+	}
+	return nil
+}
+
 type inviteLinkAPIService struct {
 	inviteLinks *InviteLinkService
 }
@@ -1253,7 +1394,30 @@ func (s *inviteLinkAPIService) Delete(ctx context.Context, id string, ownerUserI
 	return s.inviteLinks.Delete(ctx, id)
 }
 
-type postAPIService struct{ store *store.Store }
+type postAPIService struct {
+	store           *store.Store
+	buttonTemplates *ButtonTemplateService
+}
+
+// resolvePostInlineKeyboard resolves the inline keyboard for a post. If a
+// button_template_id is provided the saved quick-keyboard template is used;
+// otherwise the raw inline_keyboard_json is validated and normalized.
+func (s *postAPIService) resolvePostInlineKeyboard(ctx context.Context, inlineJSON string, templateID *string) (string, error) {
+	if templateID != nil && strings.TrimSpace(*templateID) != "" {
+		if s.buttonTemplates == nil {
+			return "", errors.New("button templates are unavailable")
+		}
+		tpl, err := s.buttonTemplates.Get(ctx, strings.TrimSpace(*templateID))
+		if err != nil {
+			return "", err
+		}
+		return normalizeInlineKeyboardJSON(tpl.InlineKeyboardJSON), nil
+	}
+	if err := ValidateInlineKeyboardJSON(inlineJSON); err != nil {
+		return "", err
+	}
+	return normalizeInlineKeyboardJSON(inlineJSON), nil
+}
 
 func (s *postAPIService) Create(ctx context.Context, req api.PostCreateRequest) (*api.Post, error) {
 	now := time.Now()
@@ -1292,20 +1456,25 @@ func (s *postAPIService) Create(ctx context.Context, req api.PostCreateRequest) 
 	if err != nil {
 		return nil, err
 	}
+	inlineKeyboard, err := s.resolvePostInlineKeyboard(ctx, req.InlineKeyboardJSON, req.ButtonTemplateID)
+	if err != nil {
+		return nil, err
+	}
 	post := model.ScheduledPost{
-		ChatID:            req.ChatID,
-		Title:             req.Title,
-		Content:           req.Content,
-		MediaURL:          mediaURL,
-		MediaName:         mediaName,
-		MediaMime:         mediaMime,
-		MediaData:         mediaData,
-		MediaType:         req.MediaType,
-		CronExpr:          req.CronExpr,
-		RunOnceAt:         runOnceAt,
-		Enabled:           enabled,
-		CreatedAt:         now,
-		AutoDeleteSeconds: req.AutoDeleteSeconds,
+		ChatID:             req.ChatID,
+		Title:              req.Title,
+		Content:            req.Content,
+		MediaURL:           mediaURL,
+		MediaName:          mediaName,
+		MediaMime:          mediaMime,
+		MediaData:          mediaData,
+		MediaType:          req.MediaType,
+		CronExpr:           req.CronExpr,
+		RunOnceAt:          runOnceAt,
+		Enabled:            enabled,
+		CreatedAt:          now,
+		InlineKeyboardJSON: inlineKeyboard,
+		AutoDeleteSeconds:  req.AutoDeleteSeconds,
 	}
 	if req.PinAfterSend != nil {
 		post.PinAfterSend = *req.PinAfterSend
@@ -1454,6 +1623,17 @@ func (s *postAPIService) Update(ctx context.Context, id string, req api.PostUpda
 	}
 	if req.AutoDeleteSeconds != nil {
 		updates["auto_delete_seconds"] = *req.AutoDeleteSeconds
+	}
+	if req.InlineKeyboardJSON != nil || req.ButtonTemplateID != nil {
+		raw := ""
+		if req.InlineKeyboardJSON != nil {
+			raw = *req.InlineKeyboardJSON
+		}
+		inlineKeyboard, err := s.resolvePostInlineKeyboard(ctx, raw, req.ButtonTemplateID)
+		if err != nil {
+			return nil, err
+		}
+		updates["inline_keyboard_json"] = inlineKeyboard
 	}
 	if len(updates) > 0 {
 		if err := s.store.DB.WithContext(ctx).Model(&model.ScheduledPost{}).Where("id = ?", parsed).Updates(updates).Error; err != nil {
@@ -2389,25 +2569,26 @@ func modelPostToAPI(post model.Post, chatID int64) *api.Post {
 
 func modelScheduledPostToAPI(post model.ScheduledPost) api.Post {
 	return api.Post{
-		ID:                strconv.FormatUint(post.ID, 10),
-		ChatID:            post.ChatID,
-		Title:             post.Title,
-		Content:           post.Content,
-		MediaURL:          post.MediaURL,
-		MediaName:         post.MediaName,
-		MediaMime:         post.MediaMime,
-		HasInlineMedia:    len(post.MediaData) > 0,
-		MediaType:         post.MediaType,
-		CronExpr:          post.CronExpr,
-		RunOnceAt:         post.RunOnceAt,
-		Enabled:           post.Enabled,
-		LastRunAt:         post.LastRunAt,
-		PublishAt:         post.RunOnceAt,
-		Status:            scheduledPostStatus(post.Enabled),
-		CreatedAt:         post.CreatedAt,
-		UpdatedAt:         post.CreatedAt,
-		PinAfterSend:      post.PinAfterSend,
-		AutoDeleteSeconds: post.AutoDeleteSeconds,
+		ID:                 strconv.FormatUint(post.ID, 10),
+		ChatID:             post.ChatID,
+		Title:              post.Title,
+		Content:            post.Content,
+		MediaURL:           post.MediaURL,
+		MediaName:          post.MediaName,
+		MediaMime:          post.MediaMime,
+		HasInlineMedia:     len(post.MediaData) > 0,
+		MediaType:          post.MediaType,
+		CronExpr:           post.CronExpr,
+		RunOnceAt:          post.RunOnceAt,
+		Enabled:            post.Enabled,
+		LastRunAt:          post.LastRunAt,
+		PublishAt:          post.RunOnceAt,
+		Status:             scheduledPostStatus(post.Enabled),
+		CreatedAt:          post.CreatedAt,
+		UpdatedAt:          post.CreatedAt,
+		PinAfterSend:       post.PinAfterSend,
+		AutoDeleteSeconds:  post.AutoDeleteSeconds,
+		InlineKeyboardJSON: post.InlineKeyboardJSON,
 	}
 }
 

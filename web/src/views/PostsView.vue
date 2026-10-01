@@ -230,6 +230,34 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="快捷键盘（内联按钮）">
+          <el-select
+            v-model="selectedKeyboardId"
+            class="wide-control"
+            clearable
+            filterable
+            placeholder="选择已保存的快捷键盘（可选）"
+            @change="applyKeyboard"
+          >
+            <el-option
+              v-for="keyboard in keyboardTemplates"
+              :key="keyboard.id"
+              :label="keyboardTemplateLabel(keyboard)"
+              :value="String(keyboard.id)"
+            />
+          </el-select>
+          <div v-if="selectedKeyboardId" class="keyboard-hint">
+            {{ keyboardHintText }}
+          </div>
+        </el-form-item>
+        <el-form-item label="自定义按钮 JSON（高级，可选）">
+          <el-input
+            v-model="form.inline_keyboard_json"
+            type="textarea"
+            :rows="3"
+            placeholder='例如 [ [ {"text":"官网","url":"https://example.com"} ] ]'
+          />
+        </el-form-item>
         <el-alert class="preview" :type="scheduleCheck.type" :closable="false" show-icon :title="scheduleCheck.title" />
         <el-alert class="preview" type="info" :closable="false" show-icon :title="schedulePreview" />
       </el-form>
@@ -257,7 +285,8 @@ import {
   updateScheduledPost,
 } from "@/api/posts";
 import { fetchTemplates } from "@/api/templates";
-import type { ChatID, MessageTemplateRecord, ScheduledPostPayload, ScheduledPostRecord } from "@/types/api";
+import { fetchButtonTemplates } from "@/api/buttonTemplates";
+import type { ButtonTemplateRecord, ChatID, InlineKeyboardRows, MessageTemplateRecord, ScheduledPostPayload, ScheduledPostRecord } from "@/types/api";
 import { formatChinaInputDateTime, parseChinaLocalDateTimeToISO } from "@/utils/datetime";
 import { parseNumericId, formatDateTime, errorMessage } from "@/utils/helpers";
 
@@ -269,6 +298,8 @@ const selectedChatId = ref<ChatID | "">("");
 const statusFilter = ref<"all" | "enabled" | "disabled">("all");
 const scheduleFilter = ref<"all" | "once" | "recurring">("all");
 const templates = ref<MessageTemplateRecord[]>([]);
+const keyboardTemplates = ref<ButtonTemplateRecord[]>([]);
+const selectedKeyboardId = ref("");
 const deletingId = ref<ChatID>();
 const editingPost = ref<ScheduledPostRecord>();
 const selectedTemplateId = ref("");
@@ -310,6 +341,8 @@ const form = reactive<ScheduledPostPayload>({
   enabled: true,
   pin_after_send: false,
   auto_delete_seconds: 0,
+  inline_keyboard_json: "",
+  button_template_id: "",
 });
 
 const schedulePreview = computed(() => {
@@ -570,6 +603,8 @@ function buildPayload(): ScheduledPostPayload | undefined {
     enabled: form.enabled,
     pin_after_send: Boolean(form.pin_after_send),
     auto_delete_seconds: Number(form.auto_delete_seconds || 0),
+    button_template_id: selectedKeyboardId.value ? selectedKeyboardId.value : undefined,
+    inline_keyboard_json: form.inline_keyboard_json ? form.inline_keyboard_json.trim() : undefined,
   };
 }
 
@@ -590,13 +625,17 @@ function openCreate(): void {
     enabled: true,
     pin_after_send: false,
     auto_delete_seconds: 0,
+    inline_keyboard_json: "",
+    button_template_id: "",
   });
   mediaFile.value = null;
   existingInlineMediaName.value = "";
   existingInlineMediaMime.value = "";
   selectedTemplateId.value = "";
+  selectedKeyboardId.value = "";
   scheduleMode.value = "once";
   void loadTemplatesForPost();
+  void loadKeyboardsForPost();
   dialogVisible.value = true;
 }
 
@@ -651,13 +690,17 @@ function openEdit(row: ScheduledPostRecord): void {
     enabled: row.enabled,
     pin_after_send: Boolean(row.pin_after_send),
     auto_delete_seconds: row.auto_delete_seconds || 0,
+    inline_keyboard_json: row.inline_keyboard_json || "",
+    button_template_id: row.button_template_id || "",
   });
   mediaFile.value = null;
   existingInlineMediaName.value = row.media_name || "";
   existingInlineMediaMime.value = row.media_mime || "";
   selectedTemplateId.value = "";
+  selectedKeyboardId.value = row.button_template_id || "";
   applyScheduleFromPost(row);
   void loadTemplatesForPost();
+  void loadKeyboardsForPost();
   dialogVisible.value = true;
 }
 
@@ -666,6 +709,47 @@ async function loadTemplatesForPost(): Promise<void> {
     templates.value = (await fetchTemplates(form.chat_id || undefined)).items;
   } catch {
     templates.value = [];
+  }
+}
+
+async function loadKeyboardsForPost(): Promise<void> {
+  try {
+    keyboardTemplates.value = (await fetchButtonTemplates()).items;
+  } catch {
+    keyboardTemplates.value = [];
+  }
+}
+
+function applyKeyboard(): void {
+  if (!selectedKeyboardId.value) {
+    form.button_template_id = "";
+    return;
+  }
+  form.button_template_id = selectedKeyboardId.value;
+}
+
+function keyboardTemplateLabel(keyboard: ButtonTemplateRecord): string {
+  const scope = keyboard.scope === "personal" ? "个人" : "全局";
+  return `${keyboard.name}（${scope}）`;
+}
+
+const keyboardHintText = computed(() => {
+  const keyboard = keyboardTemplates.value.find((item) => String(item.id) === String(selectedKeyboardId.value));
+  if (!keyboard) return "";
+  const rows = parseKeyboardPreview(keyboard.inline_keyboard_json);
+  if (!rows.length) return "该键盘尚未配置按钮";
+  const buttons = rows.flat().map((btn) => btn.text || "按钮");
+  return `将附带按钮：${buttons.join("、")}`;
+});
+
+function parseKeyboardPreview(raw?: string): InlineKeyboardRows {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((row) => Array.isArray(row));
+  } catch {
+    return [];
   }
 }
 

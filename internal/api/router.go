@@ -106,6 +106,10 @@ func NewRouter(deps Dependencies) *gin.Engine {
 			compatSecured.POST("/templates", server.CreateTemplate)
 			compatSecured.PUT("/templates/:template_id", server.UpdateTemplate)
 			compatSecured.DELETE("/templates/:template_id", server.DeleteTemplate)
+			compatSecured.GET("/button-templates", server.ListButtonTemplates)
+			compatSecured.POST("/button-templates", server.CreateButtonTemplate)
+			compatSecured.PUT("/button-templates/:template_id", server.UpdateButtonTemplate)
+			compatSecured.DELETE("/button-templates/:template_id", server.DeleteButtonTemplate)
 			compatSecured.GET("/invite-links", server.ListInviteLinks)
 			compatSecured.POST("/invite-links", server.CreateInviteLink)
 			compatSecured.DELETE("/invite-links/:invite_link_id", server.DeleteInviteLink)
@@ -250,6 +254,15 @@ func NewRouter(deps Dependencies) *gin.Engine {
 				templates.PUT("/:template_id", server.UpdateTemplate)
 				templates.PATCH("/:template_id", server.UpdateTemplate)
 				templates.DELETE("/:template_id", server.DeleteTemplate)
+			}
+
+			buttonTemplates := secured.Group("/button-templates")
+			{
+				buttonTemplates.GET("", server.ListButtonTemplates)
+				buttonTemplates.POST("", server.CreateButtonTemplate)
+				buttonTemplates.PUT("/:template_id", server.UpdateButtonTemplate)
+				buttonTemplates.PATCH("/:template_id", server.UpdateButtonTemplate)
+				buttonTemplates.DELETE("/:template_id", server.DeleteButtonTemplate)
 			}
 
 			inviteLinks := secured.Group("/invite-links")
