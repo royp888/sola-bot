@@ -9,7 +9,10 @@ type ScheduledPostDelivery struct {
 	MessageID       int64      `gorm:"not null" json:"message_id"`
 	AutoDeleteAt    *time.Time `gorm:"index" json:"auto_delete_at,omitempty"`
 	AutoDeletedAt   *time.Time `gorm:"index" json:"auto_deleted_at,omitempty"`
-	CreatedAt       time.Time  `gorm:"not null;default:now()" json:"created_at"`
+	// Status: sent / failed；Error 保存失败原因（例如机器人不是该频道管理员）
+	Status    string    `gorm:"size:16;not null;default:'sent'" json:"status"`
+	Error     string    `gorm:"type:text;not null;default:''" json:"error"`
+	CreatedAt time.Time `gorm:"not null;default:now()" json:"created_at"`
 }
 
 func (ScheduledPostDelivery) TableName() string {

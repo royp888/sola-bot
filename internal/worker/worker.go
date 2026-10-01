@@ -29,11 +29,20 @@ type Runner struct {
 	tgBot            *gotgbot.Bot
 	mu               sync.Mutex
 	muPost           sync.Mutex // separate mutex for postFailureCount to avoid deadlock when called from within r.mu
+	muBroadcast      sync.Mutex // broadcasts are slow; keep them off r.mu
+	muForwards       sync.Mutex // 历史补发也很慢，单独一把锁
 	postFailureCount map[uint64]int
+	forwardEngine    *service.ForwardEngine
 }
 
 func New(cfg config.Config, st *store.Store, log *zap.Logger) *Runner {
-	return &Runner{cfg: cfg, store: st, log: log, postFailureCount: make(map[uint64]int)}
+	return &Runner{
+		cfg:              cfg,
+		store:            st,
+		log:              log,
+		postFailureCount: make(map[uint64]int),
+		forwardEngine:    service.NewForwardEngine(st, cfg.Bot.Token, log),
+	}
 }
 
 func (r *Runner) Run(ctx context.Context) error {
@@ -56,6 +65,26 @@ func (r *Runner) Run(ctx context.Context) error {
 		gocron.NewTask(r.runDueJobs),
 	)
 	if err != nil {
+		return err
+	}
+
+	if _, err = sched.NewJob(
+		gocron.DurationJob(3*time.Second),
+		gocron.NewTask(r.runDueBroadcasts),
+		gocron.WithName("broadcasts"),
+		gocron.WithTags("broadcast"),
+	); err != nil {
+		return err
+	}
+
+	// 历史批量转发：每条规则按自己的 delay_ms 慢慢补发
+	if _, err = sched.NewJob(
+		gocron.DurationJob(2*time.Second),
+		gocron.NewTask(r.runDueForwards),
+		gocron.WithName("forwards"),
+		gocron.WithTags("forward"),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	); err != nil {
 		return err
 	}
 
@@ -249,12 +278,20 @@ func (r *Runner) sendScheduledPost(ctx context.Context, post model.ScheduledPost
 	if content == "" {
 		content = strings.TrimSpace(post.Title)
 	}
-	mediaURL := strings.TrimSpace(post.MediaURL)
-	mediaName := strings.TrimSpace(post.MediaName)
-	if mediaName == "" {
-		mediaName = "media-upload"
-	}
 	hasInlineMedia := len(post.MediaData) > 0
+	mediaType := strings.ToLower(strings.TrimSpace(post.MediaType))
+	mediaURL := strings.TrimSpace(post.MediaURL)
+
+	switch mediaType {
+	case "photo", "video", "document", "file":
+		if !hasInlineMedia && mediaURL == "" {
+			return fmt.Errorf("%s scheduled post requires media", mediaType)
+		}
+	default:
+		if content == "" {
+			return fmt.Errorf("text scheduled post requires content")
+		}
+	}
 
 	keyboard, err := parseInlineKeyboard(post.InlineKeyboardJSON)
 	if err != nil {
@@ -262,90 +299,189 @@ func (r *Runner) sendScheduledPost(ctx context.Context, post model.ScheduledPost
 	}
 
 	parseMode := strings.TrimSpace(post.ParseMode)
-	if parseMode == "" {
+	switch strings.ToLower(parseMode) {
+	case "":
 		parseMode = "HTML"
+	case "plain", "text", "none", "off":
+		// 纯文本：不解析任何标记，含 < > & 的文案也不会报错
+		parseMode = ""
 	}
 
-	var sent *gotgbot.Message
+	// 多渠道投放：第一个目标负责真正上传媒体，拿到 file_id 后其余频道直接引用，
+	// 不再重复下载/上传（大文件也能秒级投完）。
+	targets := postDeliveryTargets(post)
+	var (
+		fileID    string
+		successes int
+		firstErr  error
+	)
+	for index, chatID := range targets {
+		if ctx.Err() != nil {
+			break
+		}
+		sent, sendErr := r.sendScheduledPostToChat(ctx, post, chatID, content, parseMode, keyboard, fileID)
+		if sendErr != nil {
+			if firstErr == nil {
+				firstErr = sendErr
+			}
+			r.recordPostDelivery(ctx, post, chatID, 0, "failed", sendErr.Error())
+			r.log.Warn("scheduled post delivery failed",
+				zap.Uint64("post_id", post.ID), zap.Int64("chat_id", chatID), zap.Error(sendErr))
+			continue
+		}
+		successes++
+		if index == 0 && fileID == "" {
+			fileID = telegramFileID(sent, mediaType)
+		}
+		r.afterScheduledPostSent(ctx, post, chatID, sent)
+	}
+	if successes == 0 && firstErr != nil {
+		return firstErr
+	}
+	return nil
+}
+
+// postDeliveryTargets 返回主目标 + 额外目标（去重，保持顺序）。
+func postDeliveryTargets(post model.ScheduledPost) []int64 {
+	seen := make(map[int64]struct{}, 4)
+	targets := make([]int64, 0, 4)
+	appendTarget := func(chatID int64) {
+		if chatID == 0 {
+			return
+		}
+		if _, ok := seen[chatID]; ok {
+			return
+		}
+		seen[chatID] = struct{}{}
+		targets = append(targets, chatID)
+	}
+	appendTarget(post.ChatID)
+	for _, chatID := range decodeScheduledPostTargets(post.TargetChatIDsJSON) {
+		appendTarget(chatID)
+	}
+	return targets
+}
+
+func decodeScheduledPostTargets(raw string) []int64 {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return nil
+	}
+	var out []int64
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return nil
+	}
+	return out
+}
+
+// telegramFileID 取出发送成功后的媒体 file_id，供后续频道复用。
+func telegramFileID(msg *gotgbot.Message, mediaType string) string {
+	if msg == nil {
+		return ""
+	}
+	switch mediaType {
+	case "photo":
+		if len(msg.Photo) > 0 {
+			return msg.Photo[len(msg.Photo)-1].FileId
+		}
+	case "video":
+		if msg.Video != nil {
+			return msg.Video.FileId
+		}
+	case "document", "file":
+		if msg.Document != nil {
+			return msg.Document.FileId
+		}
+	}
+	return ""
+}
+
+// sendScheduledPostToChat 把帖子发到单个目标。fileID 非空时直接引用已上传的媒体。
+func (r *Runner) sendScheduledPostToChat(ctx context.Context, post model.ScheduledPost, chatID int64, content, parseMode string, keyboard *gotgbot.InlineKeyboardMarkup, fileID string) (*gotgbot.Message, error) {
+	mediaName := strings.TrimSpace(post.MediaName)
+	if mediaName == "" {
+		mediaName = "media-upload"
+	}
+	mediaURL := strings.TrimSpace(post.MediaURL)
+
+	mediaInput := func() gotgbot.InputFileOrString {
+		if fileID != "" {
+			return gotgbot.InputFileByID(fileID)
+		}
+		if len(post.MediaData) > 0 {
+			return gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
+		}
+		return gotgbot.InputFileByURL(mediaURL)
+	}
+
 	switch strings.ToLower(strings.TrimSpace(post.MediaType)) {
 	case "photo":
-		if !hasInlineMedia && mediaURL == "" {
-			return fmt.Errorf("photo scheduled post requires media")
-		}
-		photoFile := gotgbot.InputFileByURL(mediaURL)
-		if hasInlineMedia {
-			photoFile = gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
-		}
 		opts := &gotgbot.SendPhotoOpts{Caption: content, ParseMode: parseMode}
 		if keyboard != nil {
 			opts.ReplyMarkup = keyboard
 		}
-		sent, err = r.tgBot.SendPhotoWithContext(ctx, post.ChatID, photoFile, opts)
+		return r.tgBot.SendPhotoWithContext(ctx, chatID, mediaInput(), opts)
 	case "video":
-		if !hasInlineMedia && mediaURL == "" {
-			return fmt.Errorf("video scheduled post requires media")
-		}
-		videoFile := gotgbot.InputFileByURL(mediaURL)
-		if hasInlineMedia {
-			videoFile = gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
-		}
 		opts := &gotgbot.SendVideoOpts{Caption: content, ParseMode: parseMode}
 		if keyboard != nil {
 			opts.ReplyMarkup = keyboard
 		}
-		sent, err = r.tgBot.SendVideoWithContext(ctx, post.ChatID, videoFile, opts)
+		return r.tgBot.SendVideoWithContext(ctx, chatID, mediaInput(), opts)
 	case "document", "file":
-		if !hasInlineMedia && mediaURL == "" {
-			return fmt.Errorf("document scheduled post requires media")
-		}
-		documentFile := gotgbot.InputFileByURL(mediaURL)
-		if hasInlineMedia {
-			documentFile = gotgbot.InputFileByReader(mediaName, bytes.NewReader(post.MediaData))
-		}
 		opts := &gotgbot.SendDocumentOpts{Caption: content, ParseMode: parseMode}
 		if keyboard != nil {
 			opts.ReplyMarkup = keyboard
 		}
-		sent, err = r.tgBot.SendDocumentWithContext(ctx, post.ChatID, documentFile, opts)
+		return r.tgBot.SendDocumentWithContext(ctx, chatID, mediaInput(), opts)
 	default:
-		if content == "" {
-			return fmt.Errorf("text scheduled post requires content")
-		}
 		opts := &gotgbot.SendMessageOpts{ParseMode: parseMode}
 		if keyboard != nil {
 			opts.ReplyMarkup = keyboard
 		}
-		sent, err = r.tgBot.SendMessageWithContext(ctx, post.ChatID, content, opts)
+		return r.tgBot.SendMessageWithContext(ctx, chatID, content, opts)
 	}
-	if err != nil {
-		return err
-	}
-	r.afterScheduledPostSent(ctx, post, sent)
-	return nil
 }
 
-func (r *Runner) afterScheduledPostSent(ctx context.Context, post model.ScheduledPost, msg *gotgbot.Message) {
+func (r *Runner) afterScheduledPostSent(ctx context.Context, post model.ScheduledPost, chatID int64, msg *gotgbot.Message) {
 	if r.tgBot == nil || msg == nil {
 		return
 	}
 	if post.PinAfterSend {
-		if _, err := r.tgBot.PinChatMessageWithContext(ctx, post.ChatID, msg.MessageId, &gotgbot.PinChatMessageOpts{DisableNotification: true}); err != nil {
-			r.log.Warn("pin scheduled post", zap.Uint64("post_id", post.ID), zap.Int64("chat_id", post.ChatID), zap.Int64("message_id", msg.MessageId), zap.Error(err))
+		if _, err := r.tgBot.PinChatMessageWithContext(ctx, chatID, msg.MessageId, &gotgbot.PinChatMessageOpts{DisableNotification: true}); err != nil {
+			r.log.Warn("pin scheduled post", zap.Uint64("post_id", post.ID), zap.Int64("chat_id", chatID), zap.Int64("message_id", msg.MessageId), zap.Error(err))
 		}
 	}
-	if post.AutoDeleteSeconds > 0 {
+	r.recordPostDelivery(ctx, post, chatID, msg.MessageId, "sent", "")
+}
+
+// recordPostDelivery 记录每个目标频道的投递结果（面板上可看到哪个频道成功/失败）。
+func (r *Runner) recordPostDelivery(ctx context.Context, post model.ScheduledPost, chatID, messageID int64, status, errText string) {
+	if r.store == nil || r.store.DB == nil {
+		return
+	}
+	delivery := model.ScheduledPostDelivery{
+		ScheduledPostID: post.ID,
+		ChatID:          chatID,
+		MessageID:       messageID,
+		Status:          status,
+		Error:           truncateText(errText, 500),
+		CreatedAt:       time.Now(),
+	}
+	if post.AutoDeleteSeconds > 0 && messageID > 0 {
 		autoDeleteAt := time.Now().Add(time.Duration(post.AutoDeleteSeconds) * time.Second)
-		delivery := model.ScheduledPostDelivery{
-			ScheduledPostID: post.ID,
-			ChatID:          post.ChatID,
-			MessageID:       msg.MessageId,
-			AutoDeleteAt:    &autoDeleteAt,
-			CreatedAt:       time.Now(),
-		}
-		if err := r.store.DB.WithContext(ctx).Create(&delivery).Error; err != nil {
-			r.log.Warn("record scheduled post delivery", zap.Uint64("post_id", post.ID), zap.Int64("chat_id", post.ChatID), zap.Int64("message_id", msg.MessageId), zap.Error(err))
-		}
+		delivery.AutoDeleteAt = &autoDeleteAt
 	}
+	if err := r.store.DB.WithContext(ctx).Create(&delivery).Error; err != nil {
+		r.log.Warn("record scheduled post delivery",
+			zap.Uint64("post_id", post.ID), zap.Int64("chat_id", chatID), zap.Error(err))
+	}
+}
+
+func truncateText(text string, limit int) string {
+	if limit <= 0 || len(text) <= limit {
+		return text
+	}
+	return text[:limit]
 }
 
 func (r *Runner) runDueJobs() {

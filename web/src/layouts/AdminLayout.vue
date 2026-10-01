@@ -91,6 +91,8 @@ import {
   Fold,
   House,
   Lock,
+  MagicStick,
+  Promotion,
   Menu,
   MessageBox,
   Moon,
@@ -172,6 +174,8 @@ const navSections: NavSection[] = [
     label: "内容活动",
     items: [
       { path: "/posts", label: "发布任务", description: "安排图文、视频与定时发布任务", icon: Calendar },
+      { path: "/broadcasts", label: "群发", description: "一条内容群发给全部用户与群组", icon: Promotion },
+      { path: "/forwards", label: "自动转发", description: "源频道历史补发 + 实时监听，改文案加购买按钮", icon: Promotion },
       { path: "/templates", label: "内容模板", description: "沉淀常用发布内容与消息模板", icon: Files },
       { path: "/lottery", label: "活动抽奖", description: "管理进行中与历史抽奖活动", icon: Tickets },
     ],
@@ -182,6 +186,7 @@ const navSections: NavSection[] = [
     items: [
       { path: "/backup", label: "备份恢复", description: "管理备份策略与恢复操作", icon: Files },
       { path: "/settings", label: "系统设置", description: "Turnstile、管理员密码等全局配置", icon: Tools },
+      { path: "/ai-settings", label: "AI 设置", description: "配置 AI 对话与广告判定的模型与密钥", icon: MagicStick },
     ],
   },
 ];

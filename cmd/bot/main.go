@@ -111,6 +111,10 @@ func run() error {
 			},
 			AllowedUpdates: []string{
 				"message",
+				"edited_message",
+				// 频道贴文：实时自动转发（源频道 → 目标频道）依赖这两个更新
+				"channel_post",
+				"edited_channel_post",
 				"callback_query",
 				"chat_member",
 				"chat_join_request",

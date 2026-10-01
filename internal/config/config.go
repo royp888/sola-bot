@@ -28,7 +28,7 @@ type Config struct {
 		MiniAppURL       string   `mapstructure:"mini_app_url"`
 		// DisabledFeatures lists module names to skip registering.
 		// Valid values: verify, moderation, admin, points, lottery,
-		//               publish, auto_reply, keywords, templates, invites.
+		//               publish, auto_reply, keywords, templates, invites, ai_chat.
 		// Omit to enable everything (the default).
 		DisabledFeatures []string `mapstructure:"disabled_features"`
 	} `mapstructure:"bot"`
@@ -60,11 +60,13 @@ type DatabaseConfig struct {
 }
 // AiFilterConfig holds the AI-based spam/ad filter settings.
 type AiFilterConfig struct {
-	Enabled  bool   `mapstructure:"enabled"`
-	Provider string `mapstructure:"provider"`
-	APIKey   string `mapstructure:"api_key"`
-	Model    string `mapstructure:"model"`
-	Endpoint string `mapstructure:"endpoint"`
+	Enabled      bool    `mapstructure:"enabled"`
+	Provider     string  `mapstructure:"provider"`
+	APIKey       string  `mapstructure:"api_key"`
+	Model        string  `mapstructure:"model"`
+	Endpoint     string  `mapstructure:"endpoint"`
+	SystemPrompt string  `mapstructure:"system_prompt"`
+	Temperature  float64 `mapstructure:"temperature"`
 }
 
 

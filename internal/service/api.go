@@ -28,26 +28,29 @@ func NewAPIDependencies(cfg config.Config, st *store.Store) api.Dependencies {
 	moderation := NewModerationService(st)
 	autoReplies := NewAutoReplyService(st)
 	return api.Dependencies{
-		Auth:             admin,
-		BotConfig:        &botConfigService{},
-		Chats:            &chatBindingService{store: st},
-		ChatPointConfigs: &chatPointConfigService{points: NewPointsService(st)},
-		Points:           &pointsAPIService{points: NewPointsService(st)},
-		Admin:            &adminAPIService{admin: NewAdminService(st, st.Redis), botToken: cfg.Bot.Token},
-		Lotteries:        &lotteryAPIService{lotteries: NewLotteryService(st), store: st},
-		Levels:           &levelAPIService{levels: levels},
-		AdminViolations:  &adminViolationAPIService{moderation: moderation},
-		Keywords:         &keywordAPIService{moderation: moderation},
-		AutoReplies:      &autoReplyAPIService{service: autoReplies},
-		Backups:          &backupAPIService{backup: NewBackupService(st)},
-		Templates:        &templateAPIService{templates: NewMessageTemplateService(st)},
-		InviteLinks:      &inviteLinkAPIService{inviteLinks: NewInviteLinkService(st, cfg.Bot.Token)},
-		Posts:            &postAPIService{store: st},
-		Schedules:        &scheduleAPIService{store: st},
-		Stats:            &statsAPIService{store: st},
-		Users:            &userAPIService{store: st},
-		AuditLogs:        &auditLogAPIService{store: st},
-		SystemSettings:   &systemSettingsService{store: st, cfg: cfg},
+		Auth:                  admin,
+		BotConfig:             &botConfigService{},
+		Chats:                 &chatBindingService{store: st},
+		ChatPointConfigs:      &chatPointConfigService{points: NewPointsService(st)},
+		Points:                &pointsAPIService{points: NewPointsService(st)},
+		Admin:                 &adminAPIService{admin: NewAdminService(st, st.Redis), botToken: cfg.Bot.Token},
+		Lotteries:             &lotteryAPIService{lotteries: NewLotteryService(st), store: st},
+		Levels:                &levelAPIService{levels: levels},
+		AdminViolations:       &adminViolationAPIService{moderation: moderation},
+		Keywords:              &keywordAPIService{moderation: moderation},
+		AutoReplies:           &autoReplyAPIService{service: autoReplies},
+		Backups:               &backupAPIService{backup: NewBackupService(st)},
+		Templates:             &templateAPIService{templates: NewMessageTemplateService(st)},
+		InviteLinks:           &inviteLinkAPIService{inviteLinks: NewInviteLinkService(st, cfg.Bot.Token)},
+		Posts:                 &postAPIService{store: st},
+		Broadcasts:            &broadcastAPIService{store: st},
+		Forwards:              NewForwardAPIService(st, cfg.Bot.Token),
+		Schedules:             &scheduleAPIService{store: st},
+		Stats:                 &statsAPIService{store: st},
+		Users:                 &userAPIService{store: st},
+		AuditLogs:             &auditLogAPIService{store: st},
+		SystemSettings:        &systemSettingsService{store: st, cfg: cfg},
+		AiSettings:            &aiSettingsService{store: st, cfg: cfg},
 		Redis:                 st.Redis,
 		AllowedOriginSet:      cfg.App.AllowedOrigins,
 		EnableSwagger:         cfg.App.EnableSwagger,
@@ -1310,6 +1313,9 @@ func (s *postAPIService) Create(ctx context.Context, req api.PostCreateRequest) 
 	if req.PinAfterSend != nil {
 		post.PinAfterSend = *req.PinAfterSend
 	}
+	if err := s.applyPostTargetsAndButtons(ctx, &post, req.TargetChatIDs, req.InlineKeyboardJSON, req.ParseMode); err != nil {
+		return nil, err
+	}
 	if err := s.store.DB.WithContext(ctx).Select("*").Create(&post).Error; err != nil {
 		return nil, err
 	}
@@ -1454,6 +1460,23 @@ func (s *postAPIService) Update(ctx context.Context, id string, req api.PostUpda
 	}
 	if req.AutoDeleteSeconds != nil {
 		updates["auto_delete_seconds"] = *req.AutoDeleteSeconds
+	}
+	if req.TargetChatIDs != nil {
+		extra, err := s.normalizePostTargets(ctx, *req.TargetChatIDs, ownerUserID)
+		if err != nil {
+			return nil, err
+		}
+		updates["target_chat_ids_json"] = encodePostTargets(extra)
+	}
+	if req.InlineKeyboardJSON != nil {
+		normalized, err := normalizePostInlineKeyboard(*req.InlineKeyboardJSON)
+		if err != nil {
+			return nil, err
+		}
+		updates["inline_keyboard_json"] = normalized
+	}
+	if req.ParseMode != nil {
+		updates["parse_mode"] = strings.TrimSpace(*req.ParseMode)
 	}
 	if len(updates) > 0 {
 		if err := s.store.DB.WithContext(ctx).Model(&model.ScheduledPost{}).Where("id = ?", parsed).Updates(updates).Error; err != nil {
@@ -2389,26 +2412,160 @@ func modelPostToAPI(post model.Post, chatID int64) *api.Post {
 
 func modelScheduledPostToAPI(post model.ScheduledPost) api.Post {
 	return api.Post{
-		ID:                strconv.FormatUint(post.ID, 10),
-		ChatID:            post.ChatID,
-		Title:             post.Title,
-		Content:           post.Content,
-		MediaURL:          post.MediaURL,
-		MediaName:         post.MediaName,
-		MediaMime:         post.MediaMime,
-		HasInlineMedia:    len(post.MediaData) > 0,
-		MediaType:         post.MediaType,
-		CronExpr:          post.CronExpr,
-		RunOnceAt:         post.RunOnceAt,
-		Enabled:           post.Enabled,
-		LastRunAt:         post.LastRunAt,
-		PublishAt:         post.RunOnceAt,
-		Status:            scheduledPostStatus(post.Enabled),
-		CreatedAt:         post.CreatedAt,
-		UpdatedAt:         post.CreatedAt,
-		PinAfterSend:      post.PinAfterSend,
-		AutoDeleteSeconds: post.AutoDeleteSeconds,
+		ID:                 strconv.FormatUint(post.ID, 10),
+		ChatID:             post.ChatID,
+		Title:              post.Title,
+		Content:            post.Content,
+		MediaURL:           post.MediaURL,
+		MediaName:          post.MediaName,
+		MediaMime:          post.MediaMime,
+		HasInlineMedia:     len(post.MediaData) > 0,
+		MediaType:          post.MediaType,
+		CronExpr:           post.CronExpr,
+		RunOnceAt:          post.RunOnceAt,
+		Enabled:            post.Enabled,
+		LastRunAt:          post.LastRunAt,
+		PublishAt:          post.RunOnceAt,
+		Status:             scheduledPostStatus(post.Enabled),
+		CreatedAt:          post.CreatedAt,
+		UpdatedAt:          post.CreatedAt,
+		PinAfterSend:       post.PinAfterSend,
+		AutoDeleteSeconds:  post.AutoDeleteSeconds,
+		TargetChatIDs:      decodePostTargets(post.TargetChatIDsJSON),
+		InlineKeyboardJSON: post.InlineKeyboardJSON,
+		ParseMode:          post.ParseMode,
 	}
+}
+
+// applyPostTargetsAndButtons 归一化「额外投放目标」与「按钮」，写回模型。
+func (s *postAPIService) applyPostTargetsAndButtons(ctx context.Context, post *model.ScheduledPost, targetChatIDs []int64, inlineKeyboard, parseMode string) error {
+	extra, err := s.normalizePostTargets(ctx, targetChatIDs, "")
+	if err != nil {
+		return err
+	}
+	post.TargetChatIDsJSON = encodePostTargets(extra)
+
+	normalizedKeyboard, err := normalizePostInlineKeyboard(inlineKeyboard)
+	if err != nil {
+		return err
+	}
+	post.InlineKeyboardJSON = normalizedKeyboard
+	post.ParseMode = strings.TrimSpace(parseMode)
+	return nil
+}
+
+// normalizePostTargets 去重、剔除与主目标重复的项，并校验频道归属。
+func (s *postAPIService) normalizePostTargets(ctx context.Context, targetChatIDs []int64, ownerUserID string) ([]int64, error) {
+	if len(targetChatIDs) == 0 {
+		return nil, nil
+	}
+	seen := make(map[int64]struct{}, len(targetChatIDs))
+	out := make([]int64, 0, len(targetChatIDs))
+	for _, chatID := range targetChatIDs {
+		if chatID == 0 {
+			continue
+		}
+		if _, ok := seen[chatID]; ok {
+			continue
+		}
+		seen[chatID] = struct{}{}
+		out = append(out, chatID)
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	if s.store == nil || s.store.DB == nil {
+		return out, nil
+	}
+	for _, chatID := range out {
+		if err := ensureOwnedTelegramChatID(ctx, s.store, ownerUserID, chatID); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func encodePostTargets(targetChatIDs []int64) string {
+	if len(targetChatIDs) == 0 {
+		return "[]"
+	}
+	encoded, err := json.Marshal(targetChatIDs)
+	if err != nil {
+		return "[]"
+	}
+	return string(encoded)
+}
+
+func decodePostTargets(raw string) []int64 {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return nil
+	}
+	var out []int64
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return nil
+	}
+	return out
+}
+
+// normalizePostInlineKeyboard 校验并压缩按钮 JSON。
+// 兼容两种写法：[[{"text":"x","url":"y"}]] 与 [{"buttons":[{"text":"x","url":"y"}]}]。
+func normalizePostInlineKeyboard(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return "[]", nil
+	}
+	var rows [][]api.InlineKeyboardButton
+	if err := json.Unmarshal([]byte(raw), &rows); err == nil {
+		return compressPostKeyboard(rows)
+	}
+	var wrapped []api.InlineKeyboardRow
+	if err := json.Unmarshal([]byte(raw), &wrapped); err != nil {
+		return "", errors.New("inline_keyboard_json 格式不正确，应为 [[{\"text\":\"按钮\",\"url\":\"https://...\"}]]")
+	}
+	converted := make([][]api.InlineKeyboardButton, 0, len(wrapped))
+	for _, row := range wrapped {
+		converted = append(converted, row.Buttons)
+	}
+	return compressPostKeyboard(converted)
+}
+
+func compressPostKeyboard(rows [][]api.InlineKeyboardButton) (string, error) {
+	cleaned := make([][]api.InlineKeyboardButton, 0, len(rows))
+	total := 0
+	for _, row := range rows {
+		buttons := make([]api.InlineKeyboardButton, 0, len(row))
+		for _, button := range row {
+			text := strings.TrimSpace(button.Text)
+			url := strings.TrimSpace(button.URL)
+			callback := strings.TrimSpace(button.CallbackData)
+			if text == "" {
+				continue
+			}
+			if url == "" && callback == "" {
+				return "", fmt.Errorf("按钮「%s」缺少 url 或 callback_data", text)
+			}
+			if url != "" && !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+				return "", fmt.Errorf("按钮「%s」的链接必须以 http:// 或 https:// 开头", text)
+			}
+			buttons = append(buttons, api.InlineKeyboardButton{Text: text, URL: url, CallbackData: callback})
+		}
+		if len(buttons) > 0 {
+			cleaned = append(cleaned, buttons)
+			total += len(buttons)
+		}
+	}
+	if total > 100 {
+		return "", errors.New("按钮总数不能超过 100 个")
+	}
+	if len(cleaned) == 0 {
+		return "[]", nil
+	}
+	encoded, err := json.Marshal(cleaned)
+	if err != nil {
+		return "", err
+	}
+	return string(encoded), nil
 }
 
 func levelConfigToAPI(record model.LevelConfig) api.Level {
@@ -2834,4 +2991,109 @@ func (s *systemSettingsService) verifyCurrentPassword(ctx context.Context, passw
 		}
 	}
 	return api.VerifyConfiguredPassword(password, s.cfg.App.AdminPassword, s.cfg.App.AdminPasswordHash)
+}
+
+// aiSettingsService reads/writes the runtime AI (LLM) settings stored in
+// system_settings. DB values take precedence over config.yaml.
+type aiSettingsService struct {
+	store *store.Store
+	cfg   config.Config
+}
+
+func (s *aiSettingsService) Get(ctx context.Context) (*api.AiSettings, error) {
+	settings, err := s.store.GetAllSystemSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cfg := s.cfg.AiFilter
+
+	enabled := cfg.Enabled
+	if v, ok := settings[aiSettingEnabled]; ok {
+		enabled = strings.EqualFold(strings.TrimSpace(v), "true")
+	}
+	provider := strings.TrimSpace(cfg.Provider)
+	if v, ok := settings[aiSettingProvider]; ok && v != "" {
+		provider = v
+	}
+	apiKey := cfg.APIKey
+	if v, ok := settings[aiSettingAPIKey]; ok && v != "" {
+		apiKey = v
+	}
+	model := strings.TrimSpace(cfg.Model)
+	if v, ok := settings[aiSettingModel]; ok && v != "" {
+		model = v
+	}
+	endpoint := strings.TrimSpace(cfg.Endpoint)
+	if v, ok := settings[aiSettingEndpoint]; ok && v != "" {
+		endpoint = v
+	}
+	systemPrompt := strings.TrimSpace(cfg.SystemPrompt)
+	if v, ok := settings[aiSettingSystemPrompt]; ok {
+		systemPrompt = v
+	}
+	temperature := cfg.Temperature
+	if v, ok := settings[aiSettingTemperature]; ok && v != "" {
+		if t, err := strconv.ParseFloat(v, 64); err == nil {
+			temperature = t
+		}
+	}
+	if temperature <= 0 {
+		temperature = 0.7
+	}
+	endpoint = strings.TrimRight(endpoint, "/")
+	if endpoint == "" {
+		endpoint = "https://api.deepseek.com/v1"
+	}
+	if model == "" {
+		model = "deepseek-chat"
+	}
+
+	return &api.AiSettings{
+		Enabled:      enabled,
+		Provider:     provider,
+		APIKeySet:    apiKey != "",
+		Model:        model,
+		Endpoint:     endpoint,
+		SystemPrompt: systemPrompt,
+		Temperature:  temperature,
+	}, nil
+}
+
+func (s *aiSettingsService) Update(ctx context.Context, req api.AiSettingsUpdateRequest) (*api.AiSettings, error) {
+	if req.Enabled != nil {
+		if err := s.store.SetSystemSetting(ctx, aiSettingEnabled, strconv.FormatBool(*req.Enabled)); err != nil {
+			return nil, err
+		}
+	}
+	if req.Provider != nil {
+		if err := s.store.SetSystemSetting(ctx, aiSettingProvider, strings.TrimSpace(*req.Provider)); err != nil {
+			return nil, err
+		}
+	}
+	if req.APIKey != nil && strings.TrimSpace(*req.APIKey) != "" {
+		if err := s.store.SetSystemSetting(ctx, aiSettingAPIKey, strings.TrimSpace(*req.APIKey)); err != nil {
+			return nil, err
+		}
+	}
+	if req.Model != nil {
+		if err := s.store.SetSystemSetting(ctx, aiSettingModel, strings.TrimSpace(*req.Model)); err != nil {
+			return nil, err
+		}
+	}
+	if req.Endpoint != nil {
+		if err := s.store.SetSystemSetting(ctx, aiSettingEndpoint, strings.TrimSpace(*req.Endpoint)); err != nil {
+			return nil, err
+		}
+	}
+	if req.SystemPrompt != nil {
+		if err := s.store.SetSystemSetting(ctx, aiSettingSystemPrompt, *req.SystemPrompt); err != nil {
+			return nil, err
+		}
+	}
+	if req.Temperature != nil {
+		if err := s.store.SetSystemSetting(ctx, aiSettingTemperature, strconv.FormatFloat(*req.Temperature, 'f', -1, 64)); err != nil {
+			return nil, err
+		}
+	}
+	return s.Get(ctx)
 }

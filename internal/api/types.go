@@ -32,26 +32,29 @@ type LoginRateLimiter interface {
 }
 
 type Dependencies struct {
-	Auth             AdminAuthService
-	BotConfig        BotConfigService
-	Chats            ChatBindingService
-	ChatPointConfigs ChatPointConfigService
-	Points           PointsAdminService
-	Admin            ChatAdminService
-	Lotteries        LotteryService
-	Levels           LevelService
-	AdminViolations  AdminViolationService
-	Keywords         KeywordService
-	AutoReplies      AutoReplyService
-	Backups          BackupService
-	Templates        TemplateService
-	InviteLinks      InviteLinkService
-	Posts            PostService
-	Schedules        ScheduleService
-	Stats            StatsService
-	Users            UserService
-	AuditLogs        AuditLogService
-	SystemSettings   SystemSettingsService
+	Auth                  AdminAuthService
+	BotConfig             BotConfigService
+	Chats                 ChatBindingService
+	ChatPointConfigs      ChatPointConfigService
+	Points                PointsAdminService
+	Admin                 ChatAdminService
+	Lotteries             LotteryService
+	Levels                LevelService
+	AdminViolations       AdminViolationService
+	Keywords              KeywordService
+	AutoReplies           AutoReplyService
+	Backups               BackupService
+	Templates             TemplateService
+	InviteLinks           InviteLinkService
+	Posts                 PostService
+	Broadcasts            BroadcastService
+	Forwards              ForwardService
+	Schedules             ScheduleService
+	Stats                 StatsService
+	Users                 UserService
+	AuditLogs             AuditLogService
+	SystemSettings        SystemSettingsService
+	AiSettings            AiSettingsService
 	JWT                   JWTConfig
 	Redis                 LoginRateLimiter
 	AllowedOriginSet      []string
@@ -350,52 +353,64 @@ type PostCreateRequest struct {
 	ExternalRef       string     `json:"external_ref,omitempty"`
 	PinAfterSend      *bool      `json:"pin_after_send,omitempty"`
 	AutoDeleteSeconds int        `json:"auto_delete_seconds,omitempty" binding:"omitempty,gte=0"`
+	// TargetChatIDs 额外投放目标（第一个目标仍然是 chat_id）。
+	// 媒体会在首个目标上传后复用 file_id，其余频道直接引用，不重复上传。
+	TargetChatIDs []int64 `json:"target_chat_ids,omitempty"`
+	// InlineKeyboardJSON 按钮定义：[[{"text":"🛒 立即购买","url":"https://..."}]]
+	InlineKeyboardJSON string `json:"inline_keyboard_json,omitempty"`
+	ParseMode          string `json:"parse_mode,omitempty"`
 }
 
 type PostUpdateRequest struct {
-	Title             *string    `json:"title,omitempty"`
-	Content           *string    `json:"content,omitempty"`
-	MediaURL          *string    `json:"media_url,omitempty"`
-	MediaName         *string    `json:"media_name,omitempty"`
-	MediaMime         *string    `json:"media_mime,omitempty"`
-	MediaDataBase64   *string    `json:"media_data_base64,omitempty"`
-	ClearInlineMedia  *bool      `json:"clear_inline_media,omitempty"`
-	MediaType         *string    `json:"media_type,omitempty"`
-	CronExpr          *string    `json:"cron_expr,omitempty"`
-	RunOnceAt         *time.Time `json:"run_once_at,omitempty"`
-	Enabled           *bool      `json:"enabled,omitempty"`
-	PublishAt         *time.Time `json:"publish_at,omitempty"`
-	Language          *string    `json:"language,omitempty"`
-	TemplateKey       *string    `json:"template_key,omitempty"`
-	ExternalRef       *string    `json:"external_ref,omitempty"`
-	Status            *string    `json:"status,omitempty"`
-	PinAfterSend      *bool      `json:"pin_after_send,omitempty"`
-	AutoDeleteSeconds *int       `json:"auto_delete_seconds,omitempty" binding:"omitempty,gte=0"`
+	Title              *string    `json:"title,omitempty"`
+	Content            *string    `json:"content,omitempty"`
+	MediaURL           *string    `json:"media_url,omitempty"`
+	MediaName          *string    `json:"media_name,omitempty"`
+	MediaMime          *string    `json:"media_mime,omitempty"`
+	MediaDataBase64    *string    `json:"media_data_base64,omitempty"`
+	ClearInlineMedia   *bool      `json:"clear_inline_media,omitempty"`
+	MediaType          *string    `json:"media_type,omitempty"`
+	CronExpr           *string    `json:"cron_expr,omitempty"`
+	RunOnceAt          *time.Time `json:"run_once_at,omitempty"`
+	Enabled            *bool      `json:"enabled,omitempty"`
+	PublishAt          *time.Time `json:"publish_at,omitempty"`
+	Language           *string    `json:"language,omitempty"`
+	TemplateKey        *string    `json:"template_key,omitempty"`
+	ExternalRef        *string    `json:"external_ref,omitempty"`
+	Status             *string    `json:"status,omitempty"`
+	PinAfterSend       *bool      `json:"pin_after_send,omitempty"`
+	AutoDeleteSeconds  *int       `json:"auto_delete_seconds,omitempty" binding:"omitempty,gte=0"`
+	TargetChatIDs      *[]int64   `json:"target_chat_ids,omitempty"`
+	InlineKeyboardJSON *string    `json:"inline_keyboard_json,omitempty"`
+	ParseMode          *string    `json:"parse_mode,omitempty"`
 }
 
 type Post struct {
-	ID                string     `json:"id"`
-	ChatID            int64      `json:"chat_id"`
-	Title             string     `json:"title"`
-	Content           string     `json:"content"`
-	MediaURL          string     `json:"media_url,omitempty"`
-	MediaName         string     `json:"media_name,omitempty"`
-	MediaMime         string     `json:"media_mime,omitempty"`
-	HasInlineMedia    bool       `json:"has_inline_media,omitempty"`
-	MediaType         string     `json:"media_type,omitempty"`
-	CronExpr          string     `json:"cron_expr,omitempty"`
-	RunOnceAt         *time.Time `json:"run_once_at,omitempty"`
-	Enabled           bool       `json:"enabled"`
-	LastRunAt         *time.Time `json:"last_run_at,omitempty"`
-	PublishAt         *time.Time `json:"publish_at,omitempty"`
-	Status            string     `json:"status"`
-	Language          string     `json:"language,omitempty"`
-	TemplateKey       string     `json:"template_key,omitempty"`
-	ExternalRef       string     `json:"external_ref,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
-	PinAfterSend      bool       `json:"pin_after_send"`
-	AutoDeleteSeconds int        `json:"auto_delete_seconds"`
+	ID                 string     `json:"id"`
+	ChatID             int64      `json:"chat_id"`
+	Title              string     `json:"title"`
+	Content            string     `json:"content"`
+	MediaURL           string     `json:"media_url,omitempty"`
+	MediaName          string     `json:"media_name,omitempty"`
+	MediaMime          string     `json:"media_mime,omitempty"`
+	HasInlineMedia     bool       `json:"has_inline_media,omitempty"`
+	MediaType          string     `json:"media_type,omitempty"`
+	CronExpr           string     `json:"cron_expr,omitempty"`
+	RunOnceAt          *time.Time `json:"run_once_at,omitempty"`
+	Enabled            bool       `json:"enabled"`
+	LastRunAt          *time.Time `json:"last_run_at,omitempty"`
+	PublishAt          *time.Time `json:"publish_at,omitempty"`
+	Status             string     `json:"status"`
+	Language           string     `json:"language,omitempty"`
+	TemplateKey        string     `json:"template_key,omitempty"`
+	ExternalRef        string     `json:"external_ref,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+	PinAfterSend       bool       `json:"pin_after_send"`
+	AutoDeleteSeconds  int        `json:"auto_delete_seconds"`
+	TargetChatIDs      []int64    `json:"target_chat_ids,omitempty"`
+	InlineKeyboardJSON string     `json:"inline_keyboard_json,omitempty"`
+	ParseMode          string     `json:"parse_mode,omitempty"`
 }
 
 type ScheduleCreateRequest struct {
@@ -939,12 +954,40 @@ type SystemSettingsService interface {
 	ResolveKey(ctx context.Context, key string) string
 }
 
+// AiSettings holds the runtime-configurable AI (LLM) settings shown in the web admin.
+type AiSettings struct {
+	Enabled      bool    `json:"enabled"`
+	Provider     string  `json:"provider"`
+	APIKeySet    bool    `json:"api_key_set"`
+	Model        string  `json:"model"`
+	Endpoint     string  `json:"endpoint"`
+	SystemPrompt string  `json:"system_prompt"`
+	Temperature  float64 `json:"temperature"`
+}
+
+// AiSettingsUpdateRequest allows updating the AI settings. The API key is never
+// returned; pass a non-empty value to replace it, otherwise it is left unchanged.
+type AiSettingsUpdateRequest struct {
+	Enabled      *bool    `json:"enabled,omitempty"`
+	Provider     *string  `json:"provider,omitempty"`
+	APIKey       *string  `json:"api_key,omitempty"`
+	Model        *string  `json:"model,omitempty"`
+	Endpoint     *string  `json:"endpoint,omitempty"`
+	SystemPrompt *string  `json:"system_prompt,omitempty"`
+	Temperature  *float64 `json:"temperature,omitempty"`
+}
+
+type AiSettingsService interface {
+	Get(ctx context.Context) (*AiSettings, error)
+	Update(ctx context.Context, req AiSettingsUpdateRequest) (*AiSettings, error)
+}
+
 // TurnstileVerifyRequest is posted by the Mini App after the user passes CF Turnstile.
 type TurnstileVerifyRequest struct {
 	ChatID  int64  `json:"chat_id"`
 	UserID  int64  `json:"user_id"`
-	Sig     string `json:"sig"`    // HMAC-SHA256(chat_id|user_id|exp, verify_secret), hex
-	Exp     int64  `json:"exp"`    // Unix timestamp the link expires
+	Sig     string `json:"sig"` // HMAC-SHA256(chat_id|user_id|exp, verify_secret), hex
+	Exp     int64  `json:"exp"` // Unix timestamp the link expires
 	CFToken string `json:"cf_token"`
 }
 

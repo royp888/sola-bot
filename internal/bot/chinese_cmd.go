@@ -42,6 +42,9 @@ func (a *App) handleChineseCommand(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// --- prefix matches with arguments ---
+	if strings.HasPrefix(text, "ai ") || strings.HasPrefix(text, "AI ") {
+		return a.handleAIChatNatural(b, ctx, text)
+	}
 	if strings.HasPrefix(text, "加积分") {
 		return a.handleChinesePointsAdjust(b, ctx, text, 1)
 	}

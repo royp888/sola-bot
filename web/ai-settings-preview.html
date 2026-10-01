@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sola-bot 管理后台 · AI 设置（界面预览）</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus@2.7.6/dist/index.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f6fa; }
+    #app { height: 100vh; }
+    .layout { display: flex; height: 100vh; }
+
+    /* 侧边栏 */
+    .sidebar { width: 236px; background: #1f2937; color: #cbd5e1; display: flex; flex-direction: column; flex-shrink: 0; }
+    .brand { padding: 18px 20px; font-size: 16px; font-weight: 700; color: #fff; border-bottom: 1px solid #2d3748; }
+    .brand small { display: block; font-size: 11px; font-weight: 400; color: #94a3b8; margin-top: 3px; }
+    .nav { flex: 1; overflow-y: auto; padding: 10px 0; }
+    .nav-group { padding: 12px 20px 6px; font-size: 11px; color: #64748b; letter-spacing: .08em; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13.5px; cursor: pointer; border-left: 3px solid transparent; }
+    .nav-item:hover { background: #2d3748; color: #e2e8f0; }
+    .nav-item.active { background: #111827; color: #60a5fa; border-left-color: #60a5fa; }
+    .nav-item .ico { width: 16px; text-align: center; opacity: .9; }
+
+    /* 主区 */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .topbar { height: 56px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; }
+    .topbar .title { font-size: 14px; color: #334155; font-weight: 600; }
+    .topbar .user { font-size: 13px; color: #64748b; display: flex; align-items: center; gap: 8px; }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+    .eyebrow { font-size: 12px; color: #94a3b8; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 6px; }
+    .page-desc { font-size: 13.5px; color: #64748b; margin: 0; }
+    .page-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+
+    .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+    .panel + .panel { margin-top: 16px; }
+    .panel-title { font-size: 15px; font-weight: 650; color: #1e293b; margin: 0 0 4px; }
+    .panel-desc { font-size: 12.5px; color: #94a3b8; margin: 0 0 18px; }
+
+    .field { margin-bottom: 18px; }
+    .field label { display: block; font-size: 13px; color: #475569; margin-bottom: 7px; font-weight: 500; }
+    .field input, .field textarea, .field select {
+      width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13.5px;
+      font-family: inherit; color: #0f172a; background: #fff; outline: none; transition: border-color .15s;
+    }
+    .field input:focus, .field textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+    .field textarea { resize: vertical; min-height: 84px; }
+    .field .hint { font-size: 12px; color: #94a3b8; margin-left: 6px; font-weight: 400; }
+
+    .switch { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: #475569; }
+    .switch .track { width: 42px; height: 22px; border-radius: 20px; background: #3b82f6; position: relative; cursor: pointer; }
+    .switch .track.off { background: #cbd5e1; }
+    .switch .knob { position: absolute; top: 2px; left: 22px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .18s; }
+    .switch .track.off .knob { left: 2px; }
+
+    .slider-row { display: flex; align-items: center; gap: 14px; }
+    .slider { flex: 1; -webkit-appearance: none; height: 5px; border-radius: 4px; background: #e2e8f0; outline: none; }
+    .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: #3b82f6; cursor: pointer; }
+    .slider-val { width: 54px; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; text-align: center; }
+
+    .btn-primary { background: #3b82f6; color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13.5px; cursor: pointer; font-weight: 500; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-ghost { background: #fff; color: #475569; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+
+    .tag { display: inline-block; padding: 2px 9px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+    .tag.ok { background: #dcfce7; color: #15803d; }
+    .tag.no { background: #fee2e2; color: #b91c1c; }
+
+    .desc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .desc-table td { padding: 10px 12px; border: 1px solid #e5e7eb; }
+    .desc-table td:first-child { width: 92px; color: #64748b; background: #f8fafc; }
+
+    .tips { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.9; color: #64748b; }
+    .tips code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 12px; color: #334155; }
+    .badge-note { margin-top: 14px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-size: 12.5px; padding: 10px 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script src="https://unpkg.com/vue@3.4.31/dist/vue.global.prod.js"></script>
+  <script>
+    const { createApp, ref, reactive } = Vue;
+
+    createApp({
+      setup() {
+        const form = reactive({
+          enabled: true,
+          provider: "deepseek",
+          api_key: "",
+          model: "deepseek-chat",
+          endpoint: "https://api.deepseek.com/v1",
+          system_prompt: "你是一个友好、有帮助的 Telegram 群组助手。请用简体中文回答用户的问题。",
+          temperature: 0.7,
+        });
+        const settings = reactive({ enabled: true, api_key_set: true, model: "deepseek-chat", endpoint: "https://api.deepseek.com/v1" });
+        const active = ref("ai-settings");
+
+        const nav = [
+          { group: "总览" },
+          { id: "dashboard", label: "仪表盘", ico: "◱" },
+          { group: "群组与用户" },
+          { id: "chats", label: "群组管理", ico: "▤" },
+          { id: "users", label: "用户管理", ico: "◔" },
+          { id: "bans", label: "封禁记录", ico: "⊘" },
+          { group: "内容运营" },
+          { id: "posts", label: "发布任务", ico: "✦" },
+          { id: "templates", label: "内容模板", ico: "❏" },
+          { id: "keywords", label: "关键词", ico: "◈" },
+          { id: "auto-replies", label: "自动回复", ico: "↩" },
+          { group: "激励与互动" },
+          { id: "points", label: "积分体系", ico: "★" },
+          { id: "lottery", label: "抽奖活动", ico: "◉" },
+          { group: "系统" },
+          { id: "backup", label: "备份恢复", ico: "⎘" },
+          { id: "settings", label: "系统设置", ico: "⚙" },
+          { id: "ai-settings", label: "AI 设置", ico: "✧" },
+        ];
+
+        return { form, settings, active, nav };
+      },
+      template: `
+      <div class="layout">
+        <aside class="sidebar">
+          <div class="brand">sola-bot<small>Telegram 群运营平台</small></div>
+          <nav class="nav">
+            <template v-for="(n, i) in nav" :key="i">
+              <div v-if="n.group" class="nav-group">{{ n.group }}</div>
+              <div v-else class="nav-item" :class="{ active: active === n.id }" @click="active = n.id">
+                <span class="ico">{{ n.ico }}</span><span>{{ n.label }}</span>
+              </div>
+            </template>
+          </nav>
+        </aside>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="title">系统 / AI 设置</div>
+            <div class="user"><span class="avatar">A</span> admin</div>
+          </div>
+
+          <div class="content">
+            <div class="page-head">
+              <div>
+                <div class="eyebrow">系统</div>
+                <h1 class="page-title">AI 设置</h1>
+                <p class="page-desc">配置 AI 对话与广告判定的 LLM 模型，保存后立即生效，无需重启。</p>
+              </div>
+              <button class="btn-ghost">↻ 刷新</button>
+            </div>
+
+            <div class="grid">
+              <div>
+                <div class="panel">
+                  <h2 class="panel-title">模型配置</h2>
+                  <p class="panel-desc">AI 对话（/ai）与 AI 广告判定共用此 LLM 配置，使用 OpenAI 兼容接口。</p>
+
+                  <div class="field">
+                    <label>启用 AI 功能</label>
+                    <div class="switch" @click="form.enabled = !form.enabled">
+                      <div class="track" :class="{ off: !form.enabled }"><div class="knob"></div></div>
+                      <span>{{ form.enabled ? '启用' : '停用' }}</span>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label>服务商（Provider）</label>
+                    <input v-model="form.provider" placeholder="例如 deepseek / openai / gemini" />
+                  </div>
+
+                  <div class="field">
+                    <label>API Key <span class="tag ok" v-if="settings.api_key_set">已配置</span></label>
+                    <input type="password" v-model="form.api_key" placeholder="已配置，留空保持不变" />
+                  </div>
+
+                  <div class="field">
+                    <label>模型（Model）</label>
+                    <input v-model="form.model" placeholder="deepseek-chat" />
+                  </div>
+
+                  <div class="field">
+                    <label>接口地址（Endpoint）</label>
+                    <input v-model="form.endpoint" placeholder="https://api.deepseek.com/v1" />
+                  </div>
+
+                  <div class="field">
+                    <label>系统提示词（System Prompt）</label>
+                    <textarea v-model="form.system_prompt" placeholder="留空则使用默认中文助手提示词"></textarea>
+                  </div>
+
+                  <div class="field">
+                    <label>温度（Temperature） <span class="hint">{{ form.temperature }}</span></label>
+                    <div class="slider-row">
+                      <input class="slider" type="range" min="0.1" max="2" step="0.1" v-model.number="form.temperature" />
+                      <input class="slider-val" type="number" min="0.1" max="2" step="0.1" v-model.number="form.temperature" />
+                    </div>
+                  </div>
+
+                  <button class="btn-primary">✓ 保存 AI 配置</button>
+                </div>
+              </div>
+
+              <div>
+                <div class="panel">
+                  <h2 class="panel-title">配置状态</h2>
+                  <p class="panel-desc">当前生效的 AI 配置。</p>
+                  <table class="desc-table">
+                    <tr><td>AI 功能</td><td><span class="tag ok">已启用</span></td></tr>
+                    <tr><td>API Key</td><td><span class="tag ok">已配置</span></td></tr>
+                    <tr><td>模型</td><td>{{ settings.model }}</td></tr>
+                    <tr><td>接口地址</td><td style="word-break:break-all">{{ settings.endpoint }}</td></tr>
+                  </table>
+                </div>
+
+                <div class="panel">
+                  <h2 class="panel-title">使用说明</h2>
+                  <p class="panel-desc">在 Telegram 里怎么用</p>
+                  <ul class="tips">
+                    <li>群内/私聊发送 <code>/ai 你的问题</code> 或 <code>/gpt 你的问题</code></li>
+                    <li>群里也可直接发 <code>ai 你的问题</code>（无需斜杠）</li>
+                    <li>配置保存后<strong>立即生效</strong>，无需重启 Bot</li>
+                    <li>API Key 只写入数据库，回读时不返回明文</li>
+                    <li>同一份配置同时用于「AI 对话」与「AI 广告判定」</li>
+                  </ul>
+                  <div class="badge-note">这是界面预览，用于查看「AI 设置」页的布局与字段；真实环境数据来自后端 API。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    }).mount("#app");
+  </script>
+</body>
+</html>

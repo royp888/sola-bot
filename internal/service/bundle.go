@@ -19,6 +19,7 @@ import (
 type Bundle struct {
 	store           *store.Store
 	redisClient     *redis.Client
+	botToken        string
 	Access          bot.AccessService
 	TelegramAccess  bot.TelegramAccessService
 	RateLimit       bot.RateLimitService
@@ -44,6 +45,7 @@ func NewBundleWithBotToken(st *store.Store, redisClient *redis.Client, botToken 
 	return &Bundle{
 		store:           st,
 		redisClient:     redisClient,
+		botToken:        botToken,
 		Access:          NewAccessService(st),
 		TelegramAccess:  NewTelegramAccessService(),
 		RateLimit:       NewRateLimitService(redisClient),
@@ -58,7 +60,7 @@ func NewBundleWithBotToken(st *store.Store, redisClient *redis.Client, botToken 
 		MessageTemplate: NewMessageTemplateService(st),
 		InviteLink:      NewInviteLinkService(st, botToken),
 		AuditLog:        NewAuditService(st),
-		AiFilter:        NewAiFilterService(cfg.AiFilter),
+		AiFilter:        NewAiFilterService(st, cfg.AiFilter),
 	}
 }
 
@@ -81,6 +83,7 @@ func (b *Bundle) BotServices() bot.Services {
 		AuditLog:       b.AuditLog,
 		AiFilter:       b.AiFilter,
 		Redis:          b.redisClient,
+		Forwards:       NewForwardEngine(b.store, b.botToken, nil),
 	}
 }
 

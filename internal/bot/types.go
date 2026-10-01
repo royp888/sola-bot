@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -10,6 +11,9 @@ import (
 	"github.com/dabowin/sola/internal/model"
 	"github.com/redis/go-redis/v9"
 )
+
+// ErrAINotConfigured is returned by the AI chat service when the LLM is not configured.
+var ErrAINotConfigured = errors.New("ai service is not configured")
 
 const (
 	PermissionAdmin    = "admin"
@@ -83,6 +87,12 @@ type Services struct {
 	AuditLog       AuditLogService
 	AiFilter       AiFilterService
 	Redis          RedisStateService
+	Forwards       ForwardRealtimeService
+}
+
+// ForwardRealtimeService 处理源频道/群的实时消息转发（自动转发规则里的 realtime 开关）。
+type ForwardRealtimeService interface {
+	HandleRealtime(ctx context.Context, tgBot *gotgbot.Bot, msg *gotgbot.Message) error
 }
 
 type Actor struct {
@@ -474,9 +484,10 @@ type AuditLogService interface {
 	Log(entry AuditLogEntry)
 }
 
-// AiFilterService uses an LLM to judge whether a message is spam.
+// AiFilterService uses an LLM to judge whether a message is spam and answer user questions.
 type AiFilterService interface {
 	IsSpam(ctx context.Context, text string, userName string) (bool, string, error)
+	Chat(ctx context.Context, userPrompt string) (string, error)
 }
 
 type AuditLogEntry struct {

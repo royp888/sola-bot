@@ -268,6 +268,12 @@ export interface ScheduledPostRecord {
   auto_delete_seconds?: number;
   clear_inline_media?: boolean;
   media_data_base64?: string;
+  /** 额外投放目标（chat_id 之外的频道/群），媒体会复用首个目标的 file_id */
+  target_chat_ids?: number[];
+  /** 按钮定义：[[{"text":"🛒 立即购买","url":"https://..."}]] */
+  inline_keyboard_json?: string;
+  /** HTML / MarkdownV2 / plain */
+  parse_mode?: string;
   created_at: string;
   updated_at?: string;
 }

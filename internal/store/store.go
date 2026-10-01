@@ -36,6 +36,8 @@ func (s *Store) AutoMigrate(ctx context.Context) error {
 		&model.Post{},
 		&model.ScheduledPost{},
 		&model.ScheduledPostDelivery{},
+		&model.Broadcast{},
+		&model.BroadcastDelivery{},
 		&model.ScheduledJob{},
 		&model.MessageTemplate{},
 		&model.ButtonTemplate{},

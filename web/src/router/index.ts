@@ -23,6 +23,9 @@ const UsersView = () => import("@/views/UsersView.vue");
 const AuditLogsView = () => import("@/views/AuditLogsView.vue");
 const ViolationsView = () => import("@/views/ViolationsView.vue");
 const SystemSettingsView = () => import("@/views/SystemSettingsView.vue");
+const AiSettingsView = () => import("@/views/AiSettingsView.vue");
+const BroadcastsView = () => import("@/views/BroadcastsView.vue");
+const ForwardsView = () => import("@/views/ForwardsView.vue");
 
 const appName = import.meta.env.VITE_APP_NAME?.trim() || "Sola 管理台";
 
@@ -166,6 +169,22 @@ const router = createRouter({
           },
         },
         {
+          path: "broadcasts",
+          name: "broadcasts",
+          component: BroadcastsView,
+          meta: {
+            title: "群发",
+          },
+        },
+        {
+          path: "forwards",
+          name: "forwards",
+          component: ForwardsView,
+          meta: {
+            title: "自动转发",
+          },
+        },
+        {
           path: "templates",
           name: "templates",
           component: TemplatesView,
@@ -203,6 +222,14 @@ const router = createRouter({
           component: SystemSettingsView,
           meta: {
             title: "系统设置",
+          },
+        },
+        {
+          path: "ai-settings",
+          name: "ai-settings",
+          component: AiSettingsView,
+          meta: {
+            title: "AI 设置",
           },
         },
         {

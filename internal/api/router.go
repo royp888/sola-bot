@@ -75,6 +75,29 @@ func NewRouter(deps Dependencies) *gin.Engine {
 			compatSecured.PUT("/posts/:post_id", server.UpdatePost)
 			compatSecured.DELETE("/posts/:post_id", server.DeletePost)
 			compatSecured.PUT("/posts/:post_id/toggle", server.TogglePost)
+
+			compatSecured.GET("/broadcasts", server.ListBroadcasts)
+			compatSecured.POST("/broadcasts", server.CreateBroadcast)
+			compatSecured.GET("/broadcasts/stats", server.GetBroadcastStats)
+			compatSecured.POST("/broadcasts/preview", server.PreviewBroadcastTargets)
+			compatSecured.GET("/broadcasts/:broadcast_id", server.GetBroadcast)
+			compatSecured.PUT("/broadcasts/:broadcast_id", server.UpdateBroadcast)
+			compatSecured.DELETE("/broadcasts/:broadcast_id", server.DeleteBroadcast)
+			compatSecured.POST("/broadcasts/:broadcast_id/send", server.SendBroadcast)
+			compatSecured.POST("/broadcasts/:broadcast_id/cancel", server.CancelBroadcast)
+			compatSecured.GET("/broadcasts/:broadcast_id/deliveries", server.ListBroadcastDeliveries)
+			compatSecured.GET("/forwards", server.ListForwards)
+			compatSecured.POST("/forwards", server.CreateForward)
+			compatSecured.GET("/forwards/stats", server.GetForwardStats)
+			compatSecured.GET("/forwards/:forward_id", server.GetForward)
+			compatSecured.PUT("/forwards/:forward_id", server.UpdateForward)
+			compatSecured.DELETE("/forwards/:forward_id", server.DeleteForward)
+			compatSecured.POST("/forwards/:forward_id/history/start", server.StartForwardHistory)
+			compatSecured.POST("/forwards/:forward_id/history/pause", server.PauseForwardHistory)
+			compatSecured.POST("/forwards/:forward_id/history/reset", server.ResetForwardHistory)
+			compatSecured.GET("/forwards/:forward_id/logs", server.ListForwardLogs)
+			compatSecured.POST("/forwards/:forward_id/preview", server.PreviewForward)
+			compatSecured.POST("/forwards/:forward_id/test-send", server.TestSendForward)
 			compatSecured.GET("/lottery", server.ListLotteries)
 			compatSecured.POST("/lottery", server.CreateLottery)
 			compatSecured.DELETE("/lottery/:id", server.CancelLottery)
@@ -100,6 +123,8 @@ func NewRouter(deps Dependencies) *gin.Engine {
 			compatSecured.DELETE("/auto-replies/:auto_reply_id", server.DeleteAutoReply)
 			compatSecured.GET("/system/settings", server.GetSystemSettings)
 			compatSecured.PUT("/system/settings", server.UpdateSystemSettings)
+			compatSecured.GET("/system/ai-settings", server.GetAiSettings)
+			compatSecured.PUT("/system/ai-settings", server.UpdateAiSettings)
 			compatSecured.GET("/backup/export", server.ExportBackup)
 			compatSecured.POST("/backup/import", server.ImportBackup)
 			compatSecured.GET("/templates", server.ListTemplates)
@@ -195,6 +220,38 @@ func NewRouter(deps Dependencies) *gin.Engine {
 				schedules.DELETE("/:schedule_id", server.DeleteSchedule)
 			}
 
+			broadcasts := secured.Group("/broadcasts")
+			{
+				broadcasts.POST("", server.CreateBroadcast)
+				broadcasts.GET("", server.ListBroadcasts)
+				broadcasts.GET("/stats", server.GetBroadcastStats)
+				broadcasts.POST("/preview", server.PreviewBroadcastTargets)
+				broadcasts.GET("/:broadcast_id", server.GetBroadcast)
+				broadcasts.PUT("/:broadcast_id", server.UpdateBroadcast)
+				broadcasts.PATCH("/:broadcast_id", server.UpdateBroadcast)
+				broadcasts.DELETE("/:broadcast_id", server.DeleteBroadcast)
+				broadcasts.POST("/:broadcast_id/send", server.SendBroadcast)
+				broadcasts.POST("/:broadcast_id/cancel", server.CancelBroadcast)
+				broadcasts.GET("/:broadcast_id/deliveries", server.ListBroadcastDeliveries)
+			}
+
+			forwards := secured.Group("/forwards")
+			{
+				forwards.POST("", server.CreateForward)
+				forwards.GET("", server.ListForwards)
+				forwards.GET("/stats", server.GetForwardStats)
+				forwards.GET("/:forward_id", server.GetForward)
+				forwards.PUT("/:forward_id", server.UpdateForward)
+				forwards.PATCH("/:forward_id", server.UpdateForward)
+				forwards.DELETE("/:forward_id", server.DeleteForward)
+				forwards.POST("/:forward_id/history/start", server.StartForwardHistory)
+				forwards.POST("/:forward_id/history/pause", server.PauseForwardHistory)
+				forwards.POST("/:forward_id/history/reset", server.ResetForwardHistory)
+				forwards.GET("/:forward_id/logs", server.ListForwardLogs)
+				forwards.POST("/:forward_id/preview", server.PreviewForward)
+				forwards.POST("/:forward_id/test-send", server.TestSendForward)
+			}
+
 			lottery := secured.Group("/lottery")
 			{
 				lottery.GET("", server.ListLotteries)
@@ -235,6 +292,8 @@ func NewRouter(deps Dependencies) *gin.Engine {
 			{
 				systemSettings.GET("/settings", server.GetSystemSettings)
 				systemSettings.PUT("/settings", server.UpdateSystemSettings)
+				systemSettings.GET("/ai-settings", server.GetAiSettings)
+				systemSettings.PUT("/ai-settings", server.UpdateAiSettings)
 			}
 
 			backup := secured.Group("/backup")

@@ -22,7 +22,12 @@ type ScheduledPost struct {
 	// [ [ {"text":"查看详情","url":"https://..."}, {"text":"我要参与","callback_data":"join"} ] ]
 	InlineKeyboardJSON string `gorm:"type:text;not null;default:'[]'" json:"inline_keyboard_json"`
 
-	CronExpr  string `gorm:"size:64" json:"cron_expr,omitempty"`
+	// TargetChatIDsJSON 是除 ChatID 之外的额外投放目标（JSON 数组，例如 [-100123,-100456]）。
+	// 用来把同一条产品帖一次投到多个频道/群；媒体会在第一个目标上传后复用 file_id，
+	// 其余目标直接用 file_id 发送，不需要重复上传（大文件也能秒发）。
+	TargetChatIDsJSON string `gorm:"column:target_chat_ids_json;type:text;not null;default:'[]'" json:"target_chat_ids_json"`
+
+	CronExpr string `gorm:"size:64" json:"cron_expr,omitempty"`
 
 	RunOnceAt *time.Time `gorm:"index" json:"run_once_at,omitempty"`
 	Enabled   bool       `gorm:"not null;default:true;index" json:"enabled"`

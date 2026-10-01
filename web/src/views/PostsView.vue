@@ -97,8 +97,52 @@
     <el-dialog v-model="dialogVisible" :title="editingPost ? '编辑发布任务' : '新建发布任务'" width="680px" class="posts-dialog">
       <el-form label-position="top" class="post-form">
         <el-alert class="preview" type="info" :closable="false" show-icon title="图片和视频任务支持附带文字说明；页面内时间均按北京时间（东八区）处理。" />
-        <el-form-item label="目标群组">
+        <el-form-item label="目标群组 / 频道">
           <ChatSelect v-model="form.chat_id" @update:model-value="loadTemplatesForPost" />
+        </el-form-item>
+        <el-form-item label="同时投到其它频道（可选）">
+          <el-select
+            v-model="targetChatIDs"
+            class="wide-control"
+            multiple
+            filterable
+            clearable
+            placeholder="再选几个频道，一条产品帖一起发"
+          >
+            <el-option
+              v-for="chat in extraChatOptions"
+              :key="`extra-${chatKey(chat)}`"
+              :label="chatLabel(chat)"
+              :value="Number(chat.chat_id ?? chat.id)"
+            />
+          </el-select>
+          <div class="field-hint">
+            媒体只在第一个频道上传一次，其余频道复用 file_id 直接引用，不重复上传（大文件也秒发）。
+            机器人必须同时是这些频道的管理员，否则该频道会失败并记录在投递明细里。
+          </div>
+        </el-form-item>
+        <el-form-item label="按钮（可选，点一下就去下单）">
+          <div class="button-editor">
+            <div v-for="(row, rowIndex) in buttonRows" :key="`row-${rowIndex}`" class="button-row">
+              <div v-for="(button, buttonIndex) in row" :key="`btn-${rowIndex}-${buttonIndex}`" class="button-card">
+                <el-input v-model="button.text" placeholder="按钮文字，例如 🛒 立即购买" />
+                <el-input v-model="button.url" placeholder="https://shop.example.com/product/123" />
+                <el-button link type="danger" @click="removeButton(rowIndex, buttonIndex)">删除</el-button>
+              </div>
+              <el-button link :icon="Plus" @click="addButton(rowIndex)">本行再加一个按钮</el-button>
+            </div>
+            <el-button link :icon="Plus" @click="addButtonRow">加一行按钮</el-button>
+          </div>
+          <div class="field-hint">
+            链接必须以 http:// 或 https:// 开头，最多 100 个按钮。注意：按钮只能由机器人发出，用户账号发的帖子带不了按钮。
+          </div>
+        </el-form-item>
+        <el-form-item label="解析模式">
+          <el-select v-model="form.parse_mode" class="wide-control">
+            <el-option label="HTML（默认，可用 &lt;b&gt;加粗&lt;/b&gt;）" value="HTML" />
+            <el-option label="MarkdownV2" value="MarkdownV2" />
+            <el-option label="纯文本（不解析，最稳）" value="plain" />
+          </el-select>
         </el-form-item>
         <el-form-item label="从模板快速填充">
           <el-select v-model="selectedTemplateId" class="wide-control" clearable filterable @change="applyTemplate">
@@ -257,7 +301,14 @@ import {
   updateScheduledPost,
 } from "@/api/posts";
 import { fetchTemplates } from "@/api/templates";
-import type { ChatID, MessageTemplateRecord, ScheduledPostPayload, ScheduledPostRecord } from "@/types/api";
+import { fetchChats } from "@/api/chats";
+import type {
+  ChatID,
+  ChatRecord,
+  MessageTemplateRecord,
+  ScheduledPostPayload,
+  ScheduledPostRecord,
+} from "@/types/api";
 import { formatChinaInputDateTime, parseChinaLocalDateTimeToISO } from "@/utils/datetime";
 import { parseNumericId, formatDateTime, errorMessage } from "@/utils/helpers";
 
@@ -275,6 +326,87 @@ const selectedTemplateId = ref("");
 const mediaFile = ref<InlineMediaFileValue | null>(null);
 const existingInlineMediaName = ref("");
 const existingInlineMediaMime = ref("");
+
+/** 额外投放的频道（chat_id 之外） */
+const targetChatIDs = ref<number[]>([]);
+const chats = ref<ChatRecord[]>([]);
+type EditorButton = { text: string; url: string };
+const buttonRows = ref<EditorButton[][]>([[]]);
+
+const extraChatOptions = computed(() =>
+  chats.value.filter(
+    (chat) => chatKey(chat) !== "" && Number(chat.chat_id ?? chat.id) !== Number(form.chat_id || 0),
+  ),
+);
+
+function chatKey(chat: ChatRecord): string {
+  return String(chat.chat_id ?? chat.id ?? "");
+}
+
+function chatLabel(chat: ChatRecord): string {
+  const id = chatKey(chat);
+  return `${chat.title || chat.username || id} · ${id}`;
+}
+
+function addButtonRow(): void {
+  buttonRows.value = [...buttonRows.value, []];
+}
+
+function addButton(rowIndex: number): void {
+  const rows = buttonRows.value.map((row) => [...row]);
+  rows[rowIndex] = [...(rows[rowIndex] ?? []), { text: "", url: "" }];
+  buttonRows.value = rows;
+}
+
+function removeButton(rowIndex: number, buttonIndex: number): void {
+  const rows = buttonRows.value.map((row) => [...row]);
+  rows[rowIndex] = (rows[rowIndex] ?? []).filter((_, index) => index !== buttonIndex);
+  buttonRows.value = rows;
+}
+
+/** 把编辑器里的按钮转成后端格式；空按钮直接丢掉。 */
+function buildInlineKeyboardJson(): string {
+  const rows = buttonRows.value
+    .map((row) =>
+      row
+        .map((button) => ({ text: button.text.trim(), url: button.url.trim() }))
+        .filter((button) => button.text !== "" && button.url !== ""),
+    )
+    .filter((row) => row.length > 0);
+  return rows.length > 0 ? JSON.stringify(rows) : "[]";
+}
+
+function parseInlineKeyboardJson(raw?: string): EditorButton[][] {
+  const fallback: EditorButton[][] = [[]];
+  if (!raw || raw.trim() === "" || raw.trim() === "[]") {
+    return fallback;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return fallback;
+    const rows: EditorButton[][] = [];
+    for (const row of parsed) {
+      if (Array.isArray(row)) {
+        rows.push(
+          row.map((button) => ({
+            text: String((button as EditorButton)?.text ?? ""),
+            url: String((button as EditorButton)?.url ?? ""),
+          })),
+        );
+      } else if (row && Array.isArray((row as { buttons?: unknown }).buttons)) {
+        rows.push(
+          ((row as { buttons: EditorButton[] }).buttons ?? []).map((button) => ({
+            text: String(button?.text ?? ""),
+            url: String(button?.url ?? ""),
+          })),
+        );
+      }
+    }
+    return rows.length > 0 ? rows : fallback;
+  } catch {
+    return fallback;
+  }
+}
 type ScheduleMode = "once" | "daily" | "hourly" | "weekly" | "monthly" | "seconds" | "minutes" | "custom";
 type ScheduleCheck = { valid: boolean; type: "success" | "warning" | "info" | "error"; title: string };
 
@@ -310,6 +442,7 @@ const form = reactive<ScheduledPostPayload>({
   enabled: true,
   pin_after_send: false,
   auto_delete_seconds: 0,
+  parse_mode: "HTML",
 });
 
 const schedulePreview = computed(() => {
@@ -555,8 +688,16 @@ function buildPayload(): ScheduledPostPayload | undefined {
     return undefined;
   }
   const shouldClearInlineMedia = form.media_type === "text" || (Boolean(mediaUrl) && !hasInlineMedia) || Boolean(form.clear_inline_media);
+  const keyboardJson = buildInlineKeyboardJson();
+  if (buttonRows.value.some((row) => row.some((button) => button.text.trim() && !button.url.trim()))) {
+    ElMessage.warning("每个按钮都要填链接，否则点不动");
+    return undefined;
+  }
   return {
     chat_id: chatId,
+    target_chat_ids: targetChatIDs.value.length > 0 ? targetChatIDs.value : undefined,
+    inline_keyboard_json: keyboardJson,
+    parse_mode: form.parse_mode || "HTML",
     title: form.title.trim(),
     content: form.content.trim(),
     media_type: form.media_type,
@@ -590,12 +731,15 @@ function openCreate(): void {
     enabled: true,
     pin_after_send: false,
     auto_delete_seconds: 0,
+    parse_mode: "HTML",
   });
   mediaFile.value = null;
   existingInlineMediaName.value = "";
   existingInlineMediaMime.value = "";
   selectedTemplateId.value = "";
   scheduleMode.value = "once";
+  targetChatIDs.value = [];
+  buttonRows.value = [[]];
   void loadTemplatesForPost();
   dialogVisible.value = true;
 }
@@ -651,11 +795,14 @@ function openEdit(row: ScheduledPostRecord): void {
     enabled: row.enabled,
     pin_after_send: Boolean(row.pin_after_send),
     auto_delete_seconds: row.auto_delete_seconds || 0,
+    parse_mode: row.parse_mode || "HTML",
   });
   mediaFile.value = null;
   existingInlineMediaName.value = row.media_name || "";
   existingInlineMediaMime.value = row.media_mime || "";
   selectedTemplateId.value = "";
+  targetChatIDs.value = [...(row.target_chat_ids ?? [])];
+  buttonRows.value = parseInlineKeyboardJson(row.inline_keyboard_json);
   applyScheduleFromPost(row);
   void loadTemplatesForPost();
   dialogVisible.value = true;
@@ -839,8 +986,17 @@ function weekdayLabel(value: string): string {
   return { "0": "日", "1": "一", "2": "二", "3": "三", "4": "四", "5": "五", "6": "六" }[value] ?? value;
 }
 
-onMounted(loadPosts);
-</script>
+onMounted(async () => {
+  await Promise.all([loadPosts(), loadChats()]);
+});
+
+async function loadChats(): Promise<void> {
+  try {
+    chats.value = await fetchChats();
+  } catch {
+    chats.value = [];
+  }
+}</script>
 
 <style scoped>
 .page-meta-chip {
@@ -872,6 +1028,37 @@ onMounted(loadPosts);
 
 .wide-control {
   width: 100%;
+}
+
+.field-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
+}
+
+.button-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.button-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px dashed var(--app-border);
+  border-radius: 10px;
+  background: var(--app-tint-light);
+}
+
+.button-card {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 8px;
+  align-items: center;
 }
 
 .preview {

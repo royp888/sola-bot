@@ -21,8 +21,13 @@ func New(services Services, options Options) *App {
 }
 
 func (a *App) Register(dispatcher *ext.Dispatcher) {
+	// 实时自动转发要抢在通用消息处理器之前拿到消息
+	a.registerForwardHandlers(dispatcher)
 	a.registerCoreHandlers(dispatcher)
 
+	if a.options.Features.Enabled("ai_chat") {
+		a.registerAIChatHandlers(dispatcher)
+	}
 	if a.options.Features.Enabled("admin") {
 		a.registerAdminHandlers(dispatcher)
 	}
